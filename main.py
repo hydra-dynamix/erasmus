@@ -5,20 +5,21 @@ import traceback
 from pathlib import Path
 from src.script_converter import ScriptConverter
 from src.version_manager import VersionManager
+from embed_erasmus import main as embed
 
 def convert_scripts(version_str: str) -> int:
     """Convert shell script to batch script and create versioned copies."""
     sys.stderr.write("Starting script conversion...\n")
     sys.stderr.flush()
-    
+    embed()
     converter = ScriptConverter()
     script_dir = Path.cwd()
-    shell_path = script_dir / 'install.sh'
     release_dir = script_dir / 'release'
+    version_dir = release_dir / f'v{version_str}'
     
-    # Create versioned paths
-    batch_path = release_dir / f'erasmus_v{version_str}.bat'
-    versioned_shell_path = release_dir / f'erasmus_v{version_str}.sh'
+    # Create versioned paths with version-specific directory
+    batch_path = version_dir / f'erasmus_v{version_str}.bat'
+    versioned_shell_path = version_dir / f'erasmus_v{version_str}.sh'
     
     # Print debug info
     sys.stderr.write(f"Python executable: {sys.executable}\n")
@@ -26,30 +27,33 @@ def convert_scripts(version_str: str) -> int:
     sys.stderr.write(f"Function templates in converter:\n")
     for name, template in converter.function_templates.items():
         sys.stderr.write(f"- {name}: {len(template)} bytes\n")
-    sys.stderr.write(f"Shell script path: {shell_path}\n")
+    sys.stderr.write(f"Versioned shell script path: {versioned_shell_path}\n")
     sys.stderr.write(f"Batch script path: {batch_path}\n")
     sys.stderr.flush()
     
     try:
-        if not shell_path.exists():
-            print(f"Shell script not found at: {shell_path}")
+        # No need to check for shell_path anymore as we're using the versioned shell script
+            
+        # Check if the versioned shell script exists
+        if not versioned_shell_path.exists():
+            print(f"Error: Versioned shell script not found at: {versioned_shell_path}")
             return 1
             
-        # Read shell script
-        shell_content = shell_path.read_text(encoding='utf-8')
-        print(f"Read {len(shell_content)} bytes from shell script")
+        # Read the versioned shell script that already has the embedded content
+        shell_content = versioned_shell_path.read_text(encoding='utf-8')
+        print(f"Read {len(shell_content)} bytes from versioned shell script")
         
         # Convert to batch script
         print("Converting shell script to batch script...")
         batch_content = converter.convert_script(shell_content)
         print(f"Generated {len(batch_content)} bytes of batch script")
         
-        # Create release directory
+        # Create release directory and version-specific directory
         release_dir.mkdir(parents=True, exist_ok=True)
+        version_dir.mkdir(parents=True, exist_ok=True)
         
-        # Write both scripts
+        # Write batch script
         batch_path.write_text(batch_content, encoding='utf-8')
-        versioned_shell_path.write_text(shell_content, encoding='utf-8')
         
         print("Successfully wrote scripts to release directory:")
         print(f"  - {batch_path}")

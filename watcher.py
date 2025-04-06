@@ -131,9 +131,18 @@ def is_valid_url(url: str) -> bool:
 
 def is_valid_url(url: str) -> bool:
     """Basic URL validation using regex."""
-    https_pattern = re.match(r'^https?://', url)
-    http_pattern = re.match(r'^http?://', url)
-    return https_pattern or http_pattern
+    # Accept localhost URLs and standard http/https URLs
+    if not url:
+        return False
+    
+    # Check for localhost or 127.0.0.1
+    localhost_pattern = re.match(r'^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(?:/.*)?$', url)
+    if localhost_pattern:
+        return True
+        
+    # Check for standard http/https URLs
+    standard_pattern = re.match(r'^https?://[\w\.-]+(?::\d+)?(?:/.*)?$', url)
+    return bool(standard_pattern)
 
 def prompt_openai_credentials(env_path=".env"):
     """Prompt user for OpenAI credentials and save to .env"""
@@ -147,11 +156,15 @@ def prompt_openai_credentials(env_path=".env"):
     model = input("Enter your OPENAI_MODEL (default: gpt-4o): ").strip()
     if not model:
         model = "gpt-4o"
-
+        
+    # Detect IDE environment and save it to the .env file
+    ide_env = detect_ide_environment()
+    
     env_content = (
         f"OPENAI_API_KEY={api_key}\n"
         f"OPENAI_BASE_URL={base_url}\n"
         f"OPENAI_MODEL={model}\n"
+        f"IDE_ENV={ide_env}\n"
     )
 
     Path(env_path).write_text(env_content)
@@ -593,6 +606,17 @@ def setup_project():
     
     # Ensure context file exists but don't overwrite it
     ensure_file_exists(CONTEXT_RULES_PATH)
+    
+    # Ensure IDE_ENV is set in .env file
+    env_path = Path(".env")
+    if env_path.exists():
+        env_content = env_path.read_text()
+        if "IDE_ENV=" not in env_content:
+            # Append IDE_ENV to existing .env file
+            ide_env = detect_ide_environment()
+            with open(env_path, "a") as f:
+                f.write(f"\nIDE_ENV={ide_env}\n")
+            logger.info(f"Added IDE_ENV={ide_env} to .env file")
 
     # Ensure the git repo is initialized
     subprocess.run(["git", "init"], check=True)

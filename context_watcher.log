@@ -99,3 +99,12 @@ NameError: name 'save_rules' is not defined
 2025-04-06 16:07:03,792 - context_watcher - INFO - Created global rules at /home/bakobi/.codeium/windsurf/memories/global_rules.md
 2025-04-06 16:07:03,792 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section
 2025-04-06 16:12:20,521 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-06 16:12:24,684 - context_watcher - WARNING - Generated commit message invalid: Commit message is too long (max 72 characters)
+2025-04-06 16:12:24,698 - context_watcher - INFO - Committed changes: test: Update project files (2025-04-06)
+2025-04-06 16:12:24,700 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-06 16:12:24,700 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-06 16:12:24,702 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-06 16:39:21,559 - context_watcher - INFO - Detected update in Script File
+2025-04-06 16:39:21,567 - context_watcher - INFO - Detected change in Script File. Restarting the script...
+2025-04-06 16:39:22,668 - context_watcher - INFO - Restarting the program...
+2025-04-06 16:39:23,369 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
