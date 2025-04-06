@@ -1,5 +1,11 @@
 {
-  "version": "0.0.1",
-  "last_updated": "2025-04-06T15:33:13-07:00",
-  "changes": []
+  "version": "0.0.2",
+  "last_updated": "2025-04-06T16:09:49.062266",
+  "changes": [
+    {
+      "description": "added versioning system",
+      "type": "patch",
+      "timestamp": "2025-04-06T16:09:49.062251"
+    }
+  ]
 }
