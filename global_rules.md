@@ -90,6 +90,33 @@ flowchart TD
 4. **Ask questions**  
    If anything is unclear, *ask*. Thoughtful questions lead to better outcomes.
 
+## 🗃️ MEMORY MANAGEMENT
+
+### Browser IDE Memory Rules
+1. **Global Context Only**
+   - Only store information that is globally required regardless of project
+   - Examples: coding standards, common patterns, general preferences
+   - Do NOT store project-specific implementation details
+
+2. **Memory Types**
+   - User Preferences: coding style, documentation format, testing approaches
+   - Common Patterns: reusable design patterns, best practices
+   - Tool Usage: common tool configurations and usage patterns
+   - Error Handling: standard error handling approaches
+
+3. **Memory Updates**
+   - Only update when encountering genuinely new global patterns
+   - Do not duplicate project-specific implementations
+   - Focus on patterns that apply across multiple projects
+
+4. **Project-Specific Information**
+   - Use ARCHITECTURE.md for project structure
+   - Use PROGRESS.md for development tracking
+   - Use TASKS.md for granular task management
+   - Use local documentation for project-specific patterns
+
+---
+
 ## KNOWN ISSUES
 
 ### Command Execution
