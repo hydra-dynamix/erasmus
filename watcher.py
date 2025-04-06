@@ -144,6 +144,47 @@ def is_valid_url(url: str) -> bool:
     standard_pattern = re.match(r'^https?://[\w\.-]+(?::\d+)?(?:/.*)?$', url)
     return bool(standard_pattern)
 
+def detect_ide_environment() -> str:
+    """
+    Detect the current IDE environment.
+    
+    Returns:
+        str: Detected IDE environment ('WINDSURF', 'CURSOR', or '')
+    """
+    # Check environment variable first
+    ide_env = os.getenv('IDE_ENV', '').upper()
+    if ide_env:
+        return 'WINDSURF' if ide_env.startswith('W') else 'CURSOR'
+    
+    # Try to detect based on current working directory or known IDE paths
+    cwd = Path.cwd()
+    
+    # Windsurf-specific detection
+    windsurf_markers = [
+        Path.home() / '.codeium' / 'windsurf',
+        cwd / '.windsurfrules'
+    ]
+    
+    # Cursor-specific detection
+    cursor_markers = [
+        cwd / '.cursorrules',
+        Path.home() / '.cursor'
+    ]
+    
+    # Check Windsurf markers
+    for marker in windsurf_markers:
+        if marker.exists():
+            return 'WINDSURF'
+    
+    # Check Cursor markers
+    for marker in cursor_markers:
+        if marker.exists():
+            return 'CURSOR'
+    
+    # Default fallback
+    return 'WINDSURF'
+
+
 def prompt_openai_credentials(env_path=".env"):
     """Prompt user for OpenAI credentials and save to .env"""
     api_key = getpass("Enter your OPENAI_API_KEY (input hidden): ")
@@ -461,45 +502,7 @@ ARGS = parse_arguments()
 KEY_NAME = "WINDSURF" if ARGS.setup and ARGS.setup.startswith("w") or ARGS.type and ARGS.type.startswith("w") else "CURSOR"
 
 # === File Paths Configuration ===
-def detect_ide_environment() -> str:
-    """
-    Detect the current IDE environment.
-    
-    Returns:
-        str: Detected IDE environment ('WINDSURF', 'CURSOR', or '')
-    """
-    # Check environment variable first
-    ide_env = os.getenv('IDE_ENV', '').upper()
-    if ide_env:
-        return 'WINDSURF' if ide_env.startswith('W') else 'CURSOR'
-    
-    # Try to detect based on current working directory or known IDE paths
-    cwd = Path.cwd()
-    
-    # Windsurf-specific detection
-    windsurf_markers = [
-        Path.home() / '.codeium' / 'windsurf',
-        cwd / '.windsurfrules'
-    ]
-    
-    # Cursor-specific detection
-    cursor_markers = [
-        cwd / '.cursorrules',
-        Path.home() / '.cursor'
-    ]
-    
-    # Check Windsurf markers
-    for marker in windsurf_markers:
-        if marker.exists():
-            return 'WINDSURF'
-    
-    # Check Cursor markers
-    for marker in cursor_markers:
-        if marker.exists():
-            return 'CURSOR'
-    
-    # Default fallback
-    return 'WINDSURF'
+
 
 def get_rules_file_path(context_type='global') -> Path:
     """
@@ -1001,6 +1004,9 @@ def main():
     """Main function to handle arguments and execute appropriate actions"""
     try:
         if ARGS.setup:
+            # Normalize the setup argument to uppercase
+            ide_env = ARGS.setup.upper()
+            os.environ['IDE_ENV'] = ide_env
             setup_project()
             if not ARGS.watch:
                 return 0
