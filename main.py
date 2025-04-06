@@ -18,6 +18,12 @@ def main():
     shell_path = script_dir / 'install.sh'
     batch_path = script_dir / 'release' / 'erasmus_v0.0.1.bat'
 
+    # Print function templates
+    sys.stderr.write("Function templates in converter:\n")
+    for name, template in converter.function_templates.items():
+        sys.stderr.write(f"- {name}: {len(template)} bytes\n")
+    sys.stderr.flush()
+
     sys.stderr.write(f"Shell script path: {shell_path}\n")
     sys.stderr.write(f"Batch script path: {batch_path}\n")
     sys.stderr.write(f"Shell script exists: {shell_path.exists()}\n")
@@ -32,6 +38,7 @@ def main():
         shell_content = shell_path.read_text(encoding='utf-8')
         print(f"Read {len(shell_content)} bytes from shell script")
 
+        print("Converting shell script to batch script...")
         batch_content = converter.convert_script(shell_content)
         print(f"Generated {len(batch_content)} bytes of batch script")
 

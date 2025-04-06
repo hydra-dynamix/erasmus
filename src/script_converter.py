@@ -31,8 +31,7 @@ class ScriptConverter:
 
         # Function conversion templates
         self.function_templates = {
-            'detect_os': '''
-:detect_os
+            'detect_os': ''':detect_os
 set "OS=Unknown"
 for /f "tokens=* usebackq" %%i in (`ver`) do set "VER_OUT=%%i"
 echo !VER_OUT! | findstr /i "Windows" >nul 2>&1 && (
@@ -47,10 +46,8 @@ echo !VER_OUT! | findstr /i "Linux" >nul 2>&1 && (
     set "OS=Linux"
     goto :eof
 )
-goto :eof
-''',
-            'check_python': '''
-:check_python
+goto :eof''',
+            'check_python': ''':check_python
 set "PYTHON_CMD="
 where python.exe >nul 2>&1 && set "PYTHON_CMD=python.exe"
 if "!PYTHON_CMD!"=="" (
@@ -74,10 +71,8 @@ if "!MAJOR!" lss "3" (
         exit /b 1
     )
 )
-goto :eof
-''',
-            'check_prerequisites': '''
-:check_prerequisites
+goto :eof''',
+            'check_prerequisites': ''':check_prerequisites
 call :detect_os
 if "!OS!"=="Windows" (
     echo Checking Windows prerequisites...
@@ -112,10 +107,8 @@ if "!OS!"=="Windows" (
         )
     )
 )
-goto :eof
-''',
-            'install_uv': '''
-:install_uv
+goto :eof''',
+            'install_uv': ''':install_uv
 echo Installing uv package manager...
 if "!OS!"=="Windows" (
     winget install --id=astral-sh.uv -e
@@ -135,8 +128,47 @@ where uv.exe >nul 2>&1 || (
 
 echo Installation complete!
 echo You can now run: uv run watcher.py
-goto :eof
-'''
+goto :eof''',
+            'setup_env': ''':setup_env
+echo Creating environment files...
+
+:: Create .env.example
+(
+echo IDE_ENV=
+echo GIT_TOKEN=
+echo OPENAI_API_KEY=
+) > .env.example
+
+:: Prompt for IDE environment
+echo Please enter your IDE environment (cursor/windsurf):
+set /p "IDE_ENV="
+
+:: Create .env
+(
+echo IDE_ENV=!IDE_ENV!
+echo GIT_TOKEN=
+echo OPENAI_API_KEY=
+) > .env
+
+echo Environment files created successfully
+goto :eof''',
+            'init_watcher': ''':init_watcher
+echo Initializing watcher...
+
+:: Check for compressed watcher script
+if exist watcher.py.gz (
+    echo Extracting watcher script...
+    powershell -Command "Expand-Archive -Path watcher.py.gz -DestinationPath ."
+)
+
+:: Run watcher setup
+if exist watcher.py (
+    uv run watcher.py
+) else (
+    echo Error: watcher.py not found
+    exit /b 1
+)
+goto :eof'''
         }
 
     def convert_function(self, func_name: str, content: str) -> str:
@@ -170,25 +202,45 @@ goto :eof
 
     def convert_script(self, shell_script: str) -> str:
         """Convert a shell script to a batch script."""
+        import sys
+
         # Start with initialization
         batch_lines = ['@echo off', 'setlocal enabledelayedexpansion', '']
 
-        # Add function templates
-        for func_name, template in self.function_templates.items():
-            batch_lines.append(template)
+        # Add all function templates in order
+        functions_order = ['detect_os', 'check_python', 'check_prerequisites', 'install_uv', 'setup_env', 'init_watcher']
+        sys.stderr.write(f"Available functions: {list(self.function_templates.keys())}\n")
+        sys.stderr.flush()
+
+        for func_name in functions_order:
+            if func_name in self.function_templates:
+                sys.stderr.write(f"Adding function: {func_name}\n")
+                sys.stderr.flush()
+                # Remove leading newlines from template
+                template = self.function_templates[func_name].lstrip('\n')
+                batch_lines.extend(['', template, ''])
+            else:
+                sys.stderr.write(f"Missing function: {func_name}\n")
+                sys.stderr.flush()
 
         # Add main section
-        batch_lines.append('\n:main')
-        batch_lines.append('call :detect_os')
-        batch_lines.append('call :check_prerequisites')
-        batch_lines.append('call :check_python')
-        batch_lines.append('call :install_uv')
-        batch_lines.append('exit /b %ERRORLEVEL%')
-
-        # Run main
-        batch_lines.append('\n:start')
-        batch_lines.append('call :main')
-        batch_lines.append('exit /b %ERRORLEVEL%')
+        batch_lines.extend([
+            '',
+            ':main',
+            'call :detect_os',
+            'call :check_prerequisites',
+            'call :check_python',
+            'call :install_uv',
+            'call :setup_env',
+            'call :init_watcher',
+            'echo Installation complete!',
+            'echo Watcher has been initialized with your IDE environment: !IDE_ENV!',
+            'exit /b %ERRORLEVEL%',
+            '',
+            ':start',
+            'call :main',
+            'exit /b %ERRORLEVEL%'
+        ])
 
         return '\n'.join(batch_lines)
 

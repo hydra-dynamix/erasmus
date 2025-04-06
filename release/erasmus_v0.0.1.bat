@@ -108,11 +108,59 @@ echo You can now run: uv run watcher.py
 goto :eof
 
 
+:setup_env
+echo Creating environment files...
+
+:: Create .env.example
+(
+echo IDE_ENV=
+echo GIT_TOKEN=
+echo OPENAI_API_KEY=
+) > .env.example
+
+:: Prompt for IDE environment
+echo Please enter your IDE environment (cursor/windsurf):
+set /p "IDE_ENV="
+
+:: Create .env
+(
+echo IDE_ENV=!IDE_ENV!
+echo GIT_TOKEN=
+echo OPENAI_API_KEY=
+) > .env
+
+echo Environment files created successfully
+goto :eof
+
+
+:init_watcher
+echo Initializing watcher...
+
+:: Check for compressed watcher script
+if exist watcher.py.gz (
+    echo Extracting watcher script...
+    powershell -Command "Expand-Archive -Path watcher.py.gz -DestinationPath ."
+)
+
+:: Run watcher setup
+if exist watcher.py (
+    uv run watcher.py
+) else (
+    echo Error: watcher.py not found
+    exit /b 1
+)
+goto :eof
+
+
 :main
 call :detect_os
 call :check_prerequisites
 call :check_python
 call :install_uv
+call :setup_env
+call :init_watcher
+echo Installation complete!
+echo Watcher has been initialized with your IDE environment: !IDE_ENV!
 exit /b %ERRORLEVEL%
 
 :start
