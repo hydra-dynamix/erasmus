@@ -70,3 +70,5 @@
 2025-04-06 15:29:47,066 - context_watcher - INFO - Detected update in ARCHITECTURE
 2025-04-06 15:29:47,066 - context_watcher - INFO - Processing update from ARCHITECTURE
 2025-04-06 15:29:47,068 - context_watcher - INFO - File written successfully: C:\Users\richa\watcher-builds\erasmus\.windsurfrules
+2025-04-06 15:29:49,983 - context_watcher - INFO - Committed changes: Improved log parsing to track completed file writes and project watches.
+2025-04-06 15:29:50,448 - context_watcher - INFO - Committed changes: Fixed context watcher log timestamp formatting.

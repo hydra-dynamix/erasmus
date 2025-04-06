@@ -9,3 +9,10 @@ __pycache__/
 *.pyw
 *.pyz
 *.pywz
+.venv
+.windsurfrules
+ARCHITECTURE.md
+PROGRESS.md
+TASKS.md
+global_rules.md
+uv.lock
