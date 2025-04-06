@@ -67,3 +67,6 @@
 2025-04-06 15:26:44,315 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
 2025-04-06 15:26:44,316 - context_watcher - INFO - Watching files: ['Script File']
 2025-04-06 15:26:44,317 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-06 15:29:47,066 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-06 15:29:47,066 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-06 15:29:47,068 - context_watcher - INFO - File written successfully: C:\Users\richa\watcher-builds\erasmus\.windsurfrules
