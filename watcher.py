@@ -281,8 +281,8 @@ def parse_arguments():
     parser.add_argument("--update", choices=["architecture", "progress", "tasks", "context"], 
                       help="File to update")
     parser.add_argument("--update-value", help="New value to write to the specified file")
-    parser.add_argument("--setup", choices=["cursor", "windsurf"], help="Setup project", default="cursor")
-    parser.add_argument("--type", choices=["cursor", "windsurf"], help="Project type", default="cursor")
+    parser.add_argument("--setup", choices=["cursor", "windsurf", "CURSOR", "WINDSURF"], help="Setup project", default="cursor")
+    parser.add_argument("--type", choices=["cursor", "windsurf", "CURSOR", "WINDSURF"], help="Project type", default="cursor")
     
     # Task management arguments
     task_group = parser.add_argument_group("Task Management")
