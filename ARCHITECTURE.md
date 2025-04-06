@@ -9,10 +9,25 @@ A single-file context watcher for cursor and windsurf, designed to streamline pr
 - `.cursorrules` and `.windsurfrules`: Context injection files for respective IDEs
 
 ## Technology Stack
-- **Package Management**
-  - Python: `uv` package manager
-    - Dependency management directly in `watcher.py`
-    - Single-script dependency tracking
+
+### Prerequisites
+- **Windows**
+  - winget (Microsoft App Installer)
+  - Python 3.8+
+- **macOS**
+  - Homebrew
+  - Python 3.8+
+- **Linux**
+  - curl
+  - Python 3.8+
+
+### Package Management
+- **Python: `uv` package manager**
+  - Windows: Installed via winget
+  - macOS: Installed via Homebrew
+  - Linux: Installed via curl script
+  - Dependency management directly in `watcher.py`
+  - Single-script dependency tracking
 
 - **Development Tools**
   - Logging: Rich logging with clear terminal output

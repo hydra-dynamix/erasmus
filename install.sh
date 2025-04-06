@@ -42,20 +42,67 @@ check_python() {
     fi
 }
 
+# Check and install prerequisites based on OS
+check_prerequisites() {
+    case "$OS" in
+        Windows)
+            echo -e "${YELLOW}Checking Windows prerequisites...${NC}"
+            # Check if winget is available
+            if ! command -v winget &> /dev/null; then
+                echo -e "${YELLOW}Installing winget...${NC}"
+                powershell.exe -Command "Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe"
+                if ! command -v winget &> /dev/null; then
+                    echo -e "${RED}Failed to install winget. Please install it manually from the Microsoft Store.${NC}"
+                    exit 1
+                fi
+            fi
+            ;;
+        macOS)
+            echo -e "${YELLOW}Checking macOS prerequisites...${NC}"
+            # Check if brew is available
+            if ! command -v brew &> /dev/null; then
+                echo -e "${RED}Homebrew is required but not installed.${NC}"
+                echo "Please install Homebrew first: https://brew.sh"
+                exit 1
+            fi
+            ;;
+        Linux)
+            echo -e "${YELLOW}Checking Linux prerequisites...${NC}"
+            # Check if curl is available
+            if ! command -v curl &> /dev/null; then
+                echo -e "${YELLOW}Installing curl...${NC}"
+                if command -v apt-get &> /dev/null; then
+                    sudo apt-get update && sudo apt-get install -y curl
+                elif command -v yum &> /dev/null; then
+                    sudo yum install -y curl
+                else
+                    echo -e "${RED}Could not install curl. Please install it manually.${NC}"
+                    exit 1
+                fi
+            fi
+            ;;
+    esac
+}
+
 # Install uv package manager
 install_uv() {
     echo -e "${YELLOW}Installing uv package manager...${NC}"
     
-    # Try pip first
-    if command -v pip &> /dev/null; then
-        pip install uv
-    elif command -v pip3 &> /dev/null; then
-        pip3 install uv
-    else
-        # Fallback to Python's built-in method
-        "$PYTHON_CMD" -m ensurepip --upgrade
-        "$PYTHON_CMD" -m pip install uv
-    fi
+    case "$OS" in
+        Windows)
+            winget install --id=astral-sh.uv -e
+            ;;
+        macOS)
+            brew install uv
+            ;;
+        Linux)
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            ;;
+        *)
+            echo -e "${RED}Unsupported operating system: $OS${NC}"
+            exit 1
+            ;;
+    esac
 
     # Verify uv installation
     if ! command -v uv &> /dev/null; then
@@ -69,6 +116,7 @@ main() {
     detect_os
     echo -e "${GREEN}Detected OS: $OS${NC}"
 
+    check_prerequisites
     check_python
     install_uv
 

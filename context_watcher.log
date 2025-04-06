@@ -24,3 +24,5 @@
 2025-04-06 14:26:14,384 - context_watcher - INFO - Detected update in TASKS
 2025-04-06 14:26:14,385 - context_watcher - INFO - Processing update from TASKS
 2025-04-06 14:26:14,386 - context_watcher - INFO - File written successfully: C:\Users\richa\watcher-builds\erasmus\.windsurfrules
+2025-04-06 14:26:16,058 - context_watcher - INFO - Committed changes: Update log entry with new commit hash
+2025-04-06 14:26:17,222 - context_watcher - INFO - Committed changes: Update context watcher configuration
