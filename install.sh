@@ -29,7 +29,7 @@ check_python() {
         echo -e "${RED}Error: Python is not installed!${NC}"
         echo "Please install Python 3.8+ before proceeding."
         exit 1
-    }
+    fi
 
     # Verify Python version
     PYTHON_VERSION=$("$PYTHON_CMD" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
@@ -118,20 +118,33 @@ setup_env() {
 IDE_ENV=
 GIT_TOKEN=
 OPENAI_API_KEY=
+OPENAI_BASE_URL=
+OPENAI_MODEL=
 EOL
     
     # Prompt for IDE environment
     echo -e "${YELLOW}Please enter your IDE environment (cursor/windsurf):${NC}"
     read -r IDE_ENV
     
+    # Convert to uppercase for consistency
+    IDE_ENV=$(echo "$IDE_ENV" | tr '[:lower:]' '[:upper:]')
+    
+    # Validate IDE environment
+    if [ "$IDE_ENV" != "CURSOR" ] && [ "$IDE_ENV" != "WINDSURF" ]; then
+        echo -e "${YELLOW}Warning: Unknown IDE environment. Defaulting to CURSOR.${NC}"
+        IDE_ENV="CURSOR"
+    fi
+    
     # Create .env with provided IDE_ENV
     cat > .env << EOL
 IDE_ENV=$IDE_ENV
 GIT_TOKEN=
 OPENAI_API_KEY=
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o
 EOL
     
-    echo -e "${GREEN}Environment files created successfully${NC}"
+    echo -e "${GREEN}Environment files created successfully for $IDE_ENV${NC}"
 }
 
 # Initialize watcher
@@ -145,7 +158,12 @@ init_watcher() {
     
     # Run watcher setup using environment variable
     if [ -f watcher.py ]; then
-        uv run watcher.py
+        # Create project directory structure if it doesn't exist
+        mkdir -p .git
+        
+        # Initialize watcher with the specified IDE environment
+        IDE_ENV=$(grep IDE_ENV .env | cut -d= -f2)
+        uv run watcher.py --setup "$IDE_ENV"
     else
         echo -e "${RED}Error: watcher.py not found${NC}"
         exit 1
