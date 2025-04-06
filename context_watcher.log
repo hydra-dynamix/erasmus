@@ -47,3 +47,8 @@
 2025-04-06 15:20:32,882 - context_watcher - INFO - Processing update from PROGRESS
 2025-04-06 15:20:32,891 - context_watcher - INFO - File written successfully: C:\Users\richa\watcher-builds\erasmus\.windsurfrules
 2025-04-06 15:20:38,769 - context_watcher - INFO - Committed changes: .windsurfrules
+2025-04-06 15:20:39,825 - context_watcher - INFO - Committed changes: Update context watcher for new file detection
+2025-04-06 15:20:39,826 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-06 15:20:39,827 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-06 15:20:39,828 - context_watcher - INFO - File written successfully: C:\Users\richa\watcher-builds\erasmus\.windsurfrules
+2025-04-06 15:20:40,736 - context_watcher - WARNING - Generated commit message invalid: Commit message is too long (max 72 characters)
