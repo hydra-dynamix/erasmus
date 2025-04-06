@@ -38,11 +38,13 @@
 - [x] Create `.env.example` template
 - [x] Implement environment variable management
 
-### Environment Configuration Tasks [IN PROGRESS]
+### Environment Configuration Tasks [COMPLETED]
 - [x] Create `.env` file with initial configuration
 - [x] Generate `.env.example` for template configuration
-- [ ] Document environment variable usage
-- [ ] Add environment variable validation
+- [x] Document environment variable usage
+- [x] Add environment variable validation
+- [x] Implement IDE environment selection
+- [x] Add watcher initialization with environment
 
 ## AI Integration Tasks [COMPLETED]
 ### OpenAI Client
