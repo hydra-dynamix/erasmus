@@ -130,19 +130,41 @@ def is_valid_url(url: str) -> bool:
 
 
 def is_valid_url(url: str) -> bool:
-    """Basic URL validation using regex."""
-    # Accept localhost URLs and standard http/https URLs
+    """Basic URL validation using regex.
+    
+    Accepts:
+    - Standard http/https URLs (e.g., https://api.openai.com/v1)
+    - Localhost URLs with optional port (e.g., http://localhost:11434)
+    - IP-based localhost URLs (e.g., http://127.0.0.1:8000)
+    
+    Args:
+        url: URL string to validate
+        
+    Returns:
+        bool: True if the URL is valid, False otherwise
+    """
     if not url:
         return False
+    
+    # Log the URL being validated for debugging
+    logger.debug(f"Validating URL: {url}")
     
     # Check for localhost or 127.0.0.1
     localhost_pattern = re.match(r'^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(?:/.*)?$', url)
     if localhost_pattern:
+        logger.debug(f"URL {url} matched localhost pattern")
         return True
         
     # Check for standard http/https URLs
     standard_pattern = re.match(r'^https?://[\w\.-]+(?::\d+)?(?:/.*)?$', url)
-    return bool(standard_pattern)
+    result = bool(standard_pattern)
+    
+    if result:
+        logger.debug(f"URL {url} matched standard pattern")
+    else:
+        logger.warning(f"URL validation failed for: {url}")
+        
+    return result
 
 def detect_ide_environment() -> str:
     """

@@ -136,3 +136,13 @@ NameError: name 'save_rules' is not defined
 2025-04-06 16:44:07,570 - context_watcher - INFO - Restarting the program...
 2025-04-06 16:44:08,205 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
 2025-04-06 16:44:08,282 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-06 16:44:09,955 - context_watcher - WARNING - Generated commit message invalid: Invalid commit type. Must be one of: refactor, docs, feat, chore, style, fix, test
+2025-04-06 16:44:10,008 - context_watcher - INFO - Committed changes: fix: Update project files (2025-04-06)
+2025-04-06 16:44:10,009 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-06 16:44:10,010 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-06 16:44:10,017 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-06 16:44:24,546 - context_watcher - INFO - Detected update in Script File
+2025-04-06 16:44:24,586 - context_watcher - INFO - Detected change in Script File. Restarting the script...
+2025-04-06 16:44:25,602 - context_watcher - INFO - Restarting the program...
+2025-04-06 16:44:26,409 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-06 16:44:26,564 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
