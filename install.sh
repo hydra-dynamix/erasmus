@@ -111,6 +111,47 @@ install_uv() {
     fi
 }
 
+# Setup environment files
+setup_env() {
+    # Create .env.example with empty values
+    cat > .env.example << EOL
+IDE_ENV=
+GIT_TOKEN=
+OPENAI_API_KEY=
+EOL
+    
+    # Prompt for IDE environment
+    echo -e "${YELLOW}Please enter your IDE environment (cursor/windsurf):${NC}"
+    read -r IDE_ENV
+    
+    # Create .env with provided IDE_ENV
+    cat > .env << EOL
+IDE_ENV=$IDE_ENV
+GIT_TOKEN=
+OPENAI_API_KEY=
+EOL
+    
+    echo -e "${GREEN}Environment files created successfully${NC}"
+}
+
+# Initialize watcher
+init_watcher() {
+    echo -e "${YELLOW}Initializing watcher...${NC}"
+    
+    # Extract watcher.py if it's embedded in the installer
+    if [ -f watcher.py.gz ]; then
+        gunzip -f watcher.py.gz
+    fi
+    
+    # Run watcher setup using environment variable
+    if [ -f watcher.py ]; then
+        uv run watcher.py
+    else
+        echo -e "${RED}Error: watcher.py not found${NC}"
+        exit 1
+    fi
+}
+
 # Main installation process
 main() {
     detect_os
@@ -119,10 +160,11 @@ main() {
     check_prerequisites
     check_python
     install_uv
+    setup_env
+    init_watcher
 
     echo -e "${GREEN}Installation complete!${NC}"
-    echo "You can now run the watcher script directly using:"
-    echo "uv run watcher.py"
+    echo "Watcher has been initialized with your IDE environment: $IDE_ENV"
 }
 
 # Run the main installation function

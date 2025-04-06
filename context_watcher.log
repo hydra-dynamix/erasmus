@@ -34,3 +34,7 @@
 2025-04-06 14:29:50,003 - context_watcher - INFO - Detected update in ARCHITECTURE
 2025-04-06 14:29:50,004 - context_watcher - INFO - Processing update from ARCHITECTURE
 2025-04-06 14:29:50,005 - context_watcher - INFO - File written successfully: C:\Users\richa\watcher-builds\erasmus\.windsurfrules
+2025-04-06 14:29:50,554 - context_watcher - INFO - Committed changes: Update context watcher log to include new architecture change detection
+2025-04-06 14:29:51,149 - context_watcher - ERROR - Git command failed: Command '['git', 'commit', '-m', 'Re-evaluate commit types and add new rules']' returned non-zero exit status 1.
+2025-04-06 14:29:51,150 - context_watcher - INFO - Committed changes: Re-evaluate commit types and add new rules
+2025-04-06 15:07:27,787 - context_watcher - INFO - Shutting down...

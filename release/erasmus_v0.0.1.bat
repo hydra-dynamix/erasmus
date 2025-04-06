@@ -1,63 +1,120 @@
 @echo off
-
-:: Color codes for output
 setlocal enabledelayedexpansion
 
-:RED= (echo) & set "color[0;31m"
-:GREEN= (echo) & set "color[0;32m"
-:YELLOW= (echo) & set "color[1;33m"
-:NC= (echo) & set "color[0m"
 
-:: Detect operating system
-set OS=
-for /f "delims=" %%a in ('wmic os get osversion ^| findstr /r /c:"^"') do (
-    if "%%a" == "10.0" set OS=Windows
-    else if "%%a" == "11.0" set OS=Windows 11
-    else if "%%a" == "12.0" set OS=Windows 12
+:detect_os
+set "OS=Unknown"
+for /f "tokens=* usebackq" %%i in (`ver`) do set "VER_OUT=%%i"
+echo !VER_OUT! | findstr /i "Windows" >nul 2>&1 && (
+    set "OS=Windows"
+    goto :eof
+)
+echo !VER_OUT! | findstr /i "Darwin" >nul 2>&1 && (
+    set "OS=macOS"
+    goto :eof
+)
+echo !VER_OUT! | findstr /i "Linux" >nul 2>&1 && (
+    set "OS=Linux"
+    goto :eof
+)
+goto :eof
+
+
+:check_python
+set "PYTHON_CMD="
+where python.exe >nul 2>&1 && set "PYTHON_CMD=python.exe"
+if "!PYTHON_CMD!"=="" (
+    where python3.exe >nul 2>&1 && set "PYTHON_CMD=python3.exe"
+)
+if "!PYTHON_CMD!"=="" (
+    echo Error: Python is not installed!
+    echo Please install Python 3.8+ before proceeding.
+    exit /b 1
 )
 
-:: Check if Python is installed
-set PYTHON_CMD=
-for /f "delims=" %%a in ('where python3 ^| findstr /r /c:"^"') do (
-    set PYTHON_CMD=python3
-)
-if not exist "%PYTHON_CMD%" (
-    for /f "delims=" %%a in ('where python ^| findstr /r /c:"^"') do (
-        set PYTHON_CMD=python
-    )
-)
+for /f "tokens=* usebackq" %%i in (`!PYTHON_CMD! -c "import sys; print(sys.version_info.major)"`) do set "MAJOR=%%i"
+for /f "tokens=* usebackq" %%i in (`!PYTHON_CMD! -c "import sys; print(sys.version_info.minor)"`) do set "MINOR=%%i"
 
-:: Verify Python version
-set PYTHON_VERSION=%PYTHON_CMD% -c 'import sys; echo %sys.version_info.major%.%sys.version_info.minor%'
-set MAJOR=%PYTHON_VERSION:~0,1%
-set MINOR=%PYTHON_VERSION:~3,1%
-
-if "%MAJOR%" equ 2 (
-    if "%MINOR%" leq 7 (
-        echo Error: Python 3.8+ is required. Current version: %PYTHON_VERSION%
+if "!MAJOR!" lss "3" (
+    echo Error: Python 3.8+ is required.
+    exit /b 1
+) else if "!MAJOR!" equ "3" (
+    if "!MINOR!" lss "8" (
+        echo Error: Python 3.8+ is required.
         exit /b 1
     )
 )
+goto :eof
 
-:: Install uv package manager
+
+:check_prerequisites
+call :detect_os
+if "!OS!"=="Windows" (
+    echo Checking Windows prerequisites...
+    where winget.exe >nul 2>&1 || (
+        echo Installing winget...
+        powershell -Command "Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe"
+        where winget.exe >nul 2>&1 || (
+            echo Failed to install winget. Please install it manually from the Microsoft Store.
+            exit /b 1
+        )
+    )
+) else if "!OS!"=="macOS" (
+    echo Checking macOS prerequisites...
+    where brew.exe >nul 2>&1 || (
+        echo Homebrew is required but not installed.
+        echo Please install Homebrew first: https://brew.sh
+        exit /b 1
+    )
+) else if "!OS!"=="Linux" (
+    echo Checking Linux prerequisites...
+    where curl.exe >nul 2>&1 || (
+        echo Installing curl...
+        where apt-get.exe >nul 2>&1 && (
+            apt-get update && apt-get install -y curl
+        ) || (
+            where yum.exe >nul 2>&1 && (
+                yum install -y curl
+            ) || (
+                echo Could not install curl. Please install it manually.
+                exit /b 1
+            )
+        )
+    )
+)
+goto :eof
+
+
+:install_uv
 echo Installing uv package manager...
-if exist "pip" (
-    pip install uv
-) else if exist "pip3" (
-    pip3 install uv
+if "!OS!"=="Windows" (
+    winget install --id=astral-sh.uv -e
+) else if "!OS!"=="macOS" (
+    brew install uv
+) else if "!OS!"=="Linux" (
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 ) else (
-    "%PYTHON_CMD%" -m ensurepip --upgrade
-    "%PYTHON_CMD%" -m pip install uv
+    echo Unsupported operating system: !OS!
+    exit /b 1
 )
 
-:: Verify uv installation
-if not exist "uv" (
+where uv.exe >nul 2>&1 || (
     echo Failed to install uv package manager!
     exit /b 1
 )
 
-:: Main installation process
-echo Detected OS: %OS%
 echo Installation complete!
-echo You can now run the watcher script directly using:
-echo uv run watcher.py
+echo You can now run: uv run watcher.py
+goto :eof
+
+
+:main
+call :detect_os
+call :check_prerequisites
+call :check_python
+call :install_uv
+exit /b %ERRORLEVEL%
+
+:start
+call :main
+exit /b %ERRORLEVEL%

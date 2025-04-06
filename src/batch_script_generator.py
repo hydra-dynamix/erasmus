@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Optional
 from openai import OpenAI
+from script_converter import ScriptConverter
 from dotenv import load_dotenv
 from .get_openai_creds import prompt_openai_credentials
 
@@ -34,12 +35,19 @@ class BatchScriptGenerator:
 
     def openai_client(self, api_key: Optional[str] = None, base_url: Optional[str] = None) -> OpenAI:
         key = api_key or os.getenv('OPENAI_API_KEY')
+        base = base_url or os.getenv('OPENAI_BASE_URL')
+        
+        print(f"Initializing OpenAI client with base URL: {base}")
+        
         if not key:
             print("API key not found. Prompting for credentials...")
             prompt_openai_credentials()
             key = os.getenv('OPENAI_API_KEY')
         
-        return OpenAI(api_key=key, base_url=base_url or os.getenv('OPENAI_BASE_URL'))
+        if not key:
+            raise ValueError("No OpenAI API key found even after prompting")
+        
+        return OpenAI(api_key=key, base_url=base)
 
     def configure_paths(self, shell_script_path: Optional[str | Path] = None, release_path: Optional[str | Path] = None):
         """Configure input and output paths for script generation.
@@ -69,26 +77,10 @@ class BatchScriptGenerator:
             raise Exception(f"Failed to read shell script {path}: {str(e)}")
 
     def generate_batch_script(self, shell_script_content: str) -> str:
-        """Convert shell script to batch script using OpenAI."""
-        prompt = (
-            "Convert the following shell script to a Windows batch script (.bat). "
-            "Maintain equivalent functionality while using Windows-specific commands "
-            "and syntax. Include proper error handling and Windows-specific path handling. "
-            "Return only the batch script content, no explanations.\n\n"
-            f"Shell script:\n{shell_script_content}"
-        )
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a script conversion expert. Provide only the converted script content without any additional text or markdown."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1 # lower for more consistent output
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            raise Exception(f"Failed to generate batch script: {str(e)}")
+        """Convert shell script to batch script using our custom converter."""
+        print("\nGenerating batch script...")
+        converter = ScriptConverter()
+        return converter.convert_script(shell_script_content)
 
     def convert(
         self,
@@ -127,7 +119,9 @@ class BatchScriptGenerator:
     def save_script(self, content: str, output_path: Path) -> bool:
         """Save the converted script to the specified output path."""
         try:
-            output_path.write_text(content)
+            print(f"\nSaving script to {output_path}")
+            output_path.write_text(content, encoding='utf-8')
+            print(f"Successfully saved {len(content)} characters to {output_path}")
             return True
         except Exception as e:
             print(f"Failed to save script to {output_path}: {str(e)}")
@@ -136,12 +130,15 @@ class BatchScriptGenerator:
 def main():
     """Main function to demonstrate usage."""
     try:
+        print("\nStarting batch script generation...")
         generator = BatchScriptGenerator()
+        print("\nConverting shell script to batch...")
         bat_path, sh_path = generator.convert()
-        print(f"Successfully generated batch script at: {bat_path}")
-        print(f"Successfully generated shell script at: {sh_path}")
+        print(f"\nGeneration complete!")
+        print(f"Batch script path: {bat_path}")
+        print(f"Shell script path: {sh_path}")
     except Exception as e:
-        print(f"Error generating script: {str(e)}")
+        print(f"\nError generating script: {str(e)}")
         return 1
     return 0
 
