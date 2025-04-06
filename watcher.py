@@ -246,8 +246,11 @@ except Exception as e:
     logger.warning(f"Could not set up file logging: {e}")
 
 def get_openai_credentials():
+    """Get OpenAI credentials from environment variables"""
     api_key = os.environ.get("OPENAI_API_KEY")
-    base_url = os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
+    base_url = os.environ.get("OPENAI_BASE_URL")
+    if not base_url:
+        base_url = "https://api.openai.com/v1"
     model = os.environ.get("OPENAI_MODEL")
     return api_key, base_url, model
 
@@ -256,14 +259,38 @@ def init_openai_client():
     """Initialize and return OpenAI client configuration"""
     try:
         api_key, base_url, model = get_openai_credentials()
-        if not api_key or not is_valid_url(base_url) or not model:
-            logger.warning("Missing OpenAI credentials. Prompting for input...")
+        
+        # Check if any credentials are missing
+        missing_creds = []
+        if not api_key:
+            missing_creds.append("API key")
+        if not base_url:
+            missing_creds.append("base URL")
+        if not model:
+            missing_creds.append("model")
+            
+        if missing_creds:
+            logger.warning(f"Missing OpenAI credentials: {', '.join(missing_creds)}. Prompting for input...")
             prompt_openai_credentials()
             api_key, base_url, model = get_openai_credentials()
-            if not api_key or not model or not base_url:
-                logger.error("Failed to initialize OpenAI client: missing credentials")
+            
+            # Check again after prompting
+            if not api_key:
+                logger.error("Failed to initialize OpenAI client: missing API key")
+                return None, None
+            if not model:
+                logger.error("Failed to initialize OpenAI client: missing model name")
                 return None, None
         
+        # Ensure base_url has a valid format
+        if not base_url:
+            base_url = "https://api.openai.com/v1"
+            logger.warning(f"Using default OpenAI base URL: {base_url}")
+        elif not is_valid_url(base_url):
+            logger.warning(f"Invalid base URL format: {base_url}. Using default.")
+            base_url = "https://api.openai.com/v1"
+        
+        logger.info(f"Initializing OpenAI client with base URL: {base_url} and model: {model}")
         client = OpenAI(api_key=api_key, base_url=base_url)
         return client, model
     except Exception as e:
