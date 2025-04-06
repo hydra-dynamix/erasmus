@@ -8,7 +8,7 @@ from typing import Optional, Dict, Tuple
 class VersionManager:
     """Manages version information and updates for the project."""
     
-    VERSION_FILE = Path("version.json")
+    VERSION_FILE = Path(__file__).parent.parent / "version.json"
     VERSION_PATTERN = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
     
     def __init__(self):
