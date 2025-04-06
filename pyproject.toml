@@ -1,0 +1,7 @@
+[project]
+name = "erasmus"
+version = "0.1.0"
+description = "A context watcher for cursor and windsurf"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
