@@ -146,3 +146,7 @@ NameError: name 'save_rules' is not defined
 2025-04-06 16:44:25,602 - context_watcher - INFO - Restarting the program...
 2025-04-06 16:44:26,409 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
 2025-04-06 16:44:26,564 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-06 16:45:29,969 - context_watcher - INFO - Committed changes: Update URL validation in watcher.py to include localhost patterns
+2025-04-06 16:45:29,970 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-06 16:45:29,971 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-06 16:45:29,973 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...

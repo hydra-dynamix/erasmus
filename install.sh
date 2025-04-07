@@ -291,7 +291,7 @@ main() {
     echo -e "${GREEN}Installation complete!${NC}"
     echo "Erasmus has been initialized with your IDE environment: $IDE_ENV"
     echo ""
-    echo "To start using Erasmus, run: uv run erasmus.py"
+    echo "To start using Erasmus, run: uv run erasmus.py --watch"
 }
 
 # Run the main installation function
