@@ -120,18 +120,6 @@ class TaskManager:
         return manager
 
 def is_valid_url(url: str) -> bool:
-    """Basic URL validation using regex."""
-    logger.debug(f"Validating URL: {url}")
-    https_pattern = re.match(r'^https?://', url)
-    logger.debug(f"https_pattern: {https_pattern}")
-    http_pattern = re.match(r'^http?://', url)
-    logger.debug(f"http_pattern: {http_pattern}")
-    return https_pattern or http_pattern
-
-# === OpenAI Configuration ===
-
-
-def is_valid_url(url: str) -> bool:
     """Basic URL validation using regex.
     
     Accepts:
@@ -213,6 +201,7 @@ def detect_ide_environment() -> str:
 
 def prompt_openai_credentials(env_path=".env"):
     """Prompt user for OpenAI credentials and save to .env"""
+    global GIT_COMMITS
     
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -294,6 +283,8 @@ except Exception as e:
 
 def get_openai_credentials():
     """Get OpenAI credentials from environment variables"""
+    global GIT_COMMITS
+    
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         GIT_COMMITS = False
@@ -584,15 +575,15 @@ if ARGS.setup:
 # === File Paths Configuration ===
 
 
-def get_rules_file_path(context_type='global') -> Path:
+def get_rules_file_path(context_type='global') -> Tuple[Path, Path]:
     """
-    Determine the appropriate rules file path based on IDE environment.
+    Determine the appropriate rules file paths based on IDE environment.
     
     Args:
         context_type (str): Type of rules file, either 'global' or 'context'
     
     Returns:
-        Path: Resolved path to the appropriate rules file
+        Tuple[Path, Path]: Resolved paths to the context and global rules files
     """
     # Detect IDE environment
     ide_env = detect_ide_environment()
@@ -609,17 +600,20 @@ def get_rules_file_path(context_type='global') -> Path:
         }
     }
     
-    # Get the appropriate path and resolve it
+    # Get the appropriate paths and resolve them
     context_path = rules_paths[ide_env].get('context')
     global_path = rules_paths[ide_env].get('global')
     
-    # Ensure the directory exists
-    if not context_path.exists():
+    # Ensure the directories exist and create files if they don't
+    if context_path and not context_path.exists():
         context_path.parent.mkdir(parents=True, exist_ok=True)
-    if not global_path.exists():
+        context_path.touch()  # Create the file if it doesn't exist
+        
+    if global_path and not global_path.exists():
         global_path.parent.mkdir(parents=True, exist_ok=True)
+        global_path.touch()  # Create the file if it doesn't exist
     
-    # Return the fully resolved absolute path
+    # Return the fully resolved absolute paths
     return context_path.resolve(), global_path.resolve()
 
 def save_global_rules(rules_content):
@@ -629,7 +623,7 @@ def save_global_rules(rules_content):
     Args:
         rules_content (str): Content of the global rules
     """
-    global_rules_path = get_rules_file_path('global')
+    _, global_rules_path = get_rules_file_path()
     
     # Special handling for Cursor
     if detect_ide_environment() == 'CURSOR':
@@ -654,7 +648,7 @@ def save_context_rules(context_content):
     Args:
         context_content (str): Content of the context rules
     """
-    context_rules_path = get_rules_file_path('context')
+    context_rules_path, _ = get_rules_file_path()
     
     try:
         with open(context_rules_path, 'w') as f:
@@ -664,8 +658,7 @@ def save_context_rules(context_content):
         logger.error(f"Failed to save context rules: {e}")
 
 # Update global variables to use resolved paths
-GLOBAL_RULES_PATH = get_rules_file_path('global')
-CONTEXT_RULES_PATH = get_rules_file_path('context')
+CONTEXT_RULES_PATH, GLOBAL_RULES_PATH = get_rules_file_path()
 
 # === Project Setup ===
 def setup_project():
@@ -690,9 +683,6 @@ def setup_project():
             "tasks": safe_read_file(TASKS_PATH),
         }
         update_context(context)
-    
-    # Ensure context file exists but don't overwrite it
-    ensure_file_exists(CONTEXT_RULES_PATH)
     
     # Ensure IDE_ENV is set in .env file
     env_path = Path(".env")
@@ -829,7 +819,11 @@ class GitManager:
         try:
             self._run_git_command(["add", "-A"])
             return True
-        except:
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to stage changes: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error while staging changes: {e}")
             return False
     
     def commit_changes(self, message: str) -> bool:
@@ -837,9 +831,13 @@ class GitManager:
         try:
             self._run_git_command(["commit", "-m", message])
             return True
-        except:
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to commit changes: {e}")
             return False
-    
+        except Exception as e:
+            logger.error(f"Unexpected error while committing changes: {e}")
+            return False
+        
     def validate_commit_message(self, message: str) -> Tuple[bool, str]:
         """Validate a commit message against conventions."""
         if not message:
@@ -859,6 +857,58 @@ class GitManager:
                 return False, f"Invalid commit type. Must be one of: {', '.join(conventional_types)}"
         
         return True, "Commit message is valid"
+        
+    def get_repository_state(self) -> dict:
+        """Get the current state of the repository."""
+        try:
+            # Get current branch
+            branch = self.get_current_branch()
+            
+            # Get status
+            status_output, _ = self._run_git_command(["status", "--porcelain"])
+            status_lines = status_output.split("\n") if status_output else []
+            
+            # Parse status
+            staged = []
+            unstaged = []
+            untracked = []
+            
+            for line in status_lines:
+                if not line:
+                    continue
+                status = line[:2]
+                path = line[3:].strip()
+                
+                if status.startswith("??"):
+                    untracked.append(path)
+                elif status[0] != " ":
+                    staged.append(path)
+                elif status[1] != " ":
+                    unstaged.append(path)
+            
+            return {
+                "branch": branch,
+                "staged": staged,
+                "unstaged": unstaged,
+                "untracked": untracked
+            }
+        except Exception as e:
+            logger.error(f"Failed to get repository state: {e}")
+            return {
+                "branch": "unknown",
+                "staged": [],
+                "unstaged": [],
+                "untracked": []
+            }
+    
+    def get_current_branch(self) -> str:
+        """Get the name of the current branch."""
+        try:
+            branch_output, _ = self._run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
+            return branch_output.strip()
+        except Exception as e:
+            logger.error(f"Failed to get current branch: {e}")
+            return "unknown"
 
 def determine_commit_type(diff_output: str) -> str:
     """
@@ -1222,6 +1272,21 @@ def main():
         logger.error(f"Unhandled exception in main: {e}", exc_info=True)
         return 1
 
+def save_rules(context_content: str) -> None:
+    """
+    Save rules content to the appropriate file based on IDE environment.
+    
+    Args:
+        context_content: The content to save to the rules file
+    """
+    try:
+        # Save to context rules file
+        save_context_rules(context_content)
+        # Also save to global rules if needed
+        save_global_rules(context_content)
+        logger.info("Rules saved successfully")
+    except Exception as e:
+        logger.error(f"Failed to save rules: {e}")
 
 # Add new function to manage tasks
 def manage_task(action: str, **kwargs):
@@ -1282,7 +1347,7 @@ def manage_task(action: str, **kwargs):
             rules_content += f"\n\n### Task {result.id}: {result.description}\n"
             rules_content += f"Status: {result.status}\n"
         
-        save_rules(context_content=rules_content)
+        save_rules(rules_content)
         sys.stderr.write("\nTask added to .cursorrules file\n")
         sys.stderr.flush()
         
@@ -1315,7 +1380,7 @@ def manage_task(action: str, **kwargs):
                             break
                     break
             rules_content = "\n".join(lines)
-            save_rules(context_content=rules_content)
+            save_rules(rules_content)
             sys.stderr.write("\nTask status updated in .cursorrules file\n")
             sys.stderr.flush()
         # If task is completed and git manager exists, try to merge the task branch
@@ -1348,7 +1413,7 @@ def manage_task(action: str, **kwargs):
                             break
                     break
             rules_content = "\n".join(lines)
-            save_rules(context_content=rules_content)
+            save_rules(rules_content)
 
             sys.stderr.write("\nNote added to  file\n")
             sys.stderr.flush()

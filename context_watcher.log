@@ -494,3 +494,7 @@ Traceback (most recent call last):
 AttributeError: 'bool' object has no attribute 'upper'
 2025-04-07 14:26:46,825 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
 2025-04-07 14:26:46,848 - context_watcher - ERROR - Error writing to file (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): expected str, bytes or os.PathLike object, not tuple
+2025-04-07 14:26:50,280 - context_watcher - INFO - Committed changes: Remove redundant documentation, consolidate workflow stages and...
+2025-04-07 14:31:55,773 - context_watcher - WARNING - Missing OpenAI credentials: API key, base URL, model. Prompting for input...
+2025-04-07 14:32:00,295 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 14:32:00,318 - context_watcher - ERROR - Error writing to file (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): expected str, bytes or os.PathLike object, not tuple
