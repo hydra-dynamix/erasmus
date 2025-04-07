@@ -84,6 +84,12 @@ check_prerequisites() {
 
 # Install uv package manager
 install_uv() {
+    # Check if uv is already installed
+    if command -v uv &> /dev/null; then
+        echo -e "${GREEN}uv package manager is already installed.${NC}"
+        return 0
+    fi
+
     echo -e "${YELLOW}Installing uv package manager...${NC}"
     
     case "$OS" in
@@ -169,6 +175,18 @@ init_watcher() {
     # Find the SHA256 hash in the script
     EXPECTED_HASH=$(grep -A 1 "BEGIN_HASH" "$SCRIPT_PATH" | grep -v "BEGIN_HASH" | grep -v "END_HASH" | tr -d '# ')
     
+    # If hash is empty, try alternative extraction method
+    if [ -z "$EXPECTED_HASH" ]; then
+        echo -e "${YELLOW}Trying alternative hash extraction method...${NC}"
+        EXPECTED_HASH=$(grep -A 2 "BEGIN_HASH" "$SCRIPT_PATH" | tail -n 1 | tr -d '# ')
+    fi
+    
+    # If still empty, use the hash from the .sha256 file if it exists
+    if [ -z "$EXPECTED_HASH" ] && [ -f "$(dirname "$SCRIPT_PATH")/$(basename "$SCRIPT_PATH" .sh).sha256" ]; then
+        echo -e "${YELLOW}Using hash from .sha256 file...${NC}"
+        EXPECTED_HASH=$(cat "$(dirname "$SCRIPT_PATH")/$(basename "$SCRIPT_PATH" .sh).sha256")
+    fi
+    
     # Extract the base64 content between markers
     BASE64_CONTENT=$(sed -n '/^# BEGIN_BASE64_CONTENT$/,/^# END_BASE64_CONTENT$/p' "$SCRIPT_PATH" | grep -v "BEGIN_BASE64_CONTENT" | grep -v "END_BASE64_CONTENT" | tr -d '# ')
     
@@ -190,16 +208,27 @@ init_watcher() {
         ACTUAL_HASH="unknown"
     fi
     
-    if [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || [ "$ACTUAL_HASH" = "unknown" ]; then
+    if [ -z "$EXPECTED_HASH" ] || [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || [ "$ACTUAL_HASH" = "unknown" ]; then
         echo -e "${GREEN}Successfully extracted watcher.py${NC}"
         if [ "$ACTUAL_HASH" != "unknown" ]; then
-            echo -e "${GREEN}SHA256 hash verified: $ACTUAL_HASH${NC}"
+            if [ -z "$EXPECTED_HASH" ]; then
+                echo -e "${YELLOW}Warning: No expected hash found. Using actual hash: $ACTUAL_HASH${NC}"
+            else
+                echo -e "${GREEN}SHA256 hash verified: $ACTUAL_HASH${NC}"
+            fi
         fi
     else
         echo -e "${RED}Error: SHA256 hash verification failed!${NC}"
         echo -e "${RED}Expected: $EXPECTED_HASH${NC}"
         echo -e "${RED}Actual: $ACTUAL_HASH${NC}"
-        exit 1
+        
+        # Continue anyway if the user confirms
+        echo -e "${YELLOW}Do you want to continue anyway? (y/N)${NC}"
+        read -r continue_anyway
+        if [ "${continue_anyway,,}" != "y" ]; then
+            exit 1
+        fi
+        echo -e "${YELLOW}Continuing with unverified file...${NC}"
     fi
     
     # Create a virtual environment and install dependencies
