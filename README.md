@@ -22,10 +22,33 @@ Erasmus is a single-file context watcher designed to streamline project initiali
    - Enter your preferred values, or
    - Press Enter to accept the defaults (configured for OpenAI)
 
-### Option 2: One-Line Installation (Linux/macOS)
+### Option 2: Installation via curl (Linux/macOS)
+
+#### Method A: Interactive Installation (Recommended)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/launcher.sh | bash
+```
+
+This method uses a launcher script that ensures interactive prompts work properly, allowing you to customize your installation.
+
+#### Method B: Manual Download and Execute
+```bash
+# Download the script
+curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh -o erasmus_install.sh
+
+# Make it executable
+chmod +x erasmus_install.sh
+
+# Run it interactively
+./erasmus_install.sh
+```
+
+#### Method C: Non-interactive Installation
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh | bash
 ```
+
+> **Note:** Method C skips interactive prompts and uses default values for all settings.
 
 ## Features
 - Automated project initialization with essential documentation
