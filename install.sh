@@ -287,11 +287,10 @@ main() {
     
     # Setup environment files
     setup_env
-    
-    # Initialize watcher
-    init_watcher
-    
+        
     echo -e "${GREEN}Erasmus installation completed successfully!${NC}"
+
+    echo -e "Run `uv run erasmus.py` to setup erasmus and `uv run erasmus.py --watch` to run the context overseer."
 }
 
 # Run the main installation function

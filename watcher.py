@@ -224,7 +224,7 @@ def prompt_openai_credentials(env_path=".env"):
     base_url = os.getenv("OPENAI_BASE_URL")
     if not base_url:
         print("Enter your OpenAI base URL.")
-        print("If you are running local inference use your local host url(e.g. for ollama: http://localhost:11434)")
+        print("If you are running local inference use your local host url(e.g. for ollama: http://localhost:11434/v1)")
         base_url = input("Enter your OPENAI_BASE_URL (default: https://api.openai.com/v1): ").strip()
         if not is_valid_url(base_url):
             print("Invalid URL or empty. Defaulting to https://api.openai.com/v1")
