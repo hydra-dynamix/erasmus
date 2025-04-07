@@ -176,7 +176,9 @@ def detect_ide_environment() -> str:
         str: Detected IDE environment ('WINDSURF', 'CURSOR', or '')
     """
     # Check environment variable first
-    ide_env = os.getenv('IDE_ENV', '').upper()
+    ide_env = os.getenv('IDE_ENV', '')
+    if ide_env == "":
+        ide_env = input("Enter your IDE environment (WINDSURF, CURSOR): ").strip()
     if ide_env:
         return 'WINDSURF' if ide_env.startswith('W') else 'CURSOR'
     
