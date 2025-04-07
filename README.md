@@ -1,18 +1,52 @@
-# Erasmus: Context Watcher Testing Framework
+# Erasmus: Context Watcher for Development Environment Setup
 
 ## Project Overview
-Erasmus is a comprehensive testing framework for the Context Watcher project, designed to ensure robust and reliable functionality.
+Erasmus is a single-file context watcher designed to streamline project initialization, development tracking, and version management across different IDE environments.
 
-## Prerequisites
-- Python 3.13+
+## Quick Installation
+
+### Option 1: Direct Download and Run
+1. Download the appropriate installer from the `release/` directory:
+   - For Windows: Download the `.bat` file
+   - For macOS/Linux: Download the `.sh` file
+
+2. Run the installer:
+   - Windows: Double-click the `.bat` file or run it from Command Prompt
+   - macOS/Linux: Make the script executable and run it
+     ```bash
+     chmod +x erasmus_v*.sh
+     ./erasmus_v*.sh
+     ```
+
+3. When prompted for configuration variables:
+   - Enter your preferred values, or
+   - Press Enter to accept the defaults (configured for OpenAI)
+
+### Option 2: One-Line Installation (Linux/macOS)
+```bash
+curl -fsSL https://raw.githubusercontent.com/bakobiibizo/erasmus/main/release/latest/erasmus.sh | bash
+```
+
+## Features
+- Automated project initialization with essential documentation
+- IDE context injection for Cursor and Windsurf
+- Git management with atomic commits
+- Environment setup for Python, Node, and Rust projects
+- Cross-platform compatibility
+
+## Development Setup
+For contributors who want to work on Erasmus itself:
+
+### Prerequisites
+- Python 3.8+
 - uv package manager
 
-## Setup and Installation
-1. Clone the repository
-2. Create a virtual environment
-3. Install dependencies
-
+### Setup for Development
 ```bash
+# Clone the repository
+git clone https://github.com/bakobiibizo/erasmus.git
+cd erasmus
+
 # Create virtual environment
 uv venv
 
@@ -24,27 +58,13 @@ source .venv/bin/activate  # Unix
 uv pip install -e .[test]
 ```
 
-## Running Tests
-To run the full test suite with coverage:
-
+### Running Tests
 ```bash
 pytest
 ```
 
-### Test Coverage
-- Generates a coverage report
-- Highlights untested code paths
-- Helps improve code quality
-
-## Test Modules
-- `test_git_manager.py`: Tests for Git management functionality
-- `test_watcher.py`: Tests for core watcher functionality
-
-## Continuous Integration
-- Automated tests run on every commit
-- Comprehensive test coverage required for merging
-
 ## Troubleshooting
-- Ensure all dependencies are installed
-- Check Python version compatibility
-- Verify virtual environment activation
+- Ensure you have the correct permissions to execute the installer
+- Check that Python 3.8+ is installed on your system
+- For OpenAI integration, ensure you have valid API credentials
+- If using a local LLM, verify the base URL is correctly formatted
