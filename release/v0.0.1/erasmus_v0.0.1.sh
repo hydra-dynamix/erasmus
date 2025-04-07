@@ -49,76 +49,68 @@ check_prerequisites() {
             echo -e "${YELLOW}Checking Windows prerequisites...${NC}"
             # Check if winget is available
             if ! command -v winget &> /dev/null; then
-                echo -e "${YELLOW}Installing winget...${NC}"
-                powershell.exe -Command "Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe"
-                if ! command -v winget &> /dev/null; then
-                    echo -e "${RED}Failed to install winget. Please install it manually from the Microsoft Store.${NC}"
-                    exit 1
-                fi
+                echo -e "${RED}Error: winget is not available on this Windows system.${NC}"
+                echo "Please install the latest App Installer from the Microsoft Store."
+                exit 1
             fi
             ;;
         macOS)
             echo -e "${YELLOW}Checking macOS prerequisites...${NC}"
-            # Check if brew is available
+            # Check if Homebrew is installed
             if ! command -v brew &> /dev/null; then
-                echo -e "${RED}Homebrew is required but not installed.${NC}"
-                echo "Please install Homebrew first: https://brew.sh"
-                exit 1
-            fi
-            ;;
-        Linux)
-            echo -e "${YELLOW}Checking Linux prerequisites...${NC}"
-            # Check if curl is available
-            if ! command -v curl &> /dev/null; then
-                echo -e "${YELLOW}Installing curl...${NC}"
-                if command -v apt-get &> /dev/null; then
-                    sudo apt-get update && sudo apt-get install -y curl
-                elif command -v yum &> /dev/null; then
-                    sudo yum install -y curl
-                else
-                    echo -e "${RED}Could not install curl. Please install it manually.${NC}"
+                echo -e "${YELLOW}Homebrew not found. Installing Homebrew...${NC}"
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                if [ $? -ne 0 ]; then
+                    echo -e "${RED}Failed to install Homebrew. Please install it manually.${NC}"
                     exit 1
                 fi
             fi
             ;;
-    esac
-}
-
-# Install uv package manager
-install_uv() {
-    # Check if uv is already installed
-    if command -v uv &> /dev/null; then
-        UV_VERSION=$(uv --version | head -n 1)
-        echo -e "${GREEN}UV package manager is already installed: $UV_VERSION${NC}"
-        return 0
-    fi
-    
-    echo -e "${YELLOW}Installing uv package manager...${NC}"
-    
-    case "$OS" in
-        Windows)
-            winget install --id=astral-sh.uv -e
-            ;;
-        macOS)
-            brew install uv
-            ;;
         Linux)
-            curl -LsSf https://astral.sh/uv/install.sh | sh
+            echo -e "${YELLOW}Checking Linux prerequisites...${NC}"
+            # Check if curl is installed
+            if ! command -v curl &> /dev/null; then
+                echo -e "${RED}Error: curl is not installed.${NC}"
+                echo "Please install curl using your distribution's package manager."
+                exit 1
+            fi
             ;;
         *)
             echo -e "${RED}Unsupported operating system: $OS${NC}"
             exit 1
             ;;
     esac
+}
 
+# Install uv package manager
+install_uv() {
+    echo -e "${YELLOW}Installing uv package manager...${NC}"
+    
+    case "$OS" in
+        Windows)
+            echo -e "${YELLOW}Installing uv via winget...${NC}"
+            winget install astral.uv
+            ;;
+        macOS)
+            echo -e "${YELLOW}Installing uv via Homebrew...${NC}"
+            brew install astral/tap/uv
+            ;;
+        Linux)
+            echo -e "${YELLOW}Installing uv via curl...${NC}"
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            # Add uv to PATH for the current session
+            export PATH="$HOME/.cargo/bin:$PATH"
+            ;;
+    esac
+    
     # Verify uv installation
     if ! command -v uv &> /dev/null; then
-        echo -e "${RED}Failed to install uv package manager!${NC}"
+        echo -e "${RED}Failed to install uv. Please install it manually:${NC}"
+        echo "https://github.com/astral/uv#installation"
         exit 1
     fi
     
-    UV_VERSION=$(uv --version | head -n 1)
-    echo -e "${GREEN}Successfully installed UV package manager: $UV_VERSION${NC}"
+    echo -e "${GREEN}uv package manager installed successfully!${NC}"
 }
 
 # Setup environment files
@@ -132,12 +124,18 @@ OPENAI_BASE_URL=
 OPENAI_MODEL=
 EOL
     
-    # Prompt for IDE environment
-    echo -e "${YELLOW}Please enter your IDE environment (cursor/windsurf):${NC}"
-    read -r IDE_ENV
-    
-    # Convert to uppercase for consistency
-    IDE_ENV=$(echo "$IDE_ENV" | tr '[:lower:]' '[:upper:]')
+    # Check if IDE environment is already set via the launcher script
+    if [ -n "$ERASMUS_IDE_ENV" ]; then
+        IDE_ENV="$ERASMUS_IDE_ENV"
+        echo -e "${GREEN}Using IDE environment from launcher: $IDE_ENV${NC}"
+    else
+        # Prompt for IDE environment
+        echo -e "${YELLOW}Please enter your IDE environment (cursor/windsurf):${NC}"
+        read -r IDE_ENV
+        
+        # Convert to uppercase for consistency
+        IDE_ENV=$(echo "$IDE_ENV" | tr '[:lower:]' '[:upper:]')
+    fi
     
     # Validate IDE environment
     if [ "$IDE_ENV" != "CURSOR" ] && [ "$IDE_ENV" != "WINDSURF" ]; then
@@ -164,134 +162,107 @@ init_watcher() {
     # Create erasmus.py from the embedded content
     echo -e "${YELLOW}Extracting erasmus.py...${NC}"
     
-    # Copy the watcher.py content to erasmus.py
-    if [ -f watcher.py ]; then
-        cp watcher.py erasmus.py
-    elif [ -f "$0" ]; then
-        # Extract embedded erasmus.py from this script if it exists
-        EXTRACT_MARKER="__ERASMUS_EMBEDDED_BELOW__"
-        LINE_NUM=$(grep -n "$EXTRACT_MARKER" "$0" | cut -d: -f1)
-        
-        if [ -n "$LINE_NUM" ]; then
-            # Extract the expected hash from the script - search for the SHA256_HASH line
-            EXPECTED_HASH=$(grep -A 5 "$EXTRACT_MARKER" "$0" | grep 'SHA256_HASH=' | grep -o '[a-f0-9]\{64\}')
-            
-            if [ -z "$EXPECTED_HASH" ]; then
-                echo -e "${YELLOW}Warning: No hash found for verification${NC}"
-            else
-                echo -e "${YELLOW}Found hash for verification: $EXPECTED_HASH${NC}"
-            fi
-            
-            # Extract and decode the base64 content using awk
-            echo -e "${YELLOW}Extracting base64 content...${NC}"
-            
-            # Use awk to extract content between markers, removing the leading '# '
-            awk '/^# BEGIN_BASE64_CONTENT$/,/^# END_BASE64_CONTENT$/ { if (!/^# BEGIN_BASE64_CONTENT$/ && !/^# END_BASE64_CONTENT$/) print }' "$0" | sed 's/^# //' > erasmus.py.b64
-            
-            # Check if the extracted content is valid
-            if [ ! -s erasmus.py.b64 ]; then
-                echo -e "${RED}Error: Failed to extract base64 content${NC}"
-                # Fall back to the old method if extraction failed
-                echo -e "${YELLOW}Using legacy extraction method${NC}"
-                tail -n +$((LINE_NUM + 5)) "$0" > erasmus.py.b64
-            fi
-            
-            # Decode the base64 content
-            echo -e "${YELLOW}Decoding base64 content...${NC}"
-            base64 -d erasmus.py.b64 > erasmus.py 2>/dev/null || {
-                echo -e "${RED}Error: Failed to decode base64 content${NC}"
-                cat erasmus.py.b64 | head -n 3
-                exit 1
-            }
-            
-            # Check if the file is empty or very small (likely an error)
-            if [ ! -s erasmus.py ] || [ $(wc -c < erasmus.py) -lt 100 ]; then
-                echo -e "${RED}Error: Extracted file is empty or too small${NC}"
-                cat erasmus.py.b64 | head -n 5
-                exit 1
-            fi
-            
-            # Clean up the temporary file
-            rm erasmus.py.b64
-            
-            # Verify the hash if an expected hash was found
-            if [ -n "$EXPECTED_HASH" ]; then
-                # Make sure the expected hash is valid
-                if ! [[ "$EXPECTED_HASH" =~ ^[0-9a-f]{64}$ ]]; then
-                    echo -e "${YELLOW}Warning: Invalid expected hash format: $EXPECTED_HASH${NC}"
-                    EXPECTED_HASH=""
-                else
-                    echo -e "${YELLOW}Expected hash: $EXPECTED_HASH${NC}"
-                    
-                    if command -v shasum &> /dev/null; then
-                        ACTUAL_HASH=$(shasum -a 256 erasmus.py | cut -d' ' -f1)
-                    elif command -v sha256sum &> /dev/null; then
-                        ACTUAL_HASH=$(sha256sum erasmus.py | cut -d' ' -f1)
-                    else
-                        echo -e "${YELLOW}Warning: No hash verification tool found (shasum or sha256sum)${NC}"
-                        ACTUAL_HASH=""
-                    fi
-                    
-                    echo -e "${YELLOW}Actual hash: $ACTUAL_HASH${NC}"
-                    
-                    if [ -n "$ACTUAL_HASH" ]; then
-                        if [ "$EXPECTED_HASH" = "$ACTUAL_HASH" ]; then
-                            echo -e "${GREEN}Hash verification successful!${NC}"
-                        else
-                            echo -e "${RED}Error: Hash verification failed!${NC}"
-                            echo -e "${RED}Expected: $EXPECTED_HASH${NC}"
-                            echo -e "${RED}Actual: $ACTUAL_HASH${NC}"
-                            echo -e "${RED}The extracted file may have been tampered with or corrupted.${NC}"
-                            rm erasmus.py
-                            exit 1
-                        fi
-                    fi
-                fi
-            fi
-            echo -e "${GREEN}Successfully extracted erasmus.py${NC}"
-        else
-            echo -e "${RED}Error: Could not extract erasmus.py from installer${NC}"
-            exit 1
+    # Extract the base64 content from this script
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
+    
+    # Find the SHA256 hash in the script
+    EXPECTED_HASH=$(grep -A 1 "BEGIN_HASH" "$SCRIPT_PATH" | grep -v "BEGIN_HASH" | grep -v "END_HASH" | tr -d '# ')
+    
+    # Extract the base64 content between markers
+    BASE64_CONTENT=$(sed -n '/^# BEGIN_BASE64_CONTENT$/,/^# END_BASE64_CONTENT$/p' "$SCRIPT_PATH" | grep -v "BEGIN_BASE64_CONTENT" | grep -v "END_BASE64_CONTENT" | tr -d '# ')
+    
+    if [ -z "$BASE64_CONTENT" ]; then
+        echo -e "${RED}Error: Could not extract base64 content from installer.${NC}"
+        exit 1
+    fi
+    
+    # Decode the base64 content
+    echo "$BASE64_CONTENT" | base64 -d > watcher.py
+    
+    # Verify the SHA256 hash
+    if command -v shasum &> /dev/null; then
+        ACTUAL_HASH=$(shasum -a 256 watcher.py | cut -d ' ' -f 1)
+    elif command -v sha256sum &> /dev/null; then
+        ACTUAL_HASH=$(sha256sum watcher.py | cut -d ' ' -f 1)
+    else
+        echo -e "${YELLOW}Warning: Could not verify SHA256 hash (shasum/sha256sum not available).${NC}"
+        ACTUAL_HASH="unknown"
+    fi
+    
+    if [ "$ACTUAL_HASH" = "$EXPECTED_HASH" ] || [ "$ACTUAL_HASH" = "unknown" ]; then
+        echo -e "${GREEN}Successfully extracted watcher.py${NC}"
+        if [ "$ACTUAL_HASH" != "unknown" ]; then
+            echo -e "${GREEN}SHA256 hash verified: $ACTUAL_HASH${NC}"
         fi
     else
-        echo -e "${RED}Error: Could not find erasmus.py or extract it from installer${NC}"
+        echo -e "${RED}Error: SHA256 hash verification failed!${NC}"
+        echo -e "${RED}Expected: $EXPECTED_HASH${NC}"
+        echo -e "${RED}Actual: $ACTUAL_HASH${NC}"
         exit 1
     fi
     
-    # Verify erasmus.py exists
-    if [ ! -f erasmus.py ]; then
-        echo -e "${RED}Error: erasmus.py not found after extraction attempt${NC}"
-        exit 1
-    fi
+    # Create a virtual environment and install dependencies
+    echo -e "${YELLOW}Setting up Python environment...${NC}"
+    uv venv
     
-    # Create project directory structure if it doesn't exist
-    mkdir -p .git
+    # Activate the virtual environment
+    case "$OS" in
+        Windows)
+            source .venv/Scripts/activate
+            ;;
+        *)
+            source .venv/bin/activate
+            ;;
+    esac
     
-    # Initialize erasmus with the specified IDE environment
-    IDE_ENV=$(grep IDE_ENV .env | cut -d= -f2)
-    echo -e "${GREEN}Running erasmus.py with IDE environment: $IDE_ENV${NC}"
-    uv run erasmus.py --setup "$IDE_ENV"
+    # Install dependencies
+    echo -e "${YELLOW}Installing dependencies...${NC}"
+    uv pip install -r requirements.txt
+    
+    # Run the watcher setup with IDE environment
+    echo -e "${YELLOW}Running watcher setup...${NC}"
+    "$PYTHON_CMD" watcher.py --setup "$IDE_ENV"
+    
+    echo -e "${GREEN}Erasmus initialized successfully!${NC}"
+    echo -e "${YELLOW}To activate the environment in the future, run:${NC}"
+    case "$OS" in
+        Windows)
+            echo -e "    ${GREEN}source .venv/Scripts/activate${NC}"
+            ;;
+        *)
+            echo -e "    ${GREEN}source .venv/bin/activate${NC}"
+            ;;
+    esac
+    echo -e "${YELLOW}To run Erasmus:${NC}"
+    echo -e "    ${GREEN}python watcher.py${NC}"
 }
 
 # Main installation process
 main() {
-    echo -e "${GREEN}=== Erasmus Installation ====${NC}"
-    echo -e "A context-aware development environment for AI-assisted coding"
-    echo ""
+    echo -e "${YELLOW}Starting Erasmus installation...${NC}"
     
+    # Detect the operating system
     detect_os
     echo -e "${GREEN}Detected OS: $OS${NC}"
-
-    check_prerequisites
+    
+    # Check Python installation
     check_python
+    echo -e "${GREEN}Using Python $PYTHON_VERSION${NC}"
+    
+    # Check and install prerequisites
+    check_prerequisites
+    
+    # Install uv package manager
     install_uv
+    
+    # Setup environment files
     setup_env
+    
+    # Initialize watcher
     init_watcher
-
-    echo -e "${GREEN}Installation complete!${NC}"
-    echo "Erasmus has been initialized with your IDE environment: $IDE_ENV"
-    echo ""
-    echo "To start using Erasmus, run: uv run erasmus.py --watch"
+    
+    echo -e "${GREEN}Erasmus installation completed successfully!${NC}"
 }
 
 # Run the main installation function
