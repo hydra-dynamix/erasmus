@@ -253,6 +253,7 @@ def prompt_openai_credentials(env_path=".env"):
     env_content = existing_content + env_content
 
     envpath.write_text(env_content)
+    load_dotenv()
     print(f"✅ OpenAI credentials saved to {env_path}")
 
 # === Configuration and Setup ===
@@ -292,6 +293,8 @@ except Exception as e:
 def get_openai_credentials():
     """Get OpenAI credentials from environment variables"""
     api_key = os.environ.get("OPENAI_API_KEY")
+    if not api_key:
+        GIT_COMMITS = False
     base_url = os.environ.get("OPENAI_BASE_URL")
     model = os.environ.get("OPENAI_MODEL")
     return api_key, base_url, model
@@ -320,6 +323,7 @@ def init_openai_client():
             # Check again after prompting
             if not api_key:
                 logger.error("Failed to initialize OpenAI client: missing API key")
+                GIT_COMMITS = False
                 return None, None
             if not model:
                 logger.error("Failed to initialize OpenAI client: missing model name")
@@ -342,6 +346,8 @@ def init_openai_client():
 
 # Global variables
 CLIENT, OPENAI_MODEL = init_openai_client()
+
+
 PWD = Path(__file__).parent
 
 # === Argument Parsing ===
@@ -885,11 +891,19 @@ def determine_commit_type(diff_output: str) -> str:
     # Default to chore for miscellaneous changes
     return 'chore'
 
+def check_creds():
+    api_key, base_url, model = get_openai_credentials()
+    print(api_key, base_url, model)
+    if "sk-1234" in api_key and "openai" in base_url:
+        return False
+    return True
+
+
+
 def make_atomic_commit():
     """Makes an atomic commit with AI-generated commit message."""
-    if not GIT_COMMITS:
-        return
-    
+    if not check_creds():
+        return False
     # Initialize GitManager with current directory
     git_manager = GitManager(PWD)
     
