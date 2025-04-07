@@ -359,7 +359,7 @@ def parse_arguments():
     parser.add_argument("--update", choices=["architecture", "progress", "tasks", "context"], 
                       help="File to update")
     parser.add_argument("--update-value", help="New value to write to the specified file")
-    parser.add_argument("--setup", choices=["cursor", "windsurf", "CURSOR", "WINDSURF"], help="Setup project", default="cursor")
+    parser.add_argument("--setup", help="Setup project", action="store_true")
     parser.add_argument("--type", choices=["cursor", "windsurf", "CURSOR", "WINDSURF"], help="Project type", default="cursor")
     
     # Task management arguments
@@ -577,7 +577,9 @@ Use your context to track your folder location. Chaining commands is causing an 
 
 
 ARGS = parse_arguments()
-KEY_NAME = "WINDSURF" if ARGS.setup and ARGS.setup.startswith("w") or ARGS.type and ARGS.type.startswith("w") else "CURSOR"
+if ARGS.setup: 
+    IDE_ENV = detect_ide_environment()    
+    KEY_NAME = "WINDSURF" if IDE_ENV.startswith("W")  else "CURSOR"
 
 # === File Paths Configuration ===
 
@@ -608,13 +610,17 @@ def get_rules_file_path(context_type='global') -> Path:
     }
     
     # Get the appropriate path and resolve it
-    path = rules_paths[ide_env].get(context_type, Path.cwd() / '.windsurfrules')
+    context_path = rules_paths[ide_env].get('context')
+    global_path = rules_paths[ide_env].get('global')
     
     # Ensure the directory exists
-    path.parent.mkdir(parents=True, exist_ok=True)
+    if not context_path.exists():
+        context_path.parent.mkdir(parents=True, exist_ok=True)
+    if not global_path.exists():
+        global_path.parent.mkdir(parents=True, exist_ok=True)
     
     # Return the fully resolved absolute path
-    return path.resolve()
+    return context_path.resolve(), global_path.resolve()
 
 def save_global_rules(rules_content):
     """
@@ -1092,13 +1098,7 @@ def run_observer(observer: Observer):
 def main():
     """Main function to handle arguments and execute appropriate actions"""
     try:
-        if ARGS.setup:
-            # Normalize the setup argument to uppercase
-            ide_env = ARGS.setup.upper()
-            os.environ['IDE_ENV'] = ide_env
-            setup_project()
-            if not ARGS.watch:
-                return 0
+        ide_env = detect_ide_environment()
 
         if ARGS.update and ARGS.update_value:
             update_specific_file(ARGS.update, ARGS.update_value)

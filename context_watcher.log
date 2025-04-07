@@ -462,3 +462,35 @@ NameError: name 'Print' is not defined. Did you mean: 'print'?
 2025-04-07 14:19:13,027 - context_watcher - INFO - Created global rules at /home/bakobi/repos/erasmus/global_rules.md
 2025-04-07 14:19:13,027 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section
 2025-04-07 14:19:13,028 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 14:19:13,960 - context_watcher - INFO - Committed changes: fix
+2025-04-07 14:21:37,418 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 14:21:37,443 - context_watcher - ERROR - Failed to create (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): 'tuple' object has no attribute 'parent'
+2025-04-07 14:21:37,444 - context_watcher - ERROR - Failed to create (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): 'tuple' object has no attribute 'parent'
+2025-04-07 14:21:37,445 - context_watcher - ERROR - Error reading file (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): expected str, bytes or os.PathLike object, not tuple
+2025-04-07 14:21:37,445 - context_watcher - ERROR - Error reading file (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): expected str, bytes or os.PathLike object, not tuple
+2025-04-07 14:21:37,446 - context_watcher - ERROR - Failed to create (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): 'tuple' object has no attribute 'parent'
+2025-04-07 14:22:18,398 - context_watcher - WARNING - Missing OpenAI credentials: API key, base URL, model. Prompting for input...
+2025-04-07 14:22:32,400 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 14:24:43,154 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 14:24:43,177 - context_watcher - ERROR - Unhandled exception in main: 'bool' object has no attribute 'upper'
+Traceback (most recent call last):
+  File "/home/bakobi/repos/erasmus/watcher.py", line 1103, in main
+    ide_env = ARGS.setup.upper()
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'upper'
+2025-04-07 14:25:23,522 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 14:25:23,546 - context_watcher - ERROR - Unhandled exception in main: 'bool' object has no attribute 'upper'
+Traceback (most recent call last):
+  File "/home/bakobi/repos/erasmus/watcher.py", line 1104, in main
+    ide_env = ARGS.setup.upper()
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'upper'
+2025-04-07 14:25:39,132 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 14:25:39,155 - context_watcher - ERROR - Unhandled exception in main: 'bool' object has no attribute 'upper'
+Traceback (most recent call last):
+  File "/home/bakobi/repos/erasmus/watcher.py", line 1103, in main
+    ide_env = ARGS.setup.upper()
+              ^^^^^^^^^^^^^^^^
+AttributeError: 'bool' object has no attribute 'upper'
+2025-04-07 14:26:46,825 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 14:26:46,848 - context_watcher - ERROR - Error writing to file (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): expected str, bytes or os.PathLike object, not tuple
