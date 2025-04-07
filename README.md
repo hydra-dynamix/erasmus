@@ -24,7 +24,7 @@ Erasmus is a single-file context watcher designed to streamline project initiali
 
 ### Option 2: One-Line Installation (Linux/macOS)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bakobiibizo/erasmus/main/release/latest/erasmus.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh | bash
 ```
 
 ## Features
