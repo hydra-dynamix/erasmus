@@ -1,9 +1,9 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.1",
   "last_updated": "2025-04-06T16:09:49.062266",
   "changes": [
     {
-      "description": "added versioning system",
+      "description": "initial release",
       "type": "patch",
       "timestamp": "2025-04-06T16:09:49.062251"
     }

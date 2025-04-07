@@ -150,3 +150,31 @@ NameError: name 'save_rules' is not defined
 2025-04-06 16:45:29,970 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
 2025-04-06 16:45:29,971 - context_watcher - INFO - Watching files: ['Script File']
 2025-04-06 16:45:29,973 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-07 12:10:53,924 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 12:11:05,166 - context_watcher - WARNING - Missing OpenAI credentials: API key, model. Prompting for input...
+2025-04-07 12:11:25,868 - context_watcher - ERROR - Failed to initialize OpenAI client: [Errno 2] No such file or directory: '.env'
+2025-04-07 12:16:38,252 - context_watcher - WARNING - Missing OpenAI credentials: API key, model. Prompting for input...
+2025-04-07 12:16:52,675 - context_watcher - ERROR - Failed to initialize OpenAI client: [Errno 21] Is a directory: '.env'
+2025-04-07 12:16:52,676 - context_watcher - ERROR - Unhandled exception in main: [Errno 21] Is a directory: '.env'
+Traceback (most recent call last):
+  File "/home/bakobi/repos/erasmus/watcher.py", line 1071, in main
+    setup_project()
+    ~~~~~~~~~~~~~^^
+  File "/home/bakobi/repos/erasmus/watcher.py", line 677, in setup_project
+    env_content = env_path.read_text()
+  File "/home/bakobi/.local/share/uv/python/cpython-3.13.1-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 546, in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bakobi/.local/share/uv/python/cpython-3.13.1-linux-x86_64-gnu/lib/python3.13/pathlib/_abc.py", line 632, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/bakobi/.local/share/uv/python/cpython-3.13.1-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 537, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: '.env'
+2025-04-07 12:17:13,435 - context_watcher - WARNING - Missing OpenAI credentials: API key, model. Prompting for input...
+2025-04-07 12:17:29,745 - context_watcher - ERROR - Failed to initialize OpenAI client: missing API key
+2025-04-07 12:18:51,925 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 12:25:48,215 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 12:25:52,099 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-07 12:25:52,124 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules

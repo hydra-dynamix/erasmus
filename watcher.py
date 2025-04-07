@@ -28,6 +28,8 @@ from getpass import getpass
 import logging
 from typing import Optional, List, Dict, Tuple
 
+GIT_COMMITS = True
+
 # === Task Tracking ===
 class TaskStatus:
     PENDING = "pending"
@@ -209,28 +211,48 @@ def detect_ide_environment() -> str:
 
 def prompt_openai_credentials(env_path=".env"):
     """Prompt user for OpenAI credentials and save to .env"""
-    api_key = getpass("Enter your OPENAI_API_KEY (input hidden): ")
+    
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        print("If you are running local inference and do not have an api key configured just use sk-1234")
+        api_key = getpass("Enter your OPENAI_API_KEY (input hidden): ")
+        if not api_key:
+            print("API Key missing. Disabling commit message generation.")
+            GIT_COMMITS=False
+            api_key = "sk-1234"
 
-    base_url = input("Enter your OPENAI_BASE_URL (default: https://api.openai.com/v1): ").strip()
-    if not is_valid_url(base_url):
-        print("Invalid URL or empty. Defaulting to https://api.openai.com/v1")
-        base_url = "https://api.openai.com/v1"
+    base_url = os.getenv("OPENAI_BASE_URL")
+    if not base_url:
+        print("Enter your OpenAI base URL.")
+        print("If you are running local inference use your local host url(e.g. for ollama: http://localhost:11434)")
+        base_url = input("Enter your OPENAI_BASE_URL (default: https://api.openai.com/v1): ").strip()
+        if not is_valid_url(base_url):
+            print("Invalid URL or empty. Defaulting to https://api.openai.com/v1")
+            base_url = "https://api.openai.com/v1"
 
-    model = input("Enter your OPENAI_MODEL (default: gpt-4o): ").strip()
+    model = os.getenv("OPENAI_MODEL")
     if not model:
-        model = "gpt-4o"
+        model = input("Enter your OPENAI_MODEL (default: gpt-4o): ").strip()
+        if not model:
+            model = "gpt-4o"
         
     # Detect IDE environment and save it to the .env file
     ide_env = detect_ide_environment()
     
     env_content = (
+        "\n"
         f"OPENAI_API_KEY={api_key}\n"
         f"OPENAI_BASE_URL={base_url}\n"
         f"OPENAI_MODEL={model}\n"
         f"IDE_ENV={ide_env}\n"
     )
+    envpath = Path(env_path)
+    if not envpath.exists():
+        envpath.write_text("# Environment Variables")
+    existing_content = envpath.read_text()
+    env_content = existing_content + env_content
 
-    Path(env_path).write_text(env_content)
+    envpath.write_text(env_content)
     print(f"✅ OpenAI credentials saved to {env_path}")
 
 # === Configuration and Setup ===
@@ -271,8 +293,6 @@ def get_openai_credentials():
     """Get OpenAI credentials from environment variables"""
     api_key = os.environ.get("OPENAI_API_KEY")
     base_url = os.environ.get("OPENAI_BASE_URL")
-    if not base_url:
-        base_url = "https://api.openai.com/v1"
     model = os.environ.get("OPENAI_MODEL")
     return api_key, base_url, model
 
@@ -290,6 +310,7 @@ def init_openai_client():
             missing_creds.append("base URL")
         if not model:
             missing_creds.append("model")
+
             
         if missing_creds:
             logger.warning(f"Missing OpenAI credentials: {', '.join(missing_creds)}. Prompting for input...")
@@ -866,6 +887,9 @@ def determine_commit_type(diff_output: str) -> str:
 
 def make_atomic_commit():
     """Makes an atomic commit with AI-generated commit message."""
+    if not GIT_COMMITS:
+        return
+    
     # Initialize GitManager with current directory
     git_manager = GitManager(PWD)
     
