@@ -5,6 +5,12 @@
 
 set -e  # Exit on error
 
+# Change to the project root directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT" || { echo "Failed to change to project root directory."; exit 1; }
+echo "Changed to project root directory: $PROJECT_ROOT"
+
 # Create a temporary directory
 TEMP_DIR=$(mktemp -d)
 echo "Created temporary directory: $TEMP_DIR"
@@ -44,7 +50,7 @@ fi
 
 # Clean up
 echo "Cleaning up temporary directory"
-cd -
+cd "$PROJECT_ROOT"
 rm -rf "$TEMP_DIR"
 
 echo "Test completed"

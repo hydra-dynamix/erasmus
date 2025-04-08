@@ -498,3 +498,103 @@ AttributeError: 'bool' object has no attribute 'upper'
 2025-04-07 14:31:55,773 - context_watcher - WARNING - Missing OpenAI credentials: API key, base URL, model. Prompting for input...
 2025-04-07 14:32:00,295 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
 2025-04-07 14:32:00,318 - context_watcher - ERROR - Error writing to file (PosixPath('/home/bakobi/repos/erasmus/.cursorrules'), PosixPath('/home/bakobi/repos/erasmus/global_rules.md')): expected str, bytes or os.PathLike object, not tuple
+2025-04-07 20:14:11,391 - context_watcher - WARNING - Missing OpenAI credentials: API key, base URL, model. Prompting for input...
+2025-04-07 20:14:40,435 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 20:14:41,777 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 20:14:41,780 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-07 20:14:41,783 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-07 20:14:42,110 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-07 20:16:21,539 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 20:16:21,541 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 20:16:21,544 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 20:16:21,573 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 20:16:21,577 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 20:16:21,596 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 20:16:34,939 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 20:16:34,942 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 20:16:34,959 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 20:16:34,966 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 20:16:34,979 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 20:16:35,059 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:38:25,219 - context_watcher - WARNING - Missing OpenAI credentials: API key, base URL, model. Prompting for input...
+2025-04-07 21:38:33,543 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:38:55,873 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:38:56,658 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:09,033 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:39:09,201 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:09,205 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-07 21:39:09,208 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-07 21:39:09,220 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-07 21:39:20,565 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:39:20,568 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:39:20,605 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:20,643 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:39:20,661 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:39:20,678 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:20,572 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:39:21,059 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:39:21,096 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:21,107 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:39:21,114 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:39:21,139 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:55,080 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:39:55,083 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:39:55,086 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:39:55,088 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:55,091 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:39:55,092 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:39:55,108 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:39:55,120 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:55,153 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:39:55,237 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:39:55,566 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:39:55,570 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:14,783 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:14,785 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:14,787 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:14,789 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:14,795 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:14,820 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:14,837 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:14,841 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:14,854 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:14,894 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:14,920 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:15,252 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:26,843 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:26,834 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:26,909 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:26,926 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:26,941 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:26,943 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:26,956 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:26,912 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:26,992 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:27,045 - context_watcher - INFO - Detected update in ARCHITECTURE
+2025-04-07 21:40:27,060 - context_watcher - INFO - Processing update from ARCHITECTURE
+2025-04-07 21:40:27,101 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:33,327 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:40:33,327 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:40:33,329 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:40:33,338 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:40:33,342 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:33,346 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:40:33,348 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:40:33,363 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:33,386 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:33,389 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-07 21:40:33,399 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-07 21:40:33,432 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:38,991 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:40:39,005 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:40:39,008 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:40:39,011 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:40:39,036 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:39,075 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:40:39,080 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:39,137 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:40:39,221 - context_watcher - INFO - Detected update in TASKS
+2025-04-07 21:40:39,236 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:40:39,347 - context_watcher - INFO - Processing update from TASKS
+2025-04-07 21:40:39,493 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:42:31,219 - context_watcher - INFO - Shutting down...

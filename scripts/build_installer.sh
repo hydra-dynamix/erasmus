@@ -2,15 +2,21 @@
 
 # Script to build the installer with embedded erasmus.py
 
+# Change to the project root directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+cd "$PROJECT_ROOT" || { echo "Failed to change to project root directory."; exit 1; }
+echo "Changed to project root directory: $PROJECT_ROOT"
+
 # Check if install.sh exists
-if [ ! -f "install.sh" ]; then
-    echo "Error: install.sh not found"
+if [ ! -f "scripts/install.sh" ]; then
+    echo "Error: scripts/install.sh not found"
     exit 1
 fi
 
-# Check if watcher.py exists
-if [ ! -f "watcher.py" ]; then
-    echo "Error: watcher.py not found"
+# Check if erasmus.py exists
+if [ ! -f "erasmus.py" ]; then
+    echo "Error: erasmus.py not found"
     exit 1
 fi
 
@@ -20,7 +26,7 @@ echo "Building installer for version $VERSION"
 
 # Run the embed_erasmus.py script to create the combined installer
 echo "Creating combined installer using embed_erasmus.py..."
-python3 embed_erasmus.py
+python3 src/embed_erasmus.py
 
 # Verify the installer was created successfully
 if [ ! -f "release/v${VERSION}/erasmus_v${VERSION}.sh" ]; then

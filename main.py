@@ -2,19 +2,24 @@ import sys
 import os
 import argparse
 import traceback
+import subprocess
 from pathlib import Path
 from src.script_converter import ScriptConverter
 from src.version_manager import VersionManager
-from embed_erasmus import main as embed
+from src.build_release import embed_erasmus, convert_to_batch
+
 
 def convert_scripts(version_str: str) -> int:
     """Convert shell script to batch script and create versioned copies."""
     sys.stderr.write("Starting script conversion...\n")
     sys.stderr.flush()
-    embed()
+    
     converter = ScriptConverter()
-    script_dir = Path.cwd()
-    release_dir = script_dir / 'release'
+    
+    # Get the project root directory
+    project_root = Path.cwd()
+    script_dir = project_root / 'scripts'
+    release_dir = project_root / 'release'
     version_dir = release_dir / f'v{version_str}'
     
     # Create versioned paths with version-specific directory
@@ -24,6 +29,8 @@ def convert_scripts(version_str: str) -> int:
     # Print debug info
     sys.stderr.write(f"Python executable: {sys.executable}\n")
     sys.stderr.write(f"Current directory: {os.getcwd()}\n")
+    sys.stderr.write(f"Project root: {project_root}\n")
+    sys.stderr.write(f"Script directory: {script_dir}\n")
     sys.stderr.write(f"Function templates in converter:\n")
     for name, template in converter.function_templates.items():
         sys.stderr.write(f"- {name}: {len(template)} bytes\n")
@@ -32,8 +39,6 @@ def convert_scripts(version_str: str) -> int:
     sys.stderr.flush()
     
     try:
-        # No need to check for shell_path anymore as we're using the versioned shell script
-            
         # Check if the versioned shell script exists
         if not versioned_shell_path.exists():
             print(f"Error: Versioned shell script not found at: {versioned_shell_path}")
@@ -65,6 +70,65 @@ def convert_scripts(version_str: str) -> int:
         traceback.print_exc()
         return 1
 
+def build_release():
+    """Build the complete release package."""
+    try:
+        print("Building complete release package...")
+        
+        # Step 1: Embed watcher.py into the installer
+        result = embed_erasmus()
+        if isinstance(result, tuple):
+            version, version_dir = result
+        else:
+            print("Failed to embed watcher.py into the installer")
+            return 1
+        
+        # Step 2: Convert to batch file
+        result = convert_to_batch(version, version_dir)
+        if result != 0:
+            print("Failed to create Windows batch installer")
+            return 1
+        
+        print("\nRelease package built successfully!")
+        print(f"Shell installer: release/v{version}/erasmus_v{version}.sh")
+        print(f"Windows installer: release/v{version}/erasmus_v{version}.bat")
+        print(f"SHA256 hash file: release/v{version}/erasmus_v{version}.sha256")
+        
+        return 0
+    except ImportError:
+        print("Error: src/build_release.py not found.", file=sys.stderr)
+        print("Please make sure build_release.py is in the src directory.", file=sys.stderr)
+        return 1
+
+def run_tests():
+    """Run the Docker tests for the installer."""
+    try:
+        print("Running Docker tests for the installer...")
+        
+        # Run the test script
+        test_script = Path.cwd() / "scripts" / "test" / "test_installer.sh"
+        if not test_script.exists():
+            print(f"Error: Test script not found at {test_script}")
+            return 1
+            
+        # Make the test script executable
+        os.chmod(test_script, 0o755)
+        
+        # Run the test script with the current environment
+        try:
+            # Pass the current environment to ensure Docker permissions are preserved
+            subprocess.run(["bash", str(test_script)], check=True, env=os.environ.copy())
+            print("Tests completed successfully!")
+            return 0
+        except subprocess.CalledProcessError as e:
+            print(f"Tests failed with exit code {e.returncode}")
+            return 1
+        
+    except Exception as e:
+        print(f"Error running tests: {str(e)}")
+        traceback.print_exc()
+        return 1
+
 def main():
     """Main entry point with version management CLI."""
     parser = argparse.ArgumentParser(description="Erasmus script management tool")
@@ -78,6 +142,13 @@ def main():
     
     # Convert command
     convert_parser = subparsers.add_parser("convert", help="Convert installation scripts")
+    convert_parser.add_argument("--version", "-v", help="Version to convert (defaults to current version)")
+    
+    # Build command
+    build_parser = subparsers.add_parser("build", help="Build the complete release package")
+    
+    # Test command
+    test_parser = subparsers.add_parser("test", help="Run Docker tests for the installer")
     
     args = parser.parse_args()
     vm = VersionManager()
@@ -99,9 +170,14 @@ def main():
             return convert_scripts(new_version)
     
     elif args.command == "convert":
-        return convert_scripts(vm.get_current_version())
-        traceback.print_exc()
-        return 1
+        version = args.version or vm.get_current_version()
+        return convert_scripts(version)
+    
+    elif args.command == "build":
+        return build_release()
+        
+    elif args.command == "test":
+        return run_tests()
 
 if __name__ == '__main__':
     main()

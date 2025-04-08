@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to embed the erasmus.py file (previously watcher.py) into the installer script.
+Script to embed the watcher.py file into the installer script as erasmus.py.
 This creates a self-extracting installer that contains the erasmus.py file.
 """
 
@@ -12,15 +12,15 @@ import hashlib
 from pathlib import Path
 
 def main():
-    """Main function to embed erasmus.py into the installer."""
-    # Get current directory
-    script_dir = Path.cwd()
+    """Main function to embed watcher.py into the installer as erasmus.py."""
+    # Get project root directory
+    project_root = Path.cwd()
     
     # Define paths
-    watcher_path = script_dir / 'watcher.py'
-    install_path = script_dir / 'install.sh'
-    version_path = script_dir / 'version.json'
-    release_dir = script_dir / 'release'
+    watcher_path = project_root / 'watcher.py'
+    install_path = project_root / 'scripts' / 'install.sh'
+    version_path = project_root / 'version.json'
+    release_dir = project_root / 'scripts' / 'release'
     
     # Create release directory if it doesn't exist
     release_dir.mkdir(parents=True, exist_ok=True)
@@ -28,14 +28,24 @@ def main():
     # Check if required files exist
     if not watcher_path.exists():
         print(f"Error: {watcher_path} not found")
+        print("\nTo fix this error:")
+        print("1. Create your main Python script as 'watcher.py' in the project root")
+        print("2. Then run this script again to build the installer")
         return 1
     
     if not install_path.exists():
         print(f"Error: {install_path} not found")
+        print("\nTo fix this error:")
+        print("1. Make sure you're running this script from the project root directory")
+        print("2. Ensure the scripts directory contains install.sh")
         return 1
     
     if not version_path.exists():
         print(f"Error: {version_path} not found")
+        print("\nTo fix this error:")
+        print("1. Make sure you're running this script from the project root directory")
+        print("2. Create a version.json file with a 'version' field")
+        print("   Example: {\"version\": \"0.1.0\"}")
         return 1
     
     # Get version from version.json
@@ -77,8 +87,8 @@ def main():
         
         # Add the marker line and hash information
         f.write("\n\n# __ERASMUS_EMBEDDED_BELOW__\n")
-        f.write("# The content below this line is the base64-encoded erasmus.py file\n")
-        f.write("# It will be extracted during installation\n")
+        f.write("# The content below this line is the base64-encoded watcher.py file\n")
+        f.write("# It will be extracted during installation as erasmus.py\n")
         f.write(f"# SHA256_HASH={watcher_hash}\n")
         
         # Add exit command to prevent the shell from trying to execute the base64 content
@@ -98,6 +108,7 @@ def main():
     os.chmod(output_path, 0o755)
     
     print(f"Successfully created installer: {output_path}")
+    print(f"This installer will extract watcher.py as erasmus.py during installation")
     return 0
 
 if __name__ == "__main__":

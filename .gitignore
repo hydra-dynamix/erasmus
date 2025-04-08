@@ -1,5 +1,3 @@
-context-watcher/
-builds/
 .env
 venv/
 __pycache__/
@@ -11,8 +9,11 @@ __pycache__/
 *.pywz
 .venv
 .windsurfrules
+.cursorrules
 ARCHITECTURE.md
 PROGRESS.md
 TASKS.md
 global_rules.md
 uv.lock
+.coverage
+*.log

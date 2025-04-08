@@ -1,7 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
 
-
 :detect_os
 set "OS=Unknown"
 for /f "tokens=* usebackq" %%i in (`ver`) do set "VER_OUT=%%i"
@@ -18,7 +17,6 @@ echo !VER_OUT! | findstr /i "Linux" >nul 2>&1 && (
     goto :eof
 )
 goto :eof
-
 
 :check_python
 set "PYTHON_CMD="
@@ -45,7 +43,6 @@ if "!MAJOR!" lss "3" (
     )
 )
 goto :eof
-
 
 :check_prerequisites
 call :detect_os
@@ -84,7 +81,6 @@ if "!OS!"=="Windows" (
 )
 goto :eof
 
-
 :install_uv
 echo Installing uv package manager...
 if "!OS!"=="Windows" (
@@ -104,9 +100,8 @@ where uv.exe >nul 2>&1 || (
 )
 
 echo Installation complete!
-echo You can now run: uv run watcher.py
+echo You can now run: uv run erasmus.py
 goto :eof
-
 
 :setup_env
 echo Creating environment files...
@@ -132,35 +127,43 @@ echo OPENAI_API_KEY=
 echo Environment files created successfully
 goto :eof
 
-
 :init_watcher
-echo Initializing watcher...
+echo Initializing erasmus...
 
-:: Check for compressed watcher script
-if exist watcher.py.gz (
-    echo Extracting watcher script...
-    powershell -Command "Expand-Archive -Path watcher.py.gz -DestinationPath ."
-)
+:: Extract erasmus.py from the embedded content
+echo Extracting erasmus.py...
 
-:: Run watcher setup
-if exist watcher.py (
-    uv run watcher.py
-) else (
-    echo Error: watcher.py not found
-    exit /b 1
-)
+:: Find the SHA256 hash in this script
+for /f "tokens=* usebackq" %%i in (`findstr /C:"# SHA256_HASH=" "%~f0"`) do set "EXPECTED_HASH=%%i"
+set "EXPECTED_HASH=!EXPECTED_HASH:# SHA256_HASH=!"
+
+:: Extract the base64 content between markers
+powershell -Command "$content = Get-Content '%~f0' | Select-String -Pattern \"# BEGIN_BASE64_CONTENT\",\"# END_BASE64_CONTENT\" -Context 0,10000 | ForEach-Object { $_.Context.PostContext } | Where-Object { $_ -notmatch \"BEGIN_BASE64_CONTENT|END_BASE64_CONTENT\" } | ForEach-Object { $_ -replace \"^# \", \"\" }; $content | Set-Content -Encoding ASCII temp_base64.txt"
+
+:: Decode the base64 content
+powershell -Command "$content = Get-Content -Encoding ASCII temp_base64.txt; $content = $content -join \"\"; [System.IO.File]::WriteAllBytes(\"erasmus.py\", [System.Convert]::FromBase64String($content))"
+
+:: Verify the SHA256 hash
+powershell -Command "$hash = Get-FileHash -Algorithm SHA256 -Path erasmus.py | Select-Object -ExpandProperty Hash; if ($hash -eq \"!EXPECTED_HASH!\") { Write-Host \"SHA256 hash verified: $hash\" } else { Write-Host \"Error: SHA256 hash verification failed!\" -ForegroundColor Red; Write-Host \"Expected: !EXPECTED_HASH!\" -ForegroundColor Red; Write-Host \"Actual: $hash\" -ForegroundColor Red; exit 1 }"
+
+:: Run the erasmus setup with IDE environment
+echo Running erasmus setup...
+uv run erasmus.py --setup !IDE_ENV!
+
+echo Erasmus initialized successfully!
+echo To run Erasmus:
+echo     uv run erasmus.py
 goto :eof
-
 
 :main
 call :detect_os
-call :check_prerequisites
 call :check_python
+call :check_prerequisites
 call :install_uv
 call :setup_env
 call :init_watcher
 echo Installation complete!
-echo Watcher has been initialized with your IDE environment: !IDE_ENV!
+echo Erasmus has been initialized with your IDE environment: !IDE_ENV!
 exit /b %ERRORLEVEL%
 
 :start
