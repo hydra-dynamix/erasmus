@@ -120,11 +120,19 @@ After completing these tasks, we will:
   - Test with various diff contents
 
 ### 2. Test Git Operations [PRIORITY: HIGH]
-- [ ] Task 3.4: Test Repository State Management
-  - Test repository initialization
-  - Test branch operations
-  - Test state tracking
-  - Test error handling
+- [x] Task 3.4: Test Repository State Management
+  - Test repository initialization ✓
+  - Test branch operations ✓
+  - Test state tracking ✓
+  - Test error handling ✓
+
+### 3. Implement Cleanup Functionality [PRIORITY: MEDIUM]
+- [ ] Task 3.5: Add Cleanup Command
+  - Add cleanup command to CLI interface
+  - Implement backup functionality for rules files
+  - Add force flag for skipping confirmation
+  - Write tests for cleanup command
+  - Document cleanup functionality
 
 ### Next Up
 After completing these tasks, we will:

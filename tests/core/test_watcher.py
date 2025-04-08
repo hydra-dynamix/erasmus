@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 import pytest
 from watchdog.observers import Observer
-from src.core.watcher import BaseWatcher, MarkdownWatcher, ScriptWatcher, create_file_watchers
+from erasmus.core.watcher import BaseWatcher, MarkdownWatcher, ScriptWatcher, create_file_watchers
 
 def test_base_watcher(temp_dir):
     """Test BaseWatcher initialization and file monitoring."""

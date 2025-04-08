@@ -1,7 +1,7 @@
 """Tests for the version manager module."""
 import pytest
 from pathlib import Path
-from src.version_manager import VersionManager
+from erasmus.version_manager import VersionManager
 
 @pytest.fixture
 def version_manager(tmp_path):

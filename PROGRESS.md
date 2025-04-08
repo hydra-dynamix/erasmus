@@ -21,7 +21,7 @@
 - [x] Atomic commits
 - [x] Commit message generation with OpenAI
 - [x] Fallback commit message generation
-- [ ] Test coverage for commit message generation
+- [x] Test coverage for commit message generation
 - [ ] Integration tests for Git operations
 
 ## Phase 4: File Watching System [PENDING]

@@ -7,7 +7,7 @@ This module contains tests for the Task and TaskManager classes.
 
 import time
 import pytest
-from src.core.task import Task, TaskManager, TaskStatus
+from erasmus.core.task import Task, TaskManager, TaskStatus
 
 def test_task_creation():
     """Test basic task creation and initialization."""

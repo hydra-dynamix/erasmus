@@ -4,9 +4,9 @@ import argparse
 import traceback
 import subprocess
 from pathlib import Path
-from src.script_converter import ScriptConverter
-from src.version_manager import VersionManager
-from src.build_release import embed_erasmus, convert_to_batch
+from erasmus.script_converter import ScriptConverter
+from erasmus.version_manager import VersionManager
+from erasmus.build_release import embed_erasmus, convert_to_batch
 
 
 def convert_scripts(version_str: str) -> int:

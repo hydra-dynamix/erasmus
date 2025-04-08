@@ -75,6 +75,13 @@ def read_file(path: Path) -> str:
         console.print(f"Error reading {path}: {e}", style="red")
         return ""
 
+def backup_rules_file(file_path: Path) -> None:
+    """Create a backup of a rules file if it exists."""
+    if file_path.exists():
+        backup_path = file_path.parent / f"{file_path.name}.old"
+        shutil.copy2(file_path, backup_path)
+        console.print(f"Created backup at {backup_path}")
+
 def write_file(path: Path, content: str, backup: bool = False) -> bool:
     """Write content to a file, optionally creating a backup."""
     try:
@@ -82,9 +89,7 @@ def write_file(path: Path, content: str, backup: bool = False) -> bool:
         
         # Create backup if requested and file exists
         if backup and path.exists():
-            backup_path = path.parent / f"{path.name}.old"
-            shutil.copy2(path, backup_path)
-            console.print(f"Created backup at {backup_path}")
+            backup_rules_file(path)
             
         path.write_text(content)
         return True
@@ -161,32 +166,39 @@ def update_specific_file(file_type: str, content: str) -> None:
 def cleanup_project() -> None:
     """Remove all generated files and restore backups if available."""
     files_to_remove = [
-        "ARCHITECTURE.md",
-        "PROGRESS.md",
-        "TASKS.md",
         ".cursorrules",
         "global_rules.md",
     ]
     
+    # First, create backups of all files
     for filename in files_to_remove:
         path = Path(filename)
-        backup_path = path.parent / f"{path.name}.old"
-        
-        # Remove the current file
+        if path.exists():
+            backup_rules_file(path)
+    
+    # Then remove generated files
+    for filename in files_to_remove:
+        path = Path(filename)
         if path.exists():
             try:
                 path.unlink()
                 console.print(f"Removed {path}")
             except Exception as e:
                 console.print(f"Error removing {path}: {e}", style="red")
-        
-        # Restore backup if it exists
-        if backup_path.exists():
-            try:
-                shutil.move(backup_path, path)
-                console.print(f"Restored backup for {path}")
-            except Exception as e:
-                console.print(f"Error restoring backup for {path}: {e}", style="red")
+    
+    # Remove cache directories
+    cache_patterns = [
+        "__pycache__",
+        ".pytest_cache",
+        "*.pyc",
+    ]
+    
+    for pattern in cache_patterns:
+        for path in Path().rglob(pattern):
+            if path.is_file():
+                path.unlink()
+            elif path.is_dir():
+                shutil.rmtree(path)
 
 def check_creds():
     """Check if OpenAI credentials are valid for API calls."""

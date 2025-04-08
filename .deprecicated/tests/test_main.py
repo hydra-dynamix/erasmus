@@ -5,7 +5,7 @@ import shutil
 from pathlib import Path
 import pytest
 from unittest.mock import patch, MagicMock
-from src.version_manager import VersionManager
+from erasmus.version_manager import VersionManager
 import sys
 from pathlib import Path
 
