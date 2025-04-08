@@ -1,99 +1,126 @@
-# Context Watcher: Automated Development Environment Setup and Management
+# Erasmus: AI Context Watcher for Development
 
 ## Overview
-A single-file context watcher for cursor and windsurf, designed to streamline project initialization, development tracking, and version management.
+Erasmus is a context tracking and injection system designed to enhance AI-powered development environments. It monitors project state and documentation, providing dynamic context updates to AI-powered IDEs.
 
-## Key Components
-- `watcher.py`: Main application orchestrating project setup and management
-- `src/git_manager.py`: Atomic commit git management system
-- `.cursorrules` and `.windsurfrules`: Context injection files for respective IDEs
+## System Architecture
 
-## Technology Stack
+### 1. Core Components
 
-### Prerequisites
-- **Windows**
-  - winget (Microsoft App Installer)
-  - Python 3.8+
-- **macOS**
-  - Homebrew
-  - Python 3.8+
-- **Linux**
-  - curl
-  - Python 3.8+
+#### 1.1 Task Management System
+- Task tracking and lifecycle management
+- Status tracking (pending, in-progress, completed, blocked)
+- Task metadata and notes
+- Serialization/deserialization support
 
-### Package Management
-- **Python: `uv` package manager**
-  - Windows: Installed via winget
-  - macOS: Installed via Homebrew
-  - Linux: Installed via curl script
-  - Dependency management directly in `watcher.py`
-  - Single-script dependency tracking
+#### 1.2 File Watching System
+- Real-time file monitoring
+- Event handling for file modifications
+- Support for different file types (Markdown, Scripts)
+- Callback system for file changes
 
-- **Development Tools**
-  - Logging: Rich logging with clear terminal output
-  - File Watching: `watchdog` for monitoring context files
-  - AI Integration: Local OpenAI client for commit message generation
+#### 1.3 Git Integration
+- Atomic commit management
+- Repository state tracking
+- Commit message generation and validation
+- Branch management
 
-## Workflow Stages
+#### 1.4 Context Management
+- Context file handling
+- Rules management (global and context-specific)
+- Dynamic context updates
+- File content synchronization
 
-### 1. Project Initialization
-- Create essential project files and directories:
-  - `ARCHITECTURE.md`: Project architecture documentation
-  - `PROGRESS.md`: Development progress tracking
-  - `TASKS.md`: Granular task management
-  - `.IDErules`: Bundled context for IDE integration
-  - `global_rules.md`: Global development guidelines
-  - `context_watcher.log`: Comprehensive project logs
+#### 1.5 Environment Management
+- IDE environment detection
+- Credentials management
+- Configuration handling
+- Environment variable management
 
-### 2. Environment Setup
-- Virtual Environment Configuration
-  - Python:
-    - `uv` as package manager
-    - `pytest` for comprehensive testing
-  - Node:
-    - `pnpm` as package manager
-    - `jest` for testing
-    - `puppeteer` for E2E testing
-  - Rust:
-    - `cargo` as package manager
-    - Native Rust testing framework
-    - `mockito` for mocking
+### 2. Package Structure
 
-- Environment Variable Management
-  - Generate `.env.example`
-  - Create `.env` with placeholder values
+```
+src/
+├── __init__.py
+├── core/
+│   ├── __init__.py
+│   ├── task.py           # Task and TaskManager classes
+│   ├── watcher.py        # File watching system
+│   └── context.py        # Context management
+├── git/
+│   ├── __init__.py
+│   └── manager.py        # Git integration
+├── utils/
+│   ├── __init__.py
+│   ├── env.py           # Environment management
+│   └── file.py          # File operations
+└── cli/
+    ├── __init__.py
+    └── commands.py      # CLI interface
+```
 
-### 3. Development Workflow
-- Automated Development Cycle:
-  1. Generate tests for current task
-  2. Implement task code
-  3. Run and validate tests
-  4. Iterative error correction
-  5. Update task and progress status
-  6. Proceed to next component
+### 3. Key Interfaces
 
-### 4. Packaging and Distribution
-- Single File Installer Requirements
-  - All dependencies recorded via `uv`
-  - Initialization via `uv run watcher.py --setup IDE_ENVIRONMENT`
-  - Cross-platform installation scripts
-    - `.sh` for Unix-like systems
-    - `.bat` for Windows
+#### 3.1 Task Management
+```python
+class TaskManager:
+    def add_task(description: str) -> Task
+    def get_task(task_id: str) -> Optional[Task]
+    def list_tasks(status: Optional[TaskStatus]) -> List[Task]
+    def update_task_status(task_id: str, status: TaskStatus) -> None
+```
 
-### 5. Version Control and Validation
-- Repository: https://github.com/bakobiibizo/erasmus
-- Versioning system with cryptographic hash validation
-- Separate build and release directories
+#### 3.2 File Watching
+```python
+class BaseWatcher(FileSystemEventHandler):
+    def on_modified(event) -> None
+    def handle_event(file_key: str) -> None
+```
 
-## IDE Compatibility
-- Cursor: `.cursorrules` context injection
-- Windsurf: `.windsurfrules` context injection
-- Global rules configurable in respective IDE settings
+#### 3.3 Git Operations
+```python
+class GitManager:
+    def stage_all_changes() -> bool
+    def commit_changes(message: str) -> bool
+    def get_repository_state() -> dict
+```
 
-## Project Goal
-Consolidate git management into a single, portable `watcher.py` that simplifies project setup and management across different development environments.
+### 4. Configuration
 
-## Future Considerations
-- Expand IDE compatibility
-- Enhance AI-driven development workflows
-- Improve cross-platform support
+#### 4.1 Environment Variables
+- IDE_ENV: Current IDE environment
+- OPENAI_API_KEY: OpenAI API credentials
+- OPENAI_BASE_URL: API endpoint
+- OPENAI_MODEL: AI model selection
+
+#### 4.2 File Paths
+- ARCHITECTURE.md: System architecture
+- PROGRESS.md: Development progress
+- TASKS.md: Task tracking
+- .erasmus/: Configuration directory
+
+### 5. Dependencies
+- openai: AI integration
+- rich: Console output
+- watchdog: File system monitoring
+- python-dotenv: Environment configuration
+
+## Development Guidelines
+
+### Code Style
+- Type hints for all function parameters and returns
+- Comprehensive docstrings for classes and methods
+- Error handling with specific exceptions
+- Logging for debugging and monitoring
+
+### Testing Strategy
+- Unit tests for core components
+- Integration tests for file operations
+- Mock testing for external services
+- Coverage reporting
+
+### Documentation
+- Inline documentation for complex logic
+- README.md for setup and usage
+- API documentation for public interfaces
+- Change log for version tracking

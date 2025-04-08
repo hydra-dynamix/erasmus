@@ -17,3 +17,4 @@ global_rules.md
 uv.lock
 .coverage
 *.log
+.cursor

@@ -1,116 +1,155 @@
-# Project Development Tasks
+# Current Tasks
 
-## Project Initialization Tasks [COMPLETED]
-### Version Control Setup
-- [x] Initialize git repository in `./erasmus`
-- [x] Configure upstream repository connection
-- [x] Create initial commit with project structure
+## Phase 1: Core Infrastructure Setup
 
-### Package Management
-- [x] Set up `uv` package management
-- [x] Add initial dependencies to `watcher.py`
-- [x] Create `pyproject.toml` for dependency tracking
+### 1. Project Structure Setup [PRIORITY: HIGH]
+- [x] Task 1.1: Create base directory structure
+  - Create src/ directory ✓
+  - Set up module directories (core, git, utils, cli) ✓
+  - Create __init__.py files ✓
+  - Create placeholder files for modules ✓
 
-## Core Functionality Tasks [COMPLETED]
-### Watcher Core Logic
-- [x] Design core workflow state machine
-- [x] Implement file watching mechanism
-- [x] Create context injection logic
-- [x] Develop IDE-specific rule injection
+- [x] Task 1.2: Set up package management
+  - Create pyproject.toml ✓
+  - Define project metadata ✓
+  - List dependencies ✓
+  - Configure development dependencies ✓
 
-### Git Management
-- [x] Refactor `git_manager.py` functionality
-- [x] Implement atomic commit system
-- [x] Create AI-powered commit message generator
-- [x] Add logging and error handling
+- [x] Task 1.3: Create development tools configuration
+  - Set up pytest configuration ✓
+  - Configure mypy for type checking ✓
+  - Set up black for code formatting ✓
+  - Configure isort for import sorting ✓
 
-## Environment Setup Tasks [COMPLETED]
-### Cross-Platform Installation
-- [x] Create Unix `.sh` installation script
-- [x] Create Windows `.bat` installation script
-- [x] Implement package requirement checks
-- [x] Add uv installation logic
-- [x] Finalize cross-platform compatibility testing
+### 2. Core Module Migration [PRIORITY: HIGH]
+- [x] Task 2.1: Migrate Task Management
+  - Extract Task class to src/core/task.py ✓
+  - Extract TaskManager class to same file ✓
+  - Update imports and dependencies ✓
+  - Add type hints and documentation ✓
 
-### Virtual Environment
-- [x] Configure Python virtual environment
-- [x] Set up testing frameworks (pytest)
-- [x] Create `.env.example` template
-- [x] Implement environment variable management
+- [x] Task 2.2: Migrate File Watching
+  - Extract BaseWatcher to src/core/watcher.py ✓
+  - Extract MarkdownWatcher and ScriptWatcher ✓
+  - Update imports and dependencies ✓
+  - Add type hints and documentation ✓
 
-### Environment Configuration Tasks [COMPLETED]
-- [x] Create `.env` file with initial configuration
-- [x] Generate `.env.example` for template configuration
-- [x] Document environment variable usage
-- [x] Add environment variable validation
-- [x] Implement IDE environment selection
-- [x] Add watcher initialization with environment
+### 3. Test Framework Setup [PRIORITY: HIGH]
+- [x] Task 3.1: Set up test structure
+  - Create tests/ directory ✓
+  - Set up test configuration ✓
+  - Create test utilities ✓
+  - Add initial test placeholders ✓
 
-## AI Integration Tasks [COMPLETED]
-### OpenAI Client
-- [x] Design local OpenAI client interface
-- [x] Implement commit message generation
-- [x] Create context tracking mechanism
-- [x] Add error handling and logging
+- [x] Task 3.2: Create core tests
+  - Write Task class tests ✓
+  - Write TaskManager tests ✓
+  - Write BaseWatcher tests ✓
+  - Set up test fixtures ✓
 
-## Testing Tasks [IN PROGRESS]
-### Test Suite Development
-- [x] Create unit tests for core components
-- [x] Develop integration tests
-- [x] Implement cross-platform compatibility tests
-- [x] Set up continuous integration pipeline
-- [x] Create Docker testing environment
-- [ ] Test Docker installation process
+### Next Up
+After completing these tasks, we will:
+1. Review and validate the project structure
+2. Begin implementing the Task Management System
+3. Set up continuous integration
 
-## Current Tasks
+## Notes
+- Focus on maintaining functionality while restructuring
+- Ensure backward compatibility during migration
+- Document all changes in docstrings and comments
+- Add type hints as we migrate code
 
-### Build and Release Tasks [IN PROGRESS]
-### Release Directory Structure
-- [x] Move release directory to project root
-- [ ] Update build_release.py paths
-- [ ] Test build process with new paths
-- [ ] Update Docker testing paths
+## Phase 2: Task Management System
 
-### Release Preparation
-- [ ] Define versioning strategy
-- [ ] Create release checklist
-- [ ] Prepare initial release notes
-- [ ] Set up basic release workflow
+### 1. Task CLI Interface Implementation [PRIORITY: HIGH]
+- [ ] Task 2.1: Design CLI Interface
+  - Define command structure and arguments
+  - Plan help documentation
+  - Design error handling and user feedback
+  - Create usage examples
 
-### Performance and Optimization Tasks [PENDING]
-### Code Efficiency
-- [ ] Profile application performance
-- [ ] Identify and optimize bottlenecks
-- [ ] Review subprocess call efficiency
-- [ ] Minimize external dependency overhead
+- [ ] Task 2.2: Implement Core CLI Commands
+  - Add task creation command
+  - Add task status update command
+  - Add task listing command
+  - Add task note management command
 
-### Resource Management
-- [ ] Analyze memory usage
-- [ ] Optimize file watching mechanism
-- [ ] Improve logging efficiency
-- [ ] Implement lightweight context tracking
+- [ ] Task 2.3: Add CLI Documentation
+  - Write command documentation
+  - Create usage examples
+  - Document error messages
+  - Add troubleshooting guide
 
-### Documentation Tasks [IN PROGRESS]
-### User Guide
-- [ ] Create comprehensive README
-- [ ] Write installation instructions
-- [ ] Document core functionality
-- [ ] Develop troubleshooting guide
+- [ ] Task 2.4: Test CLI Interface
+  - Write CLI command tests
+  - Test error handling
+  - Test input validation
+  - Test output formatting
 
-### Developer Documentation
-- [ ] Update architecture documentation
-- [ ] Create contribution guidelines
-- [ ] Document design decisions
-- [ ] Prepare inline code documentation
+### Next Up
+After completing these tasks, we will:
+1. Test the complete Task Management System
+2. Begin implementing the File Watching System
+3. Plan Git Integration features
 
-## Task Priority
-1. High: Release directory restructuring and testing
-2. Medium: Build process documentation
-3. Low: General documentation updates
+## Notes
+- Ensure consistent command naming and structure
+- Provide helpful error messages and suggestions
+- Include examples in help text
+- Consider adding command aliases for common operations
 
-## Progress Metrics
-- Total Tasks: 28
-- Completed: 16
-- In Progress: 7
-- Pending: 5
-- Completion Rate: 57%
+## Phase 3: Git Integration
+
+### 1. Test Commit Message Generation [PRIORITY: HIGH]
+- [x] Task 3.1: Test OpenAI Commit Message Generation
+  - Write test for check_creds function
+  - Test with default credentials (sk-1234)
+  - Test with OpenAI base URL
+  - Test with custom credentials
+
+- [x] Task 3.2: Test Fallback Message Generation
+  - Test determine_commit_type function
+  - Test file name extraction from diff
+  - Test message formatting
+  - Test message validation
+
+- [x] Task 3.3: Test Integration with Git
+  - Test stage_all_changes with mock repo
+  - Test commit_changes with generated messages
+  - Test error handling and recovery
+  - Test with various diff contents
+
+### 2. Test Git Operations [PRIORITY: HIGH]
+- [ ] Task 3.4: Test Repository State Management
+  - Test repository initialization
+  - Test branch operations
+  - Test state tracking
+  - Test error handling
+
+### Next Up
+After completing these tasks, we will:
+1. Run full integration tests for Git operations
+2. Begin implementing the File Watching System
+3. Update documentation with new features
+
+## Notes
+- Follow TDD principles: write tests first, then implement
+- Ensure proper mocking of Git operations
+- Test both success and failure paths
+- Document all test cases
+
+## Testing Guidelines
+1. Unit Tests
+   - Mock external dependencies (Git, OpenAI)
+   - Test each function in isolation
+   - Cover edge cases and error conditions
+
+2. Integration Tests
+   - Test complete workflows
+   - Use temporary repositories
+   - Test with real file system operations
+
+3. Test Coverage
+   - Aim for >90% coverage
+   - Focus on critical paths
+   - Include error handling paths
