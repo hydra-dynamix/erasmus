@@ -47,92 +47,13 @@
   - Write BaseWatcher tests ✓
   - Set up test fixtures ✓
 
-### Next Up
-After completing these tasks, we will:
-1. Review and validate the project structure
-2. Begin implementing the Task Management System
-3. Set up continuous integration
-
-## Notes
-- Focus on maintaining functionality while restructuring
-- Ensure backward compatibility during migration
-- Document all changes in docstrings and comments
-- Add type hints as we migrate code
-
-## Phase 2: Task Management System
-
-### 1. Task CLI Interface Implementation [PRIORITY: HIGH]
-- [ ] Task 2.1: Design CLI Interface
-  - Define command structure and arguments
-  - Plan help documentation
-  - Design error handling and user feedback
-  - Create usage examples
-
-- [ ] Task 2.2: Implement Core CLI Commands
-  - Add task creation command
-  - Add task status update command
-  - Add task listing command
-  - Add task note management command
-
-- [ ] Task 2.3: Add CLI Documentation
-  - Write command documentation
-  - Create usage examples
-  - Document error messages
-  - Add troubleshooting guide
-
-- [ ] Task 2.4: Test CLI Interface
-  - Write CLI command tests
-  - Test error handling
-  - Test input validation
-  - Test output formatting
-
-### Next Up
-After completing these tasks, we will:
-1. Test the complete Task Management System
-2. Begin implementing the File Watching System
-3. Plan Git Integration features
-
-## Notes
-- Ensure consistent command naming and structure
-- Provide helpful error messages and suggestions
-- Include examples in help text
-- Consider adding command aliases for common operations
-
-## Phase 3: Git Integration
-
-### 1. Test Commit Message Generation [PRIORITY: HIGH]
-- [x] Task 3.1: Test OpenAI Commit Message Generation
-  - Write test for check_creds function
-  - Test with default credentials (sk-1234)
-  - Test with OpenAI base URL
-  - Test with custom credentials
-
-- [x] Task 3.2: Test Fallback Message Generation
-  - Test determine_commit_type function
-  - Test file name extraction from diff
-  - Test message formatting
-  - Test message validation
-
-- [x] Task 3.3: Test Integration with Git
-  - Test stage_all_changes with mock repo
-  - Test commit_changes with generated messages
-  - Test error handling and recovery
-  - Test with various diff contents
-
-### 2. Test Git Operations [PRIORITY: HIGH]
-- [x] Task 3.4: Test Repository State Management
-  - Test repository initialization ✓
-  - Test branch operations ✓
-  - Test state tracking ✓
-  - Test error handling ✓
-
 ### 3. Implement Cleanup Functionality [PRIORITY: MEDIUM]
-- [ ] Task 3.5: Add Cleanup Command
-  - Add cleanup command to CLI interface
-  - Implement backup functionality for rules files
-  - Add force flag for skipping confirmation
-  - Write tests for cleanup command
-  - Document cleanup functionality
+- [x] Task 3.5: Add Cleanup Command
+  - Add cleanup command to CLI interface ✓
+  - Implement backup functionality for rules files ✓
+  - Add force flag for skipping confirmation ✓
+  - Write tests for cleanup command ✓
+  - Document cleanup functionality ✓
 
 ### Next Up
 After completing these tasks, we will:
@@ -161,3 +82,137 @@ After completing these tasks, we will:
    - Aim for >90% coverage
    - Focus on critical paths
    - Include error handling paths
+
+## Phase 4: File Watching System
+
+### 1. Base Watcher Implementation [PRIORITY: HIGH]
+- [x] Task 4.1: Implement BaseWatcher Class
+  - Define BaseWatcher interface ✓
+  - Implement file path mapping ✓
+  - Add event handling methods ✓
+  - Add callback mechanism ✓
+  - Write unit tests ✓
+
+- [x] Task 4.2: Implement File Event Handling
+  - Add file creation event handling ✓
+  - Add file modification event handling ✓
+  - Add file deletion event handling ✓
+  - Add file movement event handling ✓
+  - Write event handling tests ✓
+
+### 2. Specialized Watchers [PRIORITY: HIGH]
+- [x] Task 4.3: Implement MarkdownWatcher
+  - Extend BaseWatcher for Markdown files ✓
+  - Add Markdown-specific event filtering ✓
+  - Add content validation ✓
+  - Write MarkdownWatcher tests ✓
+
+- [x] Task 4.4: Implement ScriptWatcher
+  - Extend BaseWatcher for script files ✓
+  - Add script-specific event filtering ✓
+  - Add script execution tracking ✓
+  - Write ScriptWatcher tests ✓
+
+### 3. Integration and Testing [PRIORITY: HIGH]
+- [x] Task 4.5: Implement Watcher Factory
+  - Create watcher factory function ✓
+  - Add watcher configuration ✓
+  - Add error handling ✓
+  - Write factory tests ✓
+
+- [x] Task 4.6: Integration Testing
+  - Test watcher interactions ✓
+  - Test file system events ✓
+  - Test callback system ✓
+  - Test error recovery ✓
+
+### Next Up
+After completing these tasks, we will:
+1. Begin implementing the Context Management System
+2. Update documentation with new features
+3. Improve test coverage for other modules
+
+## Notes
+- Follow TDD principles: write tests first, then implement
+- Ensure proper event handling and error recovery
+- Test with various file system scenarios
+- Document all watcher behaviors
+
+## Testing Guidelines
+1. Unit Tests
+   - Test each watcher type in isolation
+   - Mock file system events
+   - Test callback mechanisms
+   - Cover error conditions
+
+2. Integration Tests
+   - Test with real file system
+   - Test multiple watchers
+   - Test concurrent events
+   - Test system stability
+
+3. Performance Tests
+   - Test with large number of files
+   - Test with frequent updates
+   - Test memory usage
+   - Test CPU usage
+
+## Phase 5: Context Management System
+
+### 1. Core Context Implementation [PRIORITY: HIGH]
+- [ ] Task 5.1: Context File Handler
+  - Implement context file reading
+  - Add context file validation
+  - Add context file parsing
+  - Write context file tests
+
+- [ ] Task 5.2: Rules Management
+  - Implement rules parser
+  - Add rule validation
+  - Add rule application logic
+  - Write rules tests
+
+- [ ] Task 5.3: Dynamic Updates
+  - Implement context update mechanism
+  - Add change detection
+  - Add update validation
+  - Write update tests
+
+### 2. IDE Integration [PRIORITY: MEDIUM]
+- [ ] Task 5.4: IDE Bridge
+  - Implement IDE communication
+  - Add context injection
+  - Add response handling
+  - Write integration tests
+
+### 3. Testing & Documentation [PRIORITY: HIGH]
+- [ ] Task 5.5: System Testing
+  - Write unit tests
+  - Write integration tests
+  - Add performance tests
+  - Document test cases
+
+## Notes
+- Follow TDD principles
+- Ensure proper error handling
+- Document all interfaces
+- Maintain test coverage
+
+## Testing Guidelines
+1. Unit Tests
+   - Test each component in isolation
+   - Mock external dependencies
+   - Cover edge cases
+   - Test error conditions
+
+2. Integration Tests
+   - Test component interactions
+   - Test system stability
+   - Test error recovery
+   - Test performance
+
+3. Documentation
+   - API documentation
+   - Usage examples
+   - Configuration guide
+   - Troubleshooting guide

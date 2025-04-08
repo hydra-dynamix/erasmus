@@ -9,115 +9,192 @@ Classes:
     BaseWatcher: Generic file system event handler
     MarkdownWatcher: Specialized watcher for markdown documentation files
     ScriptWatcher: Specialized watcher for monitoring script files
+    WatcherFactory: Factory class for creating and managing watchers
 """
 
 import os
 import time
 import logging
+import ast
 from pathlib import Path
-from typing import Dict, Callable
-from threading import Thread
+from typing import Dict, Callable, Optional, List
+from threading import Thread, Lock
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 class BaseWatcher(FileSystemEventHandler):
-    """
-    Base file system event handler for monitoring file changes.
+    """Base class for file system event handlers."""
     
-    This class extends watchdog's FileSystemEventHandler to provide a configurable
-    file monitoring system. It maps specific file paths to identifiers and executes
-    a callback function when any of the monitored files are modified.
-    
-    The watcher normalizes all file paths to absolute paths to ensure consistent
-    path comparison across different operating systems and environments.
-    
-    Attributes:
-        file_paths (Dict[str, str]): Dictionary mapping normalized absolute file paths
-            to their logical identifiers/keys
-        callback (Callable): Function to call when a watched file is modified.
-            The callback receives the file identifier as its argument.
-    """
-    def __init__(self, file_paths: Dict[str, str], callback: Callable[[str], None]):
-        """
-        Initialize a new file watcher.
+    def __init__(self, file_paths: Dict[str, Path], callback: Callable[[str], None]):
+        """Initialize the watcher.
         
         Args:
-            file_paths (Dict[str, str]): Dictionary mapping file paths to their
-                logical identifiers/keys. Keys in this dictionary will be used
-                to identify which file triggered the callback.
-            callback (Callable[[str], None]): Function to call when a watched file is modified.
-                The callback receives the file identifier as its argument.
+            file_paths: Dictionary mapping file keys to their paths
+            callback: Function to call when a file changes
         """
         super().__init__()
-        # Normalize and store the file paths
-        self.file_paths = {str(Path(fp).resolve()): key for fp, key in file_paths.items()}
-        self.callback = callback
-        logger.info(f"Watching files: {list(self.file_paths.values())}")
-
-    def on_modified(self, event):
-        """
-        Handle file modification events.
-        
-        This method is automatically called by the watchdog Observer when a file
-        in the watched directory is modified. It checks if the modified file is
-        one of the tracked files and executes the callback if it is.
+        # Store both the original mapping and the normalized paths
+        self.file_paths = file_paths
+        self.callback = callback  # Store the callback
+        self._path_mapping = {str(path.resolve()): key for key, path in file_paths.items()}
+        self._event_lock = Lock()
+        self._last_events: Dict[str, float] = {}
+    
+    def _should_process_event(self, event_path: str) -> bool:
+        """Check if an event should be processed based on debouncing.
         
         Args:
-            event (FileSystemEvent): Event object containing information about
-                the file system change
+            event_path: Path of the file that triggered the event
+            
+        Returns:
+            bool: True if the event should be processed
         """
-        path = str(Path(event.src_path).resolve())
-        if path in self.file_paths:
-            file_key = self.file_paths[path]
-            logger.info(f"Detected update in {file_key}")
-            self.callback(file_key)
+        current_time = time.time()
+        with self._event_lock:
+            last_time = self._last_events.get(event_path, 0)
+            if current_time - last_time < 0.05:  # 50ms debounce
+                return False
+            self._last_events[event_path] = current_time
+            return True
+    
+    def _get_file_key(self, file_path: str) -> Optional[str]:
+        """Get the key for a file path."""
+        try:
+            resolved_path = str(Path(file_path).resolve())
+            return self._path_mapping.get(resolved_path)
+        except Exception:
+            return None
+    
+    def _handle_event(self, event: FileSystemEvent) -> None:
+        """Handle a file system event.
+        
+        Args:
+            event: The file system event to handle
+        """
+        if event.is_directory:
+            return
+            
+        file_key = self._get_file_key(event.src_path)
+        if file_key and self._should_process_event(event.src_path):
+            try:
+                if os.path.exists(event.src_path):
+                    with open(event.src_path, 'r') as f:
+                        content = f.read()
+                    if self._validate_content(content):
+                        self.callback(file_key)
+                else:
+                    # For deletion events, we still want to notify
+                    self.callback(file_key)
+            except Exception as e:
+                logging.error(f"Error handling event for {event.src_path}: {e}")
+    
+    def _validate_content(self, content: str) -> bool:
+        """Validate file content. Override in subclasses.
+        
+        Args:
+            content: The file content to validate
+            
+        Returns:
+            bool: True if content is valid
+        """
+        return True
+    
+    def on_modified(self, event: FileSystemEvent) -> None:
+        """Handle file modification events."""
+        self._handle_event(event)
+    
+    def on_created(self, event: FileSystemEvent) -> None:
+        """Handle file creation events."""
+        self._handle_event(event)
+    
+    def on_deleted(self, event: FileSystemEvent) -> None:
+        """Handle file deletion events."""
+        self._handle_event(event)
+    
+    def on_moved(self, event: FileSystemEvent) -> None:
+        """Handle file move events."""
+        self._handle_event(event)
 
 class MarkdownWatcher(BaseWatcher):
-    """
-    Specialized watcher for monitoring markdown documentation files.
+    """Specialized watcher for markdown documentation files.
     
-    This watcher subclass is specifically designed to monitor the project's
-    documentation files (ARCHITECTURE.md, PROGRESS.md, TASKS.md, etc.).
-    When any of these files change, it automatically updates the context
-    tracking system and creates a Git commit to track the changes.
+    This class extends BaseWatcher to provide specific handling for Markdown files.
+    It validates file content and only triggers callbacks for valid Markdown files.
     
-    The file mapping is built automatically from the SETUP_FILES dictionary,
-    which defines the standard set of project documentation files.
+    Args:
+        file_paths: A dictionary mapping file paths to their keys
+        callback: A function to call when a watched file is modified
     """
-    def __init__(self, setup_files: Dict[str, Path], update_callback: Callable[[str], None]):
-        """
-        Initialize a new MarkdownWatcher.
+    
+    def _validate_content(self, content: str) -> bool:
+        """Validate markdown content.
         
         Args:
-            setup_files (Dict[str, Path]): Dictionary mapping file keys to their paths
-            update_callback (Callable[[str], None]): Function to call when a file is modified
+            content: The markdown content to validate
+            
+        Returns:
+            bool: True if content appears to be valid markdown
         """
-        # Build the file mapping from setup_files
-        file_mapping = {str(path.resolve()): name for name, path in setup_files.items()}
-        super().__init__(file_mapping, update_callback)
+        # More thorough markdown validation:
+        # 1. Must have non-empty content
+        if not content.strip():
+            return False
+            
+        # 2. Must have at least one proper heading
+        lines = content.split('\n')
+        has_heading = False
+        for line in lines:
+            if line.strip().startswith('# '):  # Must have space after #
+                has_heading = True
+                break
+                
+        # 3. Must have some content after the heading
+        has_content = len([l for l in lines if l.strip() and not l.strip().startswith('#')]) > 0
+        
+        return has_heading and has_content
 
 class ScriptWatcher(BaseWatcher):
-    """
-    Specialized watcher for monitoring the script file itself.
+    """Specialized watcher for Python script files.
     
-    This watcher is responsible for detecting changes to Python script files
-    and triggering appropriate actions when changes are detected. This allows
-    for automatic reloading or restarting of scripts when they are modified.
+    This class extends BaseWatcher to provide specific handling for Python script files.
+    It validates file content and only triggers callbacks for valid Python files.
+    
+    Args:
+        script_path: Path to the script file to watch
+        callback: A function to call when the script is modified
     """
-    def __init__(self, script_path: str, restart_callback: Callable[[str], None]):
-        """
-        Initialize a new ScriptWatcher.
+    
+    def __init__(self, script_path: str, callback: Callable[[str], None]):
+        """Initialize the script watcher.
         
         Args:
-            script_path (str): Path to the script file to monitor
-            restart_callback (Callable[[str], None]): Function to call when the script changes
+            script_path: Path to the script file to watch
+            callback: Function to call when the script changes
         """
-        # We only want to watch the script file itself
-        file_mapping = {os.path.abspath(script_path): "Script File"}
-        super().__init__(file_mapping, restart_callback)
+        if not script_path.endswith('.py'):
+            logging.warning(f"Script path {script_path} does not have .py extension")
+        super().__init__({script_path: Path(script_path)}, callback)
+    
+    def _validate_content(self, content: str) -> bool:
+        """Validate Python script content.
+        
+        Args:
+            content: The Python code to validate
+            
+        Returns:
+            bool: True if content is valid Python code
+        """
+        if not content.strip():
+            return False
+            
+        try:
+            ast.parse(content)
+            return True
+        except SyntaxError:
+            return False
 
 def run_observer(observer: Observer):
     """
@@ -163,3 +240,82 @@ def create_file_watchers(setup_files: Dict[str, Path],
     script_observer.schedule(script_watcher, os.path.dirname(os.path.abspath(script_path)), recursive=False)
     
     return markdown_observer, script_observer
+
+class WatcherFactory:
+    """Factory class for creating and managing file watchers.
+    
+    This class provides a centralized way to create and manage different types
+    of file watchers and their associated observers. It handles the lifecycle
+    of watchers and observers, including creation, starting, and stopping.
+    """
+    
+    def __init__(self):
+        """Initialize the factory."""
+        self.watchers: Dict[str, FileSystemEventHandler] = {}
+        self.observers: List[Observer] = []
+    
+    def create_markdown_watcher(self, file_paths: Dict[str, Path], callback: Callable[[str], None]) -> MarkdownWatcher:
+        """Create a new MarkdownWatcher instance.
+        
+        Args:
+            file_paths: Dictionary mapping file keys to their paths
+            callback: Function to call when a markdown file changes
+            
+        Returns:
+            MarkdownWatcher: The created watcher instance
+        """
+        watcher = MarkdownWatcher(file_paths, callback)
+        self.watchers['markdown'] = watcher
+        return watcher
+    
+    def create_script_watcher(self, script_path: str, callback: Callable[[str], None]) -> ScriptWatcher:
+        """Create a new ScriptWatcher instance.
+        
+        Args:
+            script_path: Path to the script file to watch
+            callback: Function to call when the script changes
+            
+        Returns:
+            ScriptWatcher: The created watcher instance
+        """
+        watcher = ScriptWatcher(script_path, callback)
+        self.watchers['script'] = watcher
+        return watcher
+    
+    def create_observer(self, watcher: FileSystemEventHandler, directory: str) -> Observer:
+        """Create and configure a new Observer for a watcher.
+        
+        Args:
+            watcher: The file system event handler to use
+            directory: The directory to watch
+            
+        Returns:
+            Observer: The configured observer instance
+            
+        Raises:
+            ValueError: If the directory does not exist
+            TypeError: If the watcher is invalid
+        """
+        if not isinstance(watcher, FileSystemEventHandler):
+            raise TypeError("Invalid watcher type")
+        
+        if not os.path.exists(directory):
+            raise ValueError(f"Directory does not exist: {directory}")
+        
+        observer = Observer()
+        observer.schedule(watcher, directory, recursive=False)
+        self.observers.append(observer)
+        return observer
+    
+    def start_all(self) -> None:
+        """Start all registered observers."""
+        for observer in self.observers:
+            if not observer.is_alive():
+                observer.start()
+    
+    def stop_all(self) -> None:
+        """Stop all registered observers."""
+        for observer in self.observers:
+            if observer.is_alive():
+                observer.stop()
+                observer.join()
