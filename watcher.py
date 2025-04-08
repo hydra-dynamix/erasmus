@@ -625,21 +625,21 @@ def save_global_rules(rules_content):
     """
     _, global_rules_path = get_rules_file_path()
     
-    # Special handling for Cursor
-    if detect_ide_environment() == 'CURSOR':
-        logger.warning(
-            "Global rules must be manually saved in Cursor settings. "
-            "Please copy the following content to your global rules:"
-        )
-        print(rules_content)
-        return
-    
+    # First, write the file regardless of IDE environment
     try:
         with open(global_rules_path, 'w') as f:
             f.write(rules_content)
         logger.info(f"Global rules saved to {global_rules_path}")
     except Exception as e:
         logger.error(f"Failed to save global rules: {e}")
+    
+    # If Cursor, show the warning but don't return early
+    if detect_ide_environment() == 'CURSOR':
+        logger.warning(
+            "For Cursor, please also manually copy global rules to settings. "
+            "The file has been saved to global_rules.md, but you need to add this content to Cursor settings."
+        )
+        print(rules_content)
 
 def save_context_rules(context_content):
     """
@@ -668,11 +668,10 @@ def setup_project():
     for file in [GLOBAL_RULES_PATH, CONTEXT_RULES_PATH]:
         ensure_file_exists(file)
     
-    # Write global rules to global_rules.md
-    if not safe_read_file(GLOBAL_RULES_PATH):
-        save_global_rules(GLOBAL_RULES)
-        logger.info(f"Created global rules at {GLOBAL_RULES_PATH}")
-        logger.info("Please add the contents of global_rules.md to your IDE's global rules section")
+    # Always write global rules to global_rules.md 
+    save_global_rules(GLOBAL_RULES)
+    logger.info(f"Created global rules at {GLOBAL_RULES_PATH}")
+    logger.info("Please add the contents of global_rules.md to your IDE's global rules section")
     
     # Initialize cursor rules file if empty
     if not safe_read_file(CONTEXT_RULES_PATH):
@@ -1150,6 +1149,12 @@ def main():
     try:
         ide_env = detect_ide_environment()
 
+        # Handle setup action first
+        if ARGS.setup:
+            logger.info("Setting up project...")
+            setup_project()
+            return 0
+            
         if ARGS.update and ARGS.update_value:
             update_specific_file(ARGS.update, ARGS.update_value)
             if not ARGS.watch:

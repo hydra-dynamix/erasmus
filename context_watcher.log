@@ -598,3 +598,37 @@ AttributeError: 'bool' object has no attribute 'upper'
 2025-04-07 21:40:39,347 - context_watcher - INFO - Processing update from TASKS
 2025-04-07 21:40:39,493 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
 2025-04-07 21:42:31,219 - context_watcher - INFO - Shutting down...
+2025-04-07 21:53:01,337 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:53:01,481 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:54:20,938 - context_watcher - INFO - Detected update in Script File
+2025-04-07 21:54:21,735 - context_watcher - INFO - Detected change in Script File. Restarting the script...
+2025-04-07 21:54:22,975 - context_watcher - INFO - Restarting the program...
+2025-04-07 21:54:30,262 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:54:30,589 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:54:30,592 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-07 21:54:30,608 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-07 21:54:30,625 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-07 21:55:04,365 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:55:04,523 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:55:44,961 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:55:45,276 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:56:10,858 - context_watcher - INFO - Detected update in Script File
+2025-04-07 21:56:10,874 - context_watcher - INFO - Detected change in Script File. Restarting the script...
+2025-04-07 21:56:11,890 - context_watcher - INFO - Restarting the program...
+2025-04-07 21:56:23,031 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:56:24,754 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-07 21:56:24,784 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-07 21:56:24,798 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-07 21:56:24,913 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-07 21:56:31,887 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 21:56:32,132 - context_watcher - INFO - Setting up project...
+2025-04-07 21:56:32,139 - context_watcher - INFO - Global rules saved to /home/bakobi/repos/erasmus/global_rules.md
+2025-04-07 21:56:32,146 - context_watcher - WARNING - For Cursor, please also manually copy global rules to settings. The file has been saved to global_rules.md, but you need to add this content to Cursor settings.
+2025-04-07 21:56:32,149 - context_watcher - INFO - Created global rules at /home/bakobi/repos/erasmus/global_rules.md
+2025-04-07 21:56:32,152 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section
+2025-04-07 22:19:46,404 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-07 22:19:46,662 - context_watcher - INFO - Setting up project...
+2025-04-07 22:19:46,666 - context_watcher - INFO - Global rules saved to /home/bakobi/repos/erasmus/global_rules.md
+2025-04-07 22:19:46,670 - context_watcher - WARNING - For Cursor, please also manually copy global rules to settings. The file has been saved to global_rules.md, but you need to add this content to Cursor settings.
+2025-04-07 22:19:46,676 - context_watcher - INFO - Created global rules at /home/bakobi/repos/erasmus/global_rules.md
+2025-04-07 22:19:46,679 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section

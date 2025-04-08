@@ -1,70 +1,110 @@
-# Erasmus: Context Watcher for Development Environment Setup
+# Erasmus: AI Context Watcher for Development
 
-## Project Overview
-Erasmus is a single-file context watcher designed to streamline project initialization, development tracking, and version management across different IDE environments.
+## Overview
+Erasmus is a powerful context watcher that enhances your development environment by tracking project state and providing intelligent assistance through AI integration. It's designed to work with Cursor and Windsurf IDEs to provide contextual guidance during development.
+
+## How It Works
+
+Erasmus leverages modern IDE capabilities by utilizing their rule injection mechanisms to deliver dynamic context to AI code assistants. The system maintains three core markdown documents that drive AI-assisted development:
+
+![process flowchart](public/flowchart.png)
+
+### Intelligent Document Management
+
+**ARCHITECTURE.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
+
+**PROGRESS.md** tracks components derived from the architecture document, organizing them into a development schedule.
+
+**TASKS.md** breaks down components into manageable sub-tasks, tracking their completion status throughout development.
+
+### Continuous Context Synchronization
+
+As development progresses:
+1. Erasmus monitors these files in real-time
+2. When file changes are detected, it updates the IDE rule files
+3. The AI assistant receives the updated context immediately
+4. This allows the AI to maintain awareness of current project state
+
+This continuous context loop ensures your AI assistant always has the most current understanding of your project status, decisions, and remaining work, enabling truly intelligent assistance throughout the development lifecycle.
 
 ## Quick Installation
 
-### Option 1: Direct Download and Run
-1. Download the appropriate installer from the `release/` directory:
-   - For Windows: Download the `.bat` file
-   - For macOS/Linux: Download the `.sh` file
-
-2. Run the installer:
-   - Windows: Double-click the `.bat` file or run it from Command Prompt
-   - macOS/Linux: Make the script executable and run it
-     ```bash
-     chmod +x erasmus_v*.sh
-     ./erasmus_v*.sh
-     ```
-
-3. When prompted for configuration variables:
-   - Enter your preferred values, or
-   - Press Enter to accept the defaults (configured for OpenAI)
-
-### Option 2: Installation via curl (Linux/macOS)
-
-#### Method A: Interactive Installation (Recommended)
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/launcher.sh | bash
+curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh -o erasmus.sh && chmod +x erasmus.sh && ./erasmus.sh
 ```
 
-This method uses a launcher script that ensures interactive prompts work properly, allowing you to customize your installation.
+That's it! The installer will set up everything you need.
 
-#### Method B: Manual Download and Execute
+## What Does Erasmus Do?
+
+Erasmus sits in the background of your development environment and:
+
+1. **Tracks Project Context** - Maintains a complete view of your codebase structure, decisions, and progress
+2. **Powers IDE Context Injection** - Feeds rich context to AI code assistants in compatible IDEs
+3. **Monitors Development Files** - Watches for changes in key files like architecture docs and progress tracking
+4. **Creates Essential Documentation** - Automatically generates and updates project documentation
+
+### Core Files Managed by Erasmus
+
+- **ARCHITECTURE.md** - Project architecture documentation
+- **PROGRESS.md** - Development progress tracking
+- **TASKS.md** - Granular task management
+- **.IDErules** - Bundled context for IDE integration
+
+## Usage
+
+After installation, you can:
+
 ```bash
-# Download the script
-curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh -o erasmus_install.sh
+# Start the context watcher
+uv run erasmus.py --watch
 
-# Make it executable
-chmod +x erasmus_install.sh
+# Set up a new project environment
+uv run erasmus.py --setup [cursor|windsurf]
 
-# Run it interactively
-./erasmus_install.sh
+# View project status
+uv run erasmus.py --status
 ```
 
-#### Method C: Non-interactive Installation
-```bash
-curl -fsSL https://raw.githubusercontent.com/Bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh | bash
+## Compatible IDE Environments
+
+- **Cursor** - Full support with `.cursorrules` integration
+- **Windsurf** - Full support with `.windsurfrules` integration
+
+## How It Works
+
+1. Erasmus runs as a background process, monitoring your project files
+2. When changes occur in tracked files, it updates the context
+3. The context is injected into your IDE's AI assistant
+4. Your AI assistant gains deep understanding of your project's state and goals
+
+## Advanced Features
+
+- **Atomic Git Management** - Provides structured commit messages with contextual awareness
+- **Cross-Platform Support** - Works on Windows, macOS, and Linux
+- **Local LLM Integration** - Can be configured to use local AI models instead of OpenAI
+
+## Configuration
+
+Erasmus can be configured through:
+
+1. `.env` file (created during installation)
+2. Command-line parameters
+3. Interactive prompts
+
+Key configuration variables:
+
+```
+IDE_ENV=cursor        # Your IDE environment
+OPENAI_API_KEY=       # Your OpenAI API key
+OPENAI_MODEL=gpt-4o   # Model to use for git commit messages
 ```
 
-> **Note:** Method C skips interactive prompts and uses default values for all settings.
+## For Contributors
 
-## Features
-- Automated project initialization with essential documentation
-- IDE context injection for Cursor and Windsurf
-- Git management with atomic commits
-- Environment setup for Python, Node, and Rust projects
-- Cross-platform compatibility
+If you'd like to contribute to Erasmus development, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file or check the development setup instructions below.
 
-## Development Setup
-For contributors who want to work on Erasmus itself:
-
-### Prerequisites
-- Python 3.8+
-- uv package manager
-
-### Setup for Development
+### Development Setup
 ```bash
 # Clone the repository
 git clone https://github.com/bakobiibizo/erasmus.git
@@ -81,13 +121,17 @@ source .venv/bin/activate  # Unix
 uv pip install -e .[test]
 ```
 
-### Running Tests
+### Building a Release
 ```bash
-pytest
+# Build the complete release package
+python main.py build
+
+# Test the installer in Docker
+python main.py test
 ```
 
 ## Troubleshooting
-- Ensure you have the correct permissions to execute the installer
-- Check that Python 3.8+ is installed on your system
-- For OpenAI integration, ensure you have valid API credentials
-- If using a local LLM, verify the base URL is correctly formatted
+
+- **Permission Issues**: Run `sudo chmod +x erasmus.sh` if you encounter permission denied errors
+- **OpenAI Integration**: Ensure you have valid API credentials in your `.env` file
+- **Path Issues**: If `uv` is not found, try restarting your terminal or adding it to your PATH
