@@ -50,18 +50,28 @@ class BaseWatcher(FileSystemEventHandler):
             event_path: Path of the file that triggered the event
             
         Returns:
-            bool: True if the event should be processed
+            True if the event should be processed, False otherwise
         """
-        current_time = time.time()
         with self._event_lock:
+            current_time = time.time()
             last_time = self._last_events.get(event_path, 0)
-            if current_time - last_time < 0.05:  # 50ms debounce
+            
+            # Debounce events within 0.1 seconds
+            if current_time - last_time < 0.1:
                 return False
+            
             self._last_events[event_path] = current_time
             return True
     
     def _get_file_key(self, file_path: str) -> Optional[str]:
-        """Get the key for a file path."""
+        """Get the file key for a given path.
+        
+        Args:
+            file_path: Path to look up
+            
+        Returns:
+            File key if found, None otherwise
+        """
         try:
             resolved_path = str(Path(file_path).resolve())
             return self._path_mapping.get(resolved_path)
@@ -76,29 +86,35 @@ class BaseWatcher(FileSystemEventHandler):
         """
         if event.is_directory:
             return
-            
-        file_key = self._get_file_key(event.src_path)
-        if file_key and self._should_process_event(event.src_path):
-            try:
-                if os.path.exists(event.src_path):
-                    with open(event.src_path, 'r') as f:
-                        content = f.read()
-                    if self._validate_content(content):
-                        self.callback(file_key)
-                else:
-                    # For deletion events, we still want to notify
+        
+        file_path = event.src_path
+        if not self._should_process_event(file_path):
+            return
+        
+        file_key = self._get_file_key(file_path)
+        if file_key is None:
+            return
+        
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, 'r') as f:
+                    content = f.read()
+                if self._validate_content(content):
                     self.callback(file_key)
-            except Exception as e:
-                logging.error(f"Error handling event for {event.src_path}: {e}")
+            else:
+                # For deletion events, we still want to notify
+                self.callback(file_key)
+        except Exception as e:
+            logger.error(f"Error handling event for {file_path}: {e}")
     
     def _validate_content(self, content: str) -> bool:
-        """Validate file content. Override in subclasses.
+        """Validate file content.
         
         Args:
-            content: The file content to validate
+            content: Content to validate
             
         Returns:
-            bool: True if content is valid
+            True if content is valid, False otherwise
         """
         return True
     
@@ -115,81 +131,59 @@ class BaseWatcher(FileSystemEventHandler):
         self._handle_event(event)
     
     def on_moved(self, event: FileSystemEvent) -> None:
-        """Handle file move events."""
+        """Handle file movement events."""
         self._handle_event(event)
 
 class MarkdownWatcher(BaseWatcher):
-    """Specialized watcher for markdown documentation files.
-    
-    This class extends BaseWatcher to provide specific handling for Markdown files.
-    It validates file content and only triggers callbacks for valid Markdown files.
-    
-    Args:
-        file_paths: A dictionary mapping file paths to their keys
-        callback: A function to call when a watched file is modified
-    """
+    """Specialized watcher for markdown documentation files."""
     
     def _validate_content(self, content: str) -> bool:
         """Validate markdown content.
         
         Args:
-            content: The markdown content to validate
+            content: Content to validate
             
         Returns:
-            bool: True if content appears to be valid markdown
+            True if content is valid markdown, False otherwise
         """
-        # More thorough markdown validation:
-        # 1. Must have non-empty content
-        if not content.strip():
+        # Basic markdown validation
+        lines = content.split("\n")
+        if not lines:
             return False
-            
-        # 2. Must have at least one proper heading
-        lines = content.split('\n')
-        has_heading = False
-        for line in lines:
-            if line.strip().startswith('# '):  # Must have space after #
-                has_heading = True
-                break
-                
-        # 3. Must have some content after the heading
-        has_content = len([l for l in lines if l.strip() and not l.strip().startswith('#')]) > 0
         
-        return has_heading and has_content
+        # Check for title
+        if not lines[0].startswith("# "):
+            return False
+        
+        return True
 
 class ScriptWatcher(BaseWatcher):
-    """Specialized watcher for Python script files.
+    """Specialized watcher for script files."""
     
-    This class extends BaseWatcher to provide specific handling for Python script files.
-    It validates file content and only triggers callbacks for valid Python files.
-    
-    Args:
-        script_path: Path to the script file to watch
-        callback: A function to call when the script is modified
-    """
-    
-    def __init__(self, script_path: str, callback: Callable[[str], None]):
+    def __init__(self, script_path: Path, callback: Callable[[str], None]):
         """Initialize the script watcher.
         
         Args:
             script_path: Path to the script file to watch
             callback: Function to call when the script changes
         """
-        if not script_path.endswith('.py'):
-            logging.warning(f"Script path {script_path} does not have .py extension")
-        super().__init__({script_path: Path(script_path)}, callback)
+        script_path = Path(script_path)
+        if not str(script_path).endswith('.py'):
+            raise ValueError("Script path must end with .py")
+        
+        # Use the script name without extension as the key
+        script_key = script_path.stem
+        super().__init__({script_key: script_path}, callback)
     
     def _validate_content(self, content: str) -> bool:
         """Validate Python script content.
         
         Args:
-            content: The Python code to validate
+            content: Content to validate
             
         Returns:
-            bool: True if content is valid Python code
+            True if content is valid Python, False otherwise
         """
-        if not content.strip():
-            return False
-            
         try:
             ast.parse(content)
             return True
@@ -197,125 +191,104 @@ class ScriptWatcher(BaseWatcher):
             return False
 
 def run_observer(observer: Observer):
-    """
-    Run a watchdog Observer in a blocking manner.
-    
-    This helper function starts an Observer and blocks until the Observer
-    is stopped. It's typically used to run Observers in separate threads.
+    """Run an observer in a separate thread.
     
     Args:
-        observer (Observer): The watchdog Observer to run
+        observer: Observer to run
     """
     observer.start()
+    try:
+        while observer.is_alive():
+            observer.join(1)
+    except KeyboardInterrupt:
+        observer.stop()
     observer.join()
 
 def create_file_watchers(setup_files: Dict[str, Path], 
                         update_callback: Callable[[str], None],
-                        script_path: str,
+                        script_path: Path,
                         restart_callback: Callable[[str], None]) -> tuple[Observer, Observer]:
-    """
-    Create and configure file watchers for both markdown files and scripts.
-    
-    This function sets up the necessary watchers and observers for monitoring
-    both documentation files and script files. It creates separate observers
-    for each watcher type to allow independent control.
+    """Create and configure file watchers.
     
     Args:
-        setup_files (Dict[str, Path]): Dictionary mapping file keys to their paths
-        update_callback (Callable[[str], None]): Function to call when a markdown file changes
-        script_path (str): Path to the script file to monitor
-        restart_callback (Callable[[str], None]): Function to call when the script changes
+        setup_files: Dictionary mapping file keys to their paths
+        update_callback: Callback for file updates
+        script_path: Path to the script file
+        restart_callback: Callback for script restarts
         
     Returns:
-        tuple[Observer, Observer]: Tuple containing (markdown_observer, script_observer)
+        Tuple of (markdown_observer, script_observer)
     """
-    # Create markdown watcher
+    # Create watchers
     markdown_watcher = MarkdownWatcher(setup_files, update_callback)
-    markdown_observer = Observer()
-    markdown_observer.schedule(markdown_watcher, str(Path.cwd()), recursive=False)
-    
-    # Create script watcher
     script_watcher = ScriptWatcher(script_path, restart_callback)
+    
+    # Create observers
+    markdown_observer = Observer()
     script_observer = Observer()
-    script_observer.schedule(script_watcher, os.path.dirname(os.path.abspath(script_path)), recursive=False)
+    
+    # Schedule watchers
+    markdown_observer.schedule(markdown_watcher, str(script_path.parent), recursive=False)
+    script_observer.schedule(script_watcher, str(script_path.parent), recursive=False)
     
     return markdown_observer, script_observer
 
 class WatcherFactory:
-    """Factory class for creating and managing file watchers.
-    
-    This class provides a centralized way to create and manage different types
-    of file watchers and their associated observers. It handles the lifecycle
-    of watchers and observers, including creation, starting, and stopping.
-    """
+    """Factory class for creating and managing watchers."""
     
     def __init__(self):
         """Initialize the factory."""
-        self.watchers: Dict[str, FileSystemEventHandler] = {}
         self.observers: List[Observer] = []
     
     def create_markdown_watcher(self, file_paths: Dict[str, Path], callback: Callable[[str], None]) -> MarkdownWatcher:
-        """Create a new MarkdownWatcher instance.
+        """Create a markdown watcher.
         
         Args:
             file_paths: Dictionary mapping file keys to their paths
-            callback: Function to call when a markdown file changes
+            callback: Function to call when files change
             
         Returns:
-            MarkdownWatcher: The created watcher instance
+            Configured MarkdownWatcher
         """
-        watcher = MarkdownWatcher(file_paths, callback)
-        self.watchers['markdown'] = watcher
-        return watcher
+        return MarkdownWatcher(file_paths, callback)
     
-    def create_script_watcher(self, script_path: str, callback: Callable[[str], None]) -> ScriptWatcher:
-        """Create a new ScriptWatcher instance.
+    def create_script_watcher(self, script_path: Path, callback: Callable[[str], None]) -> ScriptWatcher:
+        """Create a script watcher.
         
         Args:
-            script_path: Path to the script file to watch
+            script_path: Path to the script file
             callback: Function to call when the script changes
             
         Returns:
-            ScriptWatcher: The created watcher instance
+            Configured ScriptWatcher
         """
-        watcher = ScriptWatcher(script_path, callback)
-        self.watchers['script'] = watcher
-        return watcher
+        return ScriptWatcher(script_path, callback)
     
     def create_observer(self, watcher: FileSystemEventHandler, directory: str) -> Observer:
-        """Create and configure a new Observer for a watcher.
+        """Create and configure an observer.
         
         Args:
-            watcher: The file system event handler to use
-            directory: The directory to watch
+            watcher: Event handler to use
+            directory: Directory to watch
             
         Returns:
-            Observer: The configured observer instance
-            
-        Raises:
-            ValueError: If the directory does not exist
-            TypeError: If the watcher is invalid
+            Configured Observer
         """
-        if not isinstance(watcher, FileSystemEventHandler):
-            raise TypeError("Invalid watcher type")
-        
-        if not os.path.exists(directory):
-            raise ValueError(f"Directory does not exist: {directory}")
-        
         observer = Observer()
         observer.schedule(watcher, directory, recursive=False)
+        observer.start()
         self.observers.append(observer)
         return observer
     
     def start_all(self) -> None:
-        """Start all registered observers."""
+        """Start all observers."""
         for observer in self.observers:
             if not observer.is_alive():
                 observer.start()
     
     def stop_all(self) -> None:
-        """Stop all registered observers."""
+        """Stop all observers."""
         for observer in self.observers:
-            if observer.is_alive():
-                observer.stop()
-                observer.join()
+            observer.stop()
+            observer.join()
+        self.observers.clear()

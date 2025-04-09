@@ -5,7 +5,7 @@ Erasmus is a powerful context watcher that enhances your development environment
 
 ## How It Works
 
-Erasmus leverages modern IDE capabilities by utilizing their rule injection mechanisms to deliver dynamic context to AI code assistants. The system maintains three core markdown documents that drive AI-assisted development:
+Erasmus leverages modern AI IDE capabilities by utilizing their rule injection mechanisms to deliver dynamic context to AI code assistants. The system maintains three core markdown documents that drive AI-assisted development:
 
 ![process flowchart](public/flowchart.png)
 
@@ -53,7 +53,7 @@ Erasmus sits in the background of your development environment and:
 
 ## Usage
 
-After installation, you can:
+### Basic Commands
 
 ```bash
 # Start the context watcher
@@ -66,17 +66,108 @@ uv run erasmus.py --setup [cursor|windsurf]
 uv run erasmus.py --status
 ```
 
+### Advanced Usage
+
+```bash
+# Initialize a new project with specific IDE
+uv run erasmus.py --init --ide cursor
+
+# Update project documentation
+uv run erasmus.py --update-docs
+
+# Generate a new release
+uv run erasmus.py --release
+
+# Convert scripts for different platforms
+uv run erasmus.py --convert-scripts
+```
+
+### Command Line Options
+
+```bash
+--watch              # Start the context watcher
+--setup IDE          # Set up IDE environment (cursor/windsurf)
+--status            # Show project status
+--init              # Initialize new project
+--ide IDE           # Specify IDE (cursor/windsurf)
+--update-docs       # Update project documentation
+--release           # Generate new release
+--convert-scripts   # Convert scripts for different platforms
+--version           # Show version information
+--help              # Show help message
+```
+
+## Code Structure
+
+### Core Components
+
+1. **watcher.py** - Main application orchestrating project setup and management
+   - `Watcher` class: Core functionality for file watching and context management
+   - `Task` class: Task management and tracking
+   - `TaskStatus` class: Task status enumeration
+
+2. **src/script_converter.py** - Handles script conversion between platforms
+   - `ScriptConverter` class: Converts shell scripts to batch scripts
+   - Command mapping and function templates
+
+3. **src/packager.py** - Python script packaging functionality
+   - `ScriptPackager` class: Bundles multiple Python files into a single executable
+   - AST-based code analysis and dependency tracking
+
+4. **src/build_release.py** - Release package building
+   - `build_single_file()`: Creates single-file executable
+   - `embed_erasmus()`: Embeds executable into installer
+   - `convert_to_batch()`: Converts shell scripts to batch files
+
+### Key Classes and Methods
+
+#### Watcher Class
+```python
+class Watcher:
+    def __init__(self, base_path: Path):
+        self.base_path = Path(base_path)
+        self.tasks = []
+        self.context = {}
+
+    def watch_files(self):
+        """Start watching project files for changes."""
+        
+    def update_context(self):
+        """Update project context based on file changes."""
+        
+    def add_task(self, description: str) -> Task:
+        """Add a new task to the project."""
+```
+
+#### Task Class
+```python
+class Task:
+    def __init__(self, id: str, description: str):
+        self.id = id
+        self.description = description
+        self.status = TaskStatus.PENDING
+        self.notes = []
+
+    def add_note_to_task(self, note: str):
+        """Add a note to the task."""
+```
+
+#### ScriptPackager Class
+```python
+class ScriptPackager:
+    def __init__(self, base_path: Path):
+        self.base_path = Path(base_path)
+        self.import_set = set()
+        self.script_bodies = []
+
+    def package_scripts(self, output_path: Optional[Path] = None) -> str:
+        """Package all scripts into a single file."""
+```
+
 ## Compatible IDE Environments
 
 - **Cursor** - Full support with `.cursorrules` integration
 - **Windsurf** - Full support with `.windsurfrules` integration
-
-## How It Works
-
-1. Erasmus runs as a background process, monitoring your project files
-2. When changes occur in tracked files, it updates the context
-3. The context is injected into your IDE's AI assistant
-4. Your AI assistant gains deep understanding of your project's state and goals
 
 ## Advanced Features
 
@@ -97,14 +188,13 @@ Key configuration variables:
 ```
 IDE_ENV=cursor        # Your IDE environment
 OPENAI_API_KEY=       # Your OpenAI API key
-OPENAI_MODEL=gpt-4o   # Model to use for git commit messages
+OPENAI_MODEL=gpt-4    # Model to use for git commit messages
 ```
 
-## For Contributors
+## Development
 
-If you'd like to contribute to Erasmus development, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file or check the development setup instructions below.
+### Setting Up Development Environment
 
-### Development Setup
 ```bash
 # Clone the repository
 git clone https://github.com/bakobiibizo/erasmus.git
@@ -121,7 +211,21 @@ source .venv/bin/activate  # Unix
 uv pip install -e .[test]
 ```
 
+### Running Tests
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run specific test file
+uv run pytest tests/test_packager.py
+
+# Run tests with coverage
+uv run pytest --cov=src
+```
+
 ### Building a Release
+
 ```bash
 # Build the complete release package
 python main.py build
@@ -135,3 +239,9 @@ python main.py test
 - **Permission Issues**: Run `sudo chmod +x erasmus.sh` if you encounter permission denied errors
 - **OpenAI Integration**: Ensure you have valid API credentials in your `.env` file
 - **Path Issues**: If `uv` is not found, try restarting your terminal or adding it to your PATH
+- **Script Conversion**: If script conversion fails, check the release directory permissions
+- **Package Building**: Ensure all required files exist in the correct locations before building
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to Erasmus.

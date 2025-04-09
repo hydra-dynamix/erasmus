@@ -171,26 +171,25 @@ def test_rule_application():
     valid_code = '''
 def greet(name: str) -> str:
     """Return a greeting message.
-    
+
     Args:
         name: The name to greet
-        
+
     Returns:
         A greeting message
     """
     return f"Hello, {name}!"
 '''
-    assert manager.validate_code(valid_code, rules)
+    assert not manager.validate_code(valid_code, rules)  # No errors for valid code
     
-    # Test invalid Python file (missing type hints)
+    # Test invalid Python file
     invalid_code = '''
-def greet(name):
-    """Greet someone."""
-    print(f"Hello, {name}!")  # Print statement violation
+def greet(name):  # Missing type hints
+    print("Hello!")  # Print statement
     return f"Hello, {name}!"
 '''
-    violations = manager.validate_code(invalid_code, rules)
-    assert len(violations) == 2  # Missing type hints and print statement
+    errors = manager.validate_code(invalid_code, rules)
+    assert len(errors) == 3  # Missing type hints, missing docstring, print statement
 
 def test_rule_export_import(temp_rules_files):
     """Test exporting and importing rules."""

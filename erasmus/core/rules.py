@@ -108,8 +108,22 @@ class RulesManager:
             project_rules = self.parse_rules(project_rules_path)
             for rule in project_rules:
                 key = self._rule_key(rule)
-                # Remove any existing rule with the same key
-                self.active_rules = {r for r in self.active_rules if self._rule_key(r) != key}
+                # Remove any existing rule with the same key or conflicting rules
+                conflicting_rules = set()
+                for existing_rule in self.active_rules:
+                    if self._rule_key(existing_rule) == key:
+                        conflicting_rules.add(existing_rule)
+                    else:
+                        # Check for pattern-based conflicts
+                        desc1 = rule.description.lower()
+                        desc2 = existing_rule.description.lower()
+                        for pattern1, pattern2 in self._conflicting_patterns:
+                            if (re.search(pattern1, desc1) and re.search(pattern2, desc2)) or \
+                               (re.search(pattern2, desc1) and re.search(pattern1, desc2)):
+                                conflicting_rules.add(existing_rule)
+                
+                # Remove conflicting rules
+                self.active_rules -= conflicting_rules
                 self.active_rules.add(rule)
                 self._seen_rules.add(key)
     
@@ -144,56 +158,83 @@ class RulesManager:
         rules: List[Rule] = []
         current_category = ""
         current_subcategory = None
+        seen_rules = set()  # Track rules within this file
 
         for line in lines[1:]:
             line = line.strip()
             if not line:
                 continue
-
+            
             if line.startswith("## "):
+                # New category
                 current_category = line[3:].strip()
                 current_subcategory = None
-            elif line.startswith("### "):
-                current_subcategory = line[4:].strip()
-            elif line.startswith("- "):
+                if "/" in current_category:
+                    current_category, current_subcategory = current_category.split("/", 1)
+                continue
+            
+            if line.startswith("- "):
+                # New rule
                 description = line[2:].strip()
+                # Remove any trailing comments
+                if "#" in description:
+                    description = description.split("#")[0].strip()
+                
                 rule = Rule(description, current_category, current_subcategory, is_global)
-                key = self._rule_key(rule)
+                rule_key = self._rule_key(rule)
                 
-                if key in self._seen_rules:
-                    raise RuleValidationError(f"Duplicate rule found: {description} in {current_category}")
+                # Check for duplicates
+                if rule_key in seen_rules:
+                    raise RuleValidationError(f"Duplicate rule: {description}")
                 
-                self._seen_rules.add(key)
+                seen_rules.add(rule_key)
                 rules.append(rule)
-
+        
+        # Check for conflicts
+        self._check_conflicting_rules(rules)
+        
         return rules
     
     def validate_code(self, code: str, rules: Optional[List[Rule]] = None) -> List[str]:
-        """Validate code against rules, returning a list of violations."""
+        """Validate code against a set of rules.
+        
+        Args:
+            code: The code to validate
+            rules: Optional list of rules to validate against. If None, uses active_rules.
+            
+        Returns:
+            List of validation errors, empty if code is valid
+        """
         if rules is None:
             rules = list(self.active_rules)
-
-        violations: List[str] = []
+        
+        errors = []
         tree = ast.parse(code)
-
-        # Check type hints
-        for node in ast.walk(tree):
-            if isinstance(node, ast.FunctionDef):
-                if any(r.description.lower() == "use type hints" for r in rules):
-                    if not node.returns or not all(arg.annotation for arg in node.args.args):
-                        violations.append(f"Missing type hints in function '{node.name}'")
-
-                if any(r.description.lower() == "document all functions" for r in rules):
-                    if not ast.get_docstring(node):
-                        violations.append(f"Missing docstring in function '{node.name}'")
-
-        # Check for print statements
-        if any(r.description.lower() == "no print statements" for r in rules):
-            for node in ast.walk(tree):
-                if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print":
-                    violations.append("Found print statement")
-
-        return violations
+        
+        for rule in rules:
+            if rule.category.lower() == "code style":
+                if "type hints" in rule.description.lower():
+                    # Check for type hints
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.FunctionDef):
+                            if not node.returns or not any(isinstance(arg.annotation, ast.Name) for arg in node.args.args):
+                                errors.append(f"Missing type hints in function {node.name}")
+            
+            elif rule.category.lower() == "documentation":
+                if "document all functions" in rule.description.lower():
+                    # Check for docstrings
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.FunctionDef) and not ast.get_docstring(node):
+                            errors.append(f"Missing docstring in function {node.name}")
+            
+            elif rule.category.lower() == "code quality":
+                if "no print statements" in rule.description.lower():
+                    # Check for print statements
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print":
+                            errors.append("Print statement found")
+        
+        return errors
     
     def export_rules(self, project_rules_path: Path, global_rules_path: Path) -> None:
         """Export current rules to files.
@@ -216,46 +257,64 @@ class RulesManager:
         """Import rules from files.
         
         Args:
-            project_rules_path: Path to project rules file
-            global_rules_path: Path to global rules file
+            project_rules_path: Path to import project rules from
+            global_rules_path: Path to import global rules from
         """
+        # Clear existing rules
         self.active_rules.clear()
         self._seen_rules.clear()
         
-        if global_rules_path.exists():
-            global_rules = self.parse_rules(global_rules_path, is_global=True)
-            for rule in global_rules:
-                key = self._rule_key(rule)
-                self._seen_rules.add(key)
-                self.active_rules.add(rule)
-        
+        # Import project rules
         if project_rules_path.exists():
             project_rules = self.parse_rules(project_rules_path)
             for rule in project_rules:
                 key = self._rule_key(rule)
-                self._seen_rules.add(key)
                 self.active_rules.add(rule)
+                self._seen_rules.add(key)
+        
+        # Import global rules
+        if global_rules_path.exists():
+            global_rules = self.parse_rules(global_rules_path, is_global=True)
+            for rule in global_rules:
+                key = self._rule_key(rule)
+                if key not in self._seen_rules:
+                    self.active_rules.add(rule)
+                    self._seen_rules.add(key)
     
     def _write_rules_file(self, rules: List[Rule], path: Path, title: str) -> None:
-        """Write rules to a markdown file.
+        """Write rules to a file.
         
         Args:
             rules: List of rules to write
-            path: Path to write to
+            path: Path to write rules to
             title: Title for the rules file
         """
         # Group rules by category
-        by_category: Dict[str, List[Rule]] = {}
+        rules_by_category: Dict[str, List[Rule]] = {}
         for rule in rules:
-            if rule.category not in by_category:
-                by_category[rule.category] = []
-            by_category[rule.category].append(rule)
+            category = rule.category
+            if category not in rules_by_category:
+                rules_by_category[category] = []
+            rules_by_category[category].append(rule)
         
-        # Write content
-        content = [f"# {title}\n"]
-        for category, category_rules in sorted(by_category.items()):
-            content.append(f"\n## {category}")
-            for rule in sorted(category_rules, key=lambda r: r.description):
-                content.append(f"- {rule.description}")
+        # Write rules to file
+        with path.open("w") as f:
+            f.write(f"# {title}\n\n")
+            for category in sorted(rules_by_category.keys()):
+                f.write(f"## {category}\n")
+                for rule in sorted(rules_by_category[category], key=lambda r: r.description):
+                    f.write(f"- {rule.description}\n")
+                f.write("\n")
+
+    def get_rules_for_file(self, file_path: Path) -> List[Rule]:
+        """Get applicable rules for a file.
         
-        path.write_text("\n".join(content)) 
+        Args:
+            file_path: Path to the file to get rules for
+            
+        Returns:
+            List of applicable rules
+        """
+        # For now, return all active rules
+        # In the future, this could be enhanced to filter rules based on file type, path, etc.
+        return list(self.active_rules) 
