@@ -100,3 +100,21 @@
 2025-04-08 20:34:43,094 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
 2025-04-08 20:34:44,451 - context_watcher - ERROR - Error in atomic commit: Connection error.
 2025-04-08 20:34:45,927 - context_watcher - ERROR - Error in atomic commit: Connection error.
+2025-04-09 13:29:32,434 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-09 13:29:32,865 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-09 13:29:32,867 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-09 13:29:32,871 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-09 13:29:32,888 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-09 13:29:36,247 - context_watcher - INFO - Shutting down...
+2025-04-09 13:30:55,068 - context_watcher - INFO - Initializing OpenAI client with base URL: https://75.157.35.90:11434/v1 and model: llama3.2
+2025-04-09 13:30:55,204 - context_watcher - INFO - Setting up project...
+2025-04-09 13:30:55,207 - context_watcher - INFO - Global rules saved to /home/bakobi/.codeium/windsurf/memories/global_rules.md
+2025-04-09 13:30:55,209 - context_watcher - INFO - Created global rules at /home/bakobi/.codeium/windsurf/memories/global_rules.md
+2025-04-09 13:30:55,210 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section
+2025-04-09 13:30:55,215 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-09 13:31:13,392 - context_watcher - ERROR - Error in atomic commit: Request timed out.
+2025-04-09 13:31:37,234 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: llama3.2
+2025-04-09 13:31:37,360 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-09 13:31:37,363 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-09 13:31:37,365 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-09 13:31:37,374 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...

@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+import logging
+from ..utils.file_ops import safe_read_file
 
 class RuleType(Enum):
     """Enumeration of rule types."""
@@ -244,4 +246,27 @@ class RulesParser:
     def reload_rules(self) -> None:
         """Force reload of rules from file."""
         self._cached_rules = None
-        self.rules = self._parse_rules() 
+        self.rules = self._parse_rules()
+
+    def parse_rules_file(self, file_path: Path) -> List[Rule]:
+        """Parse rules from a markdown file.
+        
+        Args:
+            file_path: Path to the markdown file containing rules
+            
+        Returns:
+            List of Rule objects parsed from the file
+            
+        Raises:
+            FileNotFoundError: If the rules file does not exist
+            RuleParsingError: If there are errors parsing the rules
+        """
+        try:
+            content = safe_read_file(file_path)
+            return self.parse_rules_content(content)
+        except FileNotFoundError:
+            logging.error(f"Rules file not found: {file_path}")
+            raise
+        except Exception as e:
+            logging.error(f"Error parsing rules from {file_path}: {e}")
+            raise RuleParsingError(f"Failed to parse rules from {file_path}: {e}") 
