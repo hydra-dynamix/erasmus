@@ -3,6 +3,7 @@ import os
 import argparse
 import traceback
 import subprocess
+import shutil
 from pathlib import Path
 from src.script_converter import ScriptConverter
 from src.version_manager import VersionManager
@@ -39,12 +40,20 @@ def convert_scripts(version_str: str) -> int:
     sys.stderr.flush()
     
     try:
-        # Check if the versioned shell script exists
+        # Create release directory and version-specific directory
+        release_dir.mkdir(parents=True, exist_ok=True)
+        version_dir.mkdir(parents=True, exist_ok=True)
+        
+        # If versioned shell script doesn't exist, create it from install.sh
         if not versioned_shell_path.exists():
-            print(f"Error: Versioned shell script not found at: {versioned_shell_path}")
-            return 1
+            install_sh = project_root / 'install.sh'
+            if not install_sh.exists():
+                print(f"Error: Neither versioned shell script nor install.sh found")
+                return 1
+            # Copy install.sh to versioned location
+            shutil.copy2(install_sh, versioned_shell_path)
             
-        # Read the versioned shell script that already has the embedded content
+        # Read the versioned shell script
         shell_content = versioned_shell_path.read_text(encoding='utf-8')
         print(f"Read {len(shell_content)} bytes from versioned shell script")
         
@@ -52,10 +61,6 @@ def convert_scripts(version_str: str) -> int:
         print("Converting shell script to batch script...")
         batch_content = converter.convert_script(shell_content)
         print(f"Generated {len(batch_content)} bytes of batch script")
-        
-        # Create release directory and version-specific directory
-        release_dir.mkdir(parents=True, exist_ok=True)
-        version_dir.mkdir(parents=True, exist_ok=True)
         
         # Write batch script
         batch_path.write_text(batch_content, encoding='utf-8')
@@ -163,11 +168,11 @@ def main():
             return 0
         else:
             message = args.message or f"Increment {args.action} version"
-            new_version = vm.increment_version(args.action)
+            # Only add the change, which will increment the version once
             vm.add_change(message, args.action)
-            print(f"Updated to version: {new_version}")
+            print(f"Updated to version: {vm.get_current_version()}")
             # Automatically convert scripts on version change
-            return convert_scripts(new_version)
+            return convert_scripts(vm.get_current_version())
     
     elif args.command == "convert":
         version = args.version or vm.get_current_version()

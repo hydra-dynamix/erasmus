@@ -632,3 +632,49 @@ AttributeError: 'bool' object has no attribute 'upper'
 2025-04-07 22:19:46,670 - context_watcher - WARNING - For Cursor, please also manually copy global rules to settings. The file has been saved to global_rules.md, but you need to add this content to Cursor settings.
 2025-04-07 22:19:46,676 - context_watcher - INFO - Created global rules at /home/bakobi/repos/erasmus/global_rules.md
 2025-04-07 22:19:46,679 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section
+2025-04-08 19:37:36,258 - context_watcher - WARNING - URL validation failed for: example.com
+2025-04-08 19:37:36,258 - context_watcher - WARNING - URL validation failed for: ftp://invalid.url
+2025-04-08 19:37:36,258 - context_watcher - WARNING - URL validation failed for: not a url
+2025-04-08 19:38:07,654 - context_watcher - WARNING - URL validation failed for: example.com
+2025-04-08 19:38:07,654 - context_watcher - WARNING - URL validation failed for: ftp://invalid.url
+2025-04-08 19:38:07,654 - context_watcher - WARNING - URL validation failed for: not a url
+2025-04-08 19:39:11,036 - context_watcher - WARNING - URL validation failed for: example.com
+2025-04-08 19:39:11,036 - context_watcher - WARNING - URL validation failed for: ftp://invalid.url
+2025-04-08 19:39:11,036 - context_watcher - WARNING - URL validation failed for: not a url
+2025-04-08 19:39:34,428 - context_watcher - WARNING - URL validation failed for: example.com
+2025-04-08 19:39:34,429 - context_watcher - WARNING - URL validation failed for: ftp://invalid.url
+2025-04-08 19:39:34,429 - context_watcher - WARNING - URL validation failed for: not a url
+2025-04-08 19:39:56,672 - context_watcher - WARNING - URL validation failed for: example.com
+2025-04-08 19:39:56,672 - context_watcher - WARNING - URL validation failed for: ftp://invalid.url
+2025-04-08 19:39:56,673 - context_watcher - WARNING - URL validation failed for: not a url
+2025-04-08 19:40:47,883 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-08 19:40:47,926 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:40:47,927 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-08 19:40:47,928 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-08 19:40:47,929 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-08 19:44:57,269 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-08 19:44:57,271 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-08 19:44:57,276 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:44:57,277 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-08 19:44:57,278 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-08 19:44:57,283 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:45:22,529 - context_watcher - INFO - Detected update in TASKS
+2025-04-08 19:45:22,530 - context_watcher - INFO - Processing update from TASKS
+2025-04-08 19:45:22,535 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:45:22,537 - context_watcher - INFO - Detected update in TASKS
+2025-04-08 19:45:22,538 - context_watcher - INFO - Processing update from TASKS
+2025-04-08 19:45:22,542 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:54:15,471 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-08 19:54:15,471 - context_watcher - INFO - Detected update in Script File
+2025-04-08 19:54:15,472 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-08 19:54:15,473 - context_watcher - INFO - Detected change in Script File. Restarting the script...
+2025-04-08 19:54:15,478 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:54:15,479 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-08 19:54:15,480 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-08 19:54:15,483 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:54:16,493 - context_watcher - INFO - Restarting the program...
+2025-04-08 19:54:16,991 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: gpt-4o
+2025-04-08 19:54:17,030 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
+2025-04-08 19:54:17,031 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-08 19:54:17,032 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-08 19:54:17,034 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...

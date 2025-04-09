@@ -70,6 +70,11 @@ class Task:
         task.completion_time = data["completion_time"]
         task.notes = data["notes"]
         return task
+        
+    def add_note_to_task(self, note: str) -> None:
+        """Add a note to the task."""
+        self.notes.append(note)
+        self.updated_at = time.time()
 
 class TaskManager:
     def __init__(self, tasks: dict = None):

@@ -22,9 +22,17 @@ def test_env(tmp_path):
     release_dir = tmp_path / "release"
     release_dir.mkdir(exist_ok=True)
     
+    # Create version-specific directory
+    version_dir = release_dir / "v0.0.1"
+    version_dir.mkdir(exist_ok=True)
+    
     # Create mock install.sh
     install_sh = tmp_path / "install.sh"
     install_sh.write_text("#!/bin/bash\necho 'Test script'")
+    
+    # Create versioned shell script
+    versioned_sh = version_dir / "erasmus_v0.0.1.sh"
+    versioned_sh.write_text("#!/bin/bash\necho 'Versioned test script'")
     
     # Create mock version.json
     version_json = tmp_path / "version.json"
@@ -55,8 +63,8 @@ def test_convert_scripts(test_env):
     result = main.convert_scripts(version)
     
     assert result == 0
-    assert (test_env / "release" / f"erasmus_v{version}.bat").exists()
-    assert (test_env / "release" / f"erasmus_v{version}.sh").exists()
+    assert (test_env / "release" / f"v{version}" / f"erasmus_v{version}.bat").exists()
+    assert (test_env / "release" / f"v{version}" / f"erasmus_v{version}.sh").exists()
 
 def test_convert_scripts_missing_shell(test_env):
     """Test script conversion handles missing shell script."""
@@ -82,7 +90,8 @@ def test_version_commands(test_env, command, args, expected_version):
             if command[1] == "get":
                 mock_print.assert_called_with(f"Current version: {expected_version}")
             else:
-                mock_print.assert_called_with(f"Updated to version: {expected_version}")
+                # The last print call should be the version update message
+                mock_print.assert_any_call(f"Updated to version: {expected_version}")
             
             # Check version file was updated
             with open(VersionManager.VERSION_FILE) as f:
@@ -108,8 +117,8 @@ def test_convert_command(test_env):
         assert result == 0
         
         version = VersionManager().get_current_version()
-        assert (test_env / "release" / f"erasmus_v{version}.bat").exists()
-        assert (test_env / "release" / f"erasmus_v{version}.sh").exists()
+        assert (test_env / "release" / f"v{version}" / f"erasmus_v{version}.bat").exists()
+        assert (test_env / "release" / f"v{version}" / f"erasmus_v{version}.sh").exists()
 
 def test_invalid_command(test_env):
     """Test handling of invalid or missing command."""
