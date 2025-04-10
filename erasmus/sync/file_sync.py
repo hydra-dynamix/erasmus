@@ -130,8 +130,15 @@ class FileSynchronizer:
         self._event_loop = None
     
     async def sync_all(self):
-        """Synchronize all tracked files."""
-        for filename in self.TRACKED_FILES:
+        """Synchronize all tracked files in the workspace."""
+        # Create a list of tracked files that exist in the workspace
+        files_to_sync = [
+            filename for filename in self.TRACKED_FILES 
+            if (self.workspace_path / filename).exists()
+        ]
+        
+        # Synchronize each existing tracked file
+        for filename in files_to_sync:
             await self.sync_file(filename)
     
     async def sync_file(self, filename: str):
