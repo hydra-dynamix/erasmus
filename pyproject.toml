@@ -101,3 +101,14 @@ warn_unreachable = true
 line-length = 100
 target-version = "py310"
 select = ["E", "F", "B", "I", "N", "UP", "PL", "RUF"]
+
+[tool.uv.workspace]
+members = ["gamesync_demo"]
+
+[tool.uv.sources]
+erasmus = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "erasmus",
+]

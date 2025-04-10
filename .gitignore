@@ -18,3 +18,4 @@ uv.lock
 .coverage
 *.log
 .cursor
+gamesync_demo

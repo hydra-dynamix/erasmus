@@ -280,6 +280,11 @@ test = [
     { name = "pytest-mock" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "erasmus" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "black", marker = "extra == 'dev'", specifier = ">=24.0.0" },
@@ -303,6 +308,9 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.0.0" },
     { name = "watchdog", specifier = ">=3.0.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "erasmus", editable = "." }]
 
 [[package]]
 name = "exceptiongroup"

@@ -1,7 +1,7 @@
 """Main CLI entry point."""
 import click
 
-from .setup import setup
+from erasmus.cli.setup import setup
 
 @click.group()
 def cli():

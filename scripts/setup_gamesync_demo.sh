@@ -11,6 +11,11 @@ NC='\033[0m' # No Color
 PWD=$(pwd)
 BUILD_DIR="$PWD/gamesync_demo"
 mkdir -p "$BUILD_DIR"
+
+# Copy example architecture
+echo -e "${YELLOW}Copying example architecture...${NC}"
+cp "$PWD/docs/examples/game_sync/ARCHITECTURE.md" "$BUILD_DIR/ARCHITECTURE.md"
+
 cd "$BUILD_DIR"
 
 # Clone Erasmus repository
@@ -29,9 +34,6 @@ source .venv/bin/activate
 echo -e "${YELLOW}Installing Erasmus and dependencies...${NC}"
 uv pip install -e ./erasmus
 
-# Copy example architecture
-echo -e "${YELLOW}Copying example architecture...${NC}"
-uv run erasmus --copy-example LogViz
 
 # Create initial project files
 cat > README.md << EOF

@@ -15,7 +15,7 @@ from watchdog.observers import Observer
 from ..core.task import TaskManager, TaskStatus
 from ..core.watcher import MarkdownWatcher, ScriptWatcher, run_observer
 from ..utils.context import update_context, setup_project, update_specific_file, cleanup_project
-from ..utils.git import GitManager
+from ..git.manager import GitManager
 
 console = Console()
 task_manager = TaskManager()
@@ -171,5 +171,7 @@ def watch():
         markdown_observer.join()
         script_observer.join()
 
-if __name__ == '__main__':
+def main():
     cli()
+if __name__ == '__main__':
+    main()

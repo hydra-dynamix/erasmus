@@ -124,3 +124,20 @@
 2025-04-09 17:57:33,040 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
 2025-04-09 17:57:33,042 - context_watcher - INFO - Watching files: ['Script File']
 2025-04-09 17:57:33,046 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-09 19:24:02,384 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: llama3.2
+2025-04-09 19:24:02,551 - context_watcher - INFO - Setting up project...
+2025-04-09 19:24:02,555 - context_watcher - INFO - Global rules saved to /home/bakobi/.codeium/windsurf/memories/global_rules.md
+2025-04-09 19:24:02,557 - context_watcher - INFO - Created global rules at /home/bakobi/.codeium/windsurf/memories/global_rules.md
+2025-04-09 19:24:02,562 - context_watcher - INFO - Please add the contents of global_rules.md to your IDE's global rules section
+2025-04-09 19:24:02,566 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-09 19:24:23,574 - context_watcher - INFO - Initializing OpenAI client with base URL: https://api.openai.com/v1 and model: llama3.2
+2025-04-09 19:24:23,713 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-09 19:24:23,716 - context_watcher - INFO - Watching files: ['ARCHITECTURE', 'PROGRESS', 'TASKS']
+2025-04-09 19:24:23,719 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-09 19:24:23,738 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...
+2025-04-09 19:25:01,686 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-09 19:25:01,688 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-09 19:25:01,706 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-09 19:25:01,750 - context_watcher - INFO - Detected update in PROGRESS
+2025-04-09 19:25:01,752 - context_watcher - INFO - Processing update from PROGRESS
+2025-04-09 19:25:01,772 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
