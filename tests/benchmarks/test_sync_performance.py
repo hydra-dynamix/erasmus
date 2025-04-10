@@ -45,13 +45,13 @@ async def test_sync_single_file_performance(bench_env):
     
     # Measure initial sync time
     sync_time = await measure_operation_time(
-        syncer.sync_file("ARCHITECTURE.md")
+        syncer.sync_file("architecture.md")
     )
     
     # Measure sync time after modification
-    (workspace / "ARCHITECTURE.md").write_text("Modified content")
+    (workspace / "architecture.md").write_text("Modified content")
     modified_sync_time = await measure_operation_time(
-        syncer.sync_file("ARCHITECTURE.md")
+        syncer.sync_file("architecture.md")
     )
     
     # Print benchmark results

@@ -22,7 +22,7 @@ class TaskStatus:
     throughout its lifecycle. Used by the Task class to track current status.
     """
     PENDING = "pending"       # Task is acknowledged but not started
-    IN_PROGRESS = "in_progress"  # Task is actively being worked on
+    IN_progress = "in_progress"  # Task is actively being worked on
     COMPLETED = "completed"   # Task has been finished
     BLOCKED = "blocked"       # Task is blocked by another task or external factor
     NOT_STARTED = "not_started"  # Task has been created but not scheduled

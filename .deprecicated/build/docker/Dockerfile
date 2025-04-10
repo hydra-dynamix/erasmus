@@ -27,7 +27,7 @@ RUN chmod +x /app/erasmus.sh && \
     chown appuser:appuser /app/erasmus.sh
 
 # Set environment variables
-ENV IDE_ENV=CURSOR
+ENV IDE_ENV=cursor
 ENV OPENAI_API_KEY=sk-1234
 ENV OPENAI_MODEL=gpt-4o
 ENV OPENAI_URL=https://api.openai.com/v1

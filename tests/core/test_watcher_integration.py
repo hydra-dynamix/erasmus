@@ -25,14 +25,14 @@ def temp_workspace(tmp_path):
     
     # Create test files
     files = {
-        "ARCHITECTURE": docs_dir / "ARCHITECTURE.md",
-        "PROGRESS": docs_dir / "PROGRESS.md",
+        "architecture": docs_dir / "architecture.md",
+        "progress": docs_dir / "progress.md",
         "script": scripts_dir / "test_script.py"
     }
     
     # Initialize files with content
-    files["ARCHITECTURE"].write_text("# Architecture\n\nTest content")
-    files["PROGRESS"].write_text("# Progress\n\nTest content")
+    files["architecture"].write_text("# architecture\n\nTest content")
+    files["progress"].write_text("# progress\n\nTest content")
     files["script"].write_text("print('Hello, World!')")
     
     return tmp_path, files
@@ -48,8 +48,8 @@ def test_concurrent_file_updates(temp_workspace):
     # Create factory and watchers
     factory = WatcherFactory()
     markdown_files = {
-        "ARCHITECTURE": files["ARCHITECTURE"],
-        "PROGRESS": files["PROGRESS"]
+        "architecture": files["architecture"],
+        "progress": files["progress"]
     }
     
     markdown_watcher = factory.create_markdown_watcher(markdown_files, callback)
@@ -65,9 +65,9 @@ def test_concurrent_file_updates(temp_workspace):
         time.sleep(0.1)  # Let observers initialize
         
         # Update markdown file
-        files["ARCHITECTURE"].write_text("# Architecture\n\nUpdated content")
+        files["architecture"].write_text("# architecture\n\nUpdated content")
         time.sleep(0.1)
-        assert "ARCHITECTURE" in events
+        assert "architecture" in events
         events.clear()
         
         # Update script file
@@ -94,7 +94,7 @@ def test_error_recovery(temp_workspace):
     # Create factory and watchers
     factory = WatcherFactory()
     markdown_watcher = factory.create_markdown_watcher(
-        {"ARCHITECTURE": files["ARCHITECTURE"]},
+        {"architecture": files["architecture"]},
         failing_callback
     )
     
@@ -108,7 +108,7 @@ def test_error_recovery(temp_workspace):
         
         # Trigger multiple updates
         for i in range(4):
-            files["ARCHITECTURE"].write_text(f"# Architecture\n\nUpdate {i}")
+            files["architecture"].write_text(f"# architecture\n\nUpdate {i}")
             time.sleep(0.2)  # Increase delay to ensure events are processed
         
         # Verify system continued processing after errors
@@ -128,7 +128,7 @@ def test_file_system_events(temp_workspace):
     # Create factory and watchers
     factory = WatcherFactory()
     markdown_watcher = factory.create_markdown_watcher(
-        {"ARCHITECTURE": files["ARCHITECTURE"]},
+        {"architecture": files["architecture"]},
         callback
     )
     
@@ -141,21 +141,21 @@ def test_file_system_events(temp_workspace):
         time.sleep(0.1)  # Let observers initialize
         
         # Test file modification
-        files["ARCHITECTURE"].write_text("# Architecture\n\nModified content")
+        files["architecture"].write_text("# architecture\n\nModified content")
         time.sleep(0.2)
-        assert "ARCHITECTURE" in events
+        assert "architecture" in events
         events.clear()
         
         # Test file deletion and recreation
-        files["ARCHITECTURE"].unlink()
+        files["architecture"].unlink()
         time.sleep(0.2)
-        assert "ARCHITECTURE" in events
+        assert "architecture" in events
         events.clear()
         
         # Test file recreation
-        files["ARCHITECTURE"].write_text("# Architecture\n\nRecreated content")
+        files["architecture"].write_text("# architecture\n\nRecreated content")
         time.sleep(0.2)
-        assert "ARCHITECTURE" in events
+        assert "architecture" in events
         
     finally:
         factory.stop_all()
@@ -175,7 +175,7 @@ def test_watcher_interactions(temp_workspace):
     # Create factory and watchers
     factory = WatcherFactory()
     markdown_watcher = factory.create_markdown_watcher(
-        {"ARCHITECTURE": files["ARCHITECTURE"]},
+        {"architecture": files["architecture"]},
         markdown_callback
     )
     script_watcher = factory.create_script_watcher(
@@ -193,14 +193,14 @@ def test_watcher_interactions(temp_workspace):
         time.sleep(0.1)  # Let observers initialize
         
         # Update both files
-        files["ARCHITECTURE"].write_text("# Architecture\n\nUpdated content")
+        files["architecture"].write_text("# architecture\n\nUpdated content")
         files["script"].write_text("print('Updated script')")
         time.sleep(0.2)
         
         # Verify correct callbacks were triggered
-        assert "ARCHITECTURE" in markdown_events
+        assert "architecture" in markdown_events
         assert "test_script" in script_events
-        assert "ARCHITECTURE" not in script_events
+        assert "architecture" not in script_events
         assert "test_script" not in markdown_events
         
     finally:

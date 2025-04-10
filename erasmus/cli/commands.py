@@ -5,17 +5,24 @@ It uses Click for command parsing and handling.
 """
 from typing import Optional
 import os
+import time
 from pathlib import Path
 
 import click
 from rich.console import Console
 from rich.table import Table
-from watchdog.observers import Observer
 
-from ..core.task import TaskManager, TaskStatus
-from ..core.watcher import MarkdownWatcher, ScriptWatcher, run_observer
-from ..utils.context import update_context, setup_project, update_specific_file, cleanup_project
+
+from ..core.task import TaskManager, TaskStatus    
+from ..core.watcher import WatcherFactory
+from ..utils.context import update_context, update_specific_file, cleanup_project, setup_project
 from ..git.manager import GitManager
+from ..utils.paths import SetupPaths
+from .setup import setup as setup_env
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 console = Console()
 task_manager = TaskManager()
@@ -23,7 +30,7 @@ task_manager = TaskManager()
 @click.group()
 def cli():
     """Erasmus: AI Context Watcher for Development."""
-    pass
+    return
 
 # === Task Management Commands ===
 @cli.group()
@@ -44,7 +51,7 @@ def add(description: str):
 @click.argument('status', type=click.Choice(['pending', 'in_progress', 'completed', 'blocked']))
 def status(task_id: str, status: str):
     """Update the status of a task."""
-    task_status = TaskStatus[status.upper()]
+    task_status = TaskStatus[status.lower()]
     task_manager.update_task_status(task_id, task_status)
     console.print(f"📝 Updated task [bold]{task_id}[/] status to [bold green]{status}[/]")
 
@@ -52,7 +59,7 @@ def status(task_id: str, status: str):
 @click.option('--status', type=click.Choice(['pending', 'in_progress', 'completed', 'blocked']), help='Filter tasks by status')
 def list(status: Optional[str] = None):
     """List all tasks, optionally filtered by status."""
-    task_status = TaskStatus[status.upper()] if status else None
+    task_status = TaskStatus[status.lower()] if status else None
     tasks = task_manager.list_tasks(task_status)
     
     if not tasks:
@@ -116,7 +123,7 @@ def branch(name: str):
 @cli.command()
 def setup():
     """Set up a new project with necessary files and configuration."""
-    setup_project()
+    setup_env()
     console.print("✨ Project setup complete")
 
 @cli.command()
@@ -142,36 +149,36 @@ def cleanup(force: bool):
 def watch():
     """Watch project files for changes."""
     pwd = Path.cwd()
+    factory = WatcherFactory()
+    setup_paths = SetupPaths(pwd)
     
-    # Update initial context
-    update_context({})
+    # Update initial context without backup
+    update_context({}, backup=False)
 
-    # Setup watchers
-    markdown_watcher = MarkdownWatcher()
-    markdown_observer = Observer()
-    markdown_observer.schedule(markdown_watcher, str(pwd), recursive=False)
+    # Setup markdown watcher
+    markdown_watcher = factory.create_markdown_watcher(
+        setup_paths.markdown_files,
+        lambda key, content: update_specific_file(key, content)
+    )
+    factory.create_observer(markdown_watcher, str(pwd))
 
-    script_watcher = ScriptWatcher(__file__)
-    script_observer = Observer()
-    script_observer.schedule(script_watcher, os.path.dirname(os.path.abspath(__file__)), recursive=False)
+    # Setup script watcher
+    script_watcher = factory.create_script_watcher(
+        setup_paths.script_files,
+        lambda _: console.print("Script updated")
+    )
+    factory.create_observer(script_watcher, str(pwd))
 
-    # Start observers
-    markdown_observer.start()
-    script_observer.start()
+    # Start all watchers
+    factory.start_all()
 
     console.print("👀 Watching project files for changes. Press Ctrl+C to stop...")
     try:
         while True:
-            import time
             time.sleep(1)
     except KeyboardInterrupt:
         console.print("Shutting down...")
-        markdown_observer.stop()
-        script_observer.stop()
-        markdown_observer.join()
-        script_observer.join()
-
-def main():
-    cli()
+        factory.stop_all()
+    
 if __name__ == '__main__':
-    main()
+    cli()

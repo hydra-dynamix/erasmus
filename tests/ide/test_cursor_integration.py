@@ -1,4 +1,4 @@
-"""Test module for Cursor IDE integration."""
+"""Test module for cursor IDE integration."""
 
 import json
 import asyncio
@@ -41,10 +41,10 @@ async def test_initialization(cursor_manager, tmp_path):
 async def test_queue_and_process_updates(cursor_manager, tmp_path):
     """Test queuing and processing updates."""
     # Queue some updates
-    await cursor_manager.queue_update("architecture", "Test Architecture")
+    await cursor_manager.queue_update("architecture", "Test architecture")
     await asyncio.sleep(0.1)  # Wait for first update
     
-    await cursor_manager.queue_update("progress", "Test Progress")
+    await cursor_manager.queue_update("progress", "Test progress")
     await asyncio.sleep(0.1)  # Wait for second update
     
     await cursor_manager.queue_update("tasks", {"1": {"description": "Test Task"}})
@@ -54,8 +54,8 @@ async def test_queue_and_process_updates(cursor_manager, tmp_path):
     rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
     rules = json.loads(rules_file.read_text())
 
-    assert rules["architecture"] == "Test Architecture"
-    assert rules["progress"] == "Test Progress"
+    assert rules["architecture"] == "Test architecture"
+    assert rules["progress"] == "Test progress"
     assert rules["tasks"] == {"1": {"description": "Test Task"}}
 
 @pytest.mark.asyncio
@@ -80,8 +80,8 @@ async def test_external_file_changes(cursor_manager, tmp_path):
     # Make an external change to the rules file
     rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
     external_content = {
-        "architecture": "External Architecture",
-        "progress": "External Progress"
+        "architecture": "External architecture",
+        "progress": "External progress"
     }
     rules_file.write_text(json.dumps(external_content))
 
@@ -94,8 +94,8 @@ async def test_external_file_changes(cursor_manager, tmp_path):
 
     # Check that both external and queued changes are present
     rules = json.loads(rules_file.read_text())
-    assert rules["architecture"] == "External Architecture"
-    assert rules["progress"] == "External Progress"
+    assert rules["architecture"] == "External architecture"
+    assert rules["progress"] == "External progress"
     assert rules["tasks"] == {"1": {"description": "New Task"}}
 
 @pytest.mark.asyncio

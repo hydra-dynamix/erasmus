@@ -12,6 +12,7 @@ from rich import console
 from openai import OpenAI
 
 from ..git.manager import GitManager
+from ..utils.paths import SetupPaths
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -97,77 +98,128 @@ def write_file(path: Path, content: str, backup: bool = False) -> bool:
         console.print(f"Error writing to {path}: {e}", style="red")
         return False
 
-def update_context(context: Dict[str, Any]) -> Dict[str, Any]:
+def get_rules_path() -> Path:
+    """Get the appropriate rules file path based on IDE_ENV."""
+    from pathlib import Path
+    setup_paths = SetupPaths(Path.cwd())
+    return setup_paths.rules_file
+
+def restore_rules_backup() -> bool:
+    """Restore rules from backup if available."""
+    rules_path = get_rules_path()
+    backup_path = rules_path.parent / f"{rules_path.name}.old"
+    
+    if backup_path.exists():
+        try:
+            shutil.copy2(backup_path, rules_path)
+            console.print(f"Restored rules from {backup_path}")
+            return True
+        except Exception as e:
+            console.print(f"Error restoring backup: {e}", style="red")
+    return False
+
+def update_context(context: Dict[str, Any], backup: bool = False) -> Dict[str, Any]:
     """Update the context with current file contents."""
-    rules_path = Path(".cursorrules")
+    rules_path = get_rules_path()
     global_rules_path = Path("global_rules.md")
     
     # Add architecture if available
-    arch_path = Path("ARCHITECTURE.md")
+    arch_path = Path("architecture.md")
     if arch_path.exists():
         context["architecture"] = read_file(arch_path)
     
     # Add progress if available
-    progress_path = Path("PROGRESS.md")
+    progress_path = Path("progress.md")
     if progress_path.exists():
         context["progress"] = read_file(progress_path)
     
     # Add tasks if available
-    tasks_path = Path("TASKS.md")
+    tasks_path = Path("tasks.md")
     if tasks_path.exists():
         context["tasks"] = read_file(tasks_path)
     
-    # Write updated context with backup
-    write_file(rules_path, json.dumps(context, indent=2), backup=True)
+    # Write updated context
+    write_file(rules_path, json.dumps(context, indent=2), backup=backup)
     if global_rules_path.exists():
-        write_file(global_rules_path, json.dumps(context, indent=2), backup=True)
+        write_file(global_rules_path, json.dumps(context, indent=2), backup=backup)
     return context
 
 def setup_project() -> None:
     """Set up a new project with necessary files."""
     # Create required files
     files = {
-        "ARCHITECTURE.md": "# Project Architecture\n\nDescribe your project architecture here.",
-        "PROGRESS.md": "# Development Progress\n\nTrack your development progress here.",
-        "TASKS.md": "# Project Tasks\n\nList your project tasks here.",
+        "architecture.md": "# Project architecture\n\nDescribe your project architecture here.",
+        "progress.md": "# Development progress\n\nTrack your development progress here.",
+        "tasks.md": "# Project tasks\n\nList your project tasks here.",
         ".env.example": "IDE_ENV=\nOPENAI_API_KEY=\nOPENAI_BASE_URL=\nOPENAI_MODEL=",
         ".gitignore": ".env\n__pycache__/\n*.pyc\n.pytest_cache/\n",
     }
     
-    for filename, content in files.items():
-        path = Path(filename)
-        if not path.exists():
-            write_file(path, content)
-            console.print(f"Created {filename}")
+    # Try to restore from backup first
+    if not restore_rules_backup():
+        # If no backup, create new files
+        for filename, content in files.items():
+            path = Path(filename)
+            if not path.exists():
+                write_file(path, content)
+                console.print(f"Created {filename}")
+        
+        # Initialize context with file contents
+        context = {}
+        
+        # Get the correct rules path based on IDE environment
+        rules_path = get_rules_path()
+        
+        # Read content from files
+        for file_key in ["architecture", "progress", "tasks"]:
+            file_path = Path(f"{file_key}.md")
+            if file_path.exists():
+                context[file_key] = read_file(file_path)
+        
+        # Write to the correct rules file
+        write_file(rules_path, json.dumps(context, indent=2), backup=True)
     
-    # Initialize context
-    update_context({})
     console.print("Project setup complete!")
 
-def update_specific_file(file_type: str, content: str) -> None:
+def update_specific_file(file_type: str, content: str = None) -> None:
     """Update a specific project file."""
-    file_map = {
-        "architecture": "ARCHITECTURE.md",
-        "progress": "PROGRESS.md",
-        "tasks": "TASKS.md",
-        "context": ".cursorrules"
-    }
+    setup_paths = SetupPaths(Path.cwd())
+    file_map = setup_paths.markdown_files
     
-    if file_type.lower() not in file_map:
+    if file_type not in file_map:
         console.print(f"Invalid file type: {file_type}", style="red")
         return
     
-    path = Path(file_map[file_type.lower()])
-    if write_file(path, content, backup=True):
-        console.print(f"Updated {path}")
-        if file_type != "context":
-            update_context({})
+    path = file_map[file_type]
+    
+    # If no content provided, read from file
+    if content is None and path.exists():
+        content = read_file(path)
+    
+    if content is not None:
+        if write_file(path, content, backup=False):
+            console.print(f"Updated {path}")
+            if file_type != "context":
+                # Read current context
+                current_context = {}
+                rules_path = get_rules_path()
+                if rules_path.exists():
+                    try:
+                        current_context = json.loads(read_file(rules_path))
+                    except json.JSONDecodeError:
+                        pass
+                
+                # Update only the changed file's content
+                current_context[file_type] = content
+                console.print(f"💾 Updating rules with changes from {file_type}")
+                update_context(current_context, backup=False)
 
 def cleanup_project() -> None:
     """Remove all generated files and restore backups if available."""
+    rules_path = get_rules_path()
     files_to_remove = [
-        ".cursorrules",
-        "global_rules.md",
+        str(rules_path),
+        "global_rules.md"
     ]
     
     # First, create backups of all files

@@ -10,9 +10,9 @@ __pycache__/
 .venv
 .windsurfrules
 .cursorrules
-ARCHITECTURE.md
-PROGRESS.md
-TASKS.md
+architecture.md
+progress.md
+tasks.md
 global_rules.md
 uv.lock
 .coverage

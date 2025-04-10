@@ -1,10 +1,10 @@
 """
-Cursor IDE Integration Module
+cursor IDE Integration Module
 ==========================
 
-This module provides specialized integration with the Cursor IDE,
+This module provides specialized integration with the cursor IDE,
 handling context synchronization and rule formatting specific to
-Cursor's requirements.
+cursor's requirements.
 """
 
 import json
@@ -25,7 +25,7 @@ from .sync_integration import SyncIntegration
 logger = logging.getLogger(__name__)
 
 class CursorContextManager:
-    """Manages context updates for the Cursor IDE."""
+    """Manages context updates for the cursor IDE."""
     
     def __init__(self, workspace_path: Path):
         """Initialize the CursorContextManager."""
@@ -357,7 +357,7 @@ class CursorRulesHandler(FileSystemEventHandler):
                     logger.error(f"Error handling external change: {e}")
             
             # Handle source file changes
-            elif file_path.suffix == ".md" and file_path.stem.upper() in ["ARCHITECTURE", "PROGRESS", "TASKS"]:
+            elif file_path.suffix == ".md" and file_path.stem.lower() in ["architecture", "progress", "tasks"]:
                 try:
                     # Put the file path directly into the thread-safe queue
                     self.manager._thread_queue.put_nowait(file_path)

@@ -7,7 +7,7 @@ from ..cli.setup import validate_ide_env
 
 
 def start(self) -> None:
-    """Start the Cursor IDE integration."""
+    """Start the cursor IDE integration."""
     ide_env = validate_ide_env()
     rules_file = Path(f".{ide_env.lower()}rules")
     

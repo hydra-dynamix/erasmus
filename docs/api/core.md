@@ -4,7 +4,7 @@
 
 ### CursorContextManager
 
-The main class responsible for managing context updates in the Cursor IDE environment.
+The main class responsible for managing context updates in the cursor IDE environment.
 
 ```python
 class CursorContextManager:
@@ -144,7 +144,7 @@ class CursorRulesHandler(FileSystemEventHandler):
 
 Required environment variables for the system:
 
-- `IDE_TYPE`: Type of IDE (Cursor/Windsurf)
+- `IDE_TYPE`: Type of IDE (cursor/windsurf)
 - `RULES_DIR`: Directory for rules files (.cursorrules/.windsurf)
 - `WORKSPACE_ROOT`: Root directory of the workspace
 - `OPENAI_API_KEY`: OpenAI API key for AI features
@@ -154,10 +154,10 @@ Required environment variables for the system:
 
 Important file paths in the system:
 
-- `ARCHITECTURE.md`: System architecture documentation
-- `PROGRESS.md`: Development progress tracking
-- `TASKS.md`: Task tracking and management
-- `.cursorrules/rules.json`: Rules file for Cursor IDE
+- `architecture.md`: System architecture documentation
+- `progress.md`: Development progress tracking
+- `tasks.md`: Task tracking and management
+- `.cursorrules/rules.json`: Rules file for cursor IDE
 
 ## Error Handling
 
@@ -169,7 +169,7 @@ The system uses a comprehensive error handling approach:
    - Verification of file contents after writes
 
 2. **Update Processing**
-   - Progressive retry mechanism
+   - progressive retry mechanism
    - Timeout handling with configurable limits
    - Event cleanup in finally blocks
 

@@ -7,7 +7,7 @@ services:
         USER_ID: ${USER_ID:-1000}
         GROUP_ID: ${GROUP_ID:-1000}
     environment:
-      - IDE_ENV=CURSOR
+      - IDE_ENV=cursor
       - OPENAI_API_KEY=sk-1234
       - OPENAI_MODEL=gpt-4o
       - OPENAI_URL=https://api.openai.com/v1

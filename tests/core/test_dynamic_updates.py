@@ -82,7 +82,7 @@ def test_validate_update(update_manager):
     # Test tasks validation
     is_valid, error = update_manager.validate_update("tasks", [])
     assert not is_valid
-    assert error == "Tasks must be a dictionary"
+    assert error == "tasks must be a dictionary"
 
     is_valid, error = update_manager.validate_update("tasks", {"1": []})
     assert not is_valid

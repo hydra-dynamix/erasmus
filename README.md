@@ -1,7 +1,7 @@
 # Erasmus: AI Context Watcher for Development
 
 ## Overview
-Erasmus is a powerful context watcher that enhances your development environment by tracking project state and providing intelligent assistance through AI integration. It's designed to work with Cursor and Windsurf IDEs to provide contextual guidance during development.
+Erasmus is a powerful context watcher that enhances your development environment by tracking project state and providing intelligent assistance through AI integration. It's designed to work with cursor and windsurf IDEs to provide contextual guidance during development.
 
 ## How It Works
 
@@ -11,11 +11,11 @@ Erasmus leverages modern AI IDE capabilities by utilizing their rule injection m
 
 ### Intelligent Document Management
 
-**ARCHITECTURE.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
+**architecture.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
 
-**PROGRESS.md** tracks components derived from the architecture document, organizing them into a development schedule.
+**progress.md** tracks components derived from the architecture document, organizing them into a development schedule.
 
-**TASKS.md** breaks down components into manageable sub-tasks, tracking their completion status throughout development.
+**tasks.md** breaks down components into manageable sub-tasks, tracking their completion status throughout development.
 
 ### Continuous Context Synchronization
 
@@ -46,9 +46,9 @@ Erasmus sits in the background of your development environment and:
 
 ### Core Files Managed by Erasmus
 
-- **ARCHITECTURE.md** - Project architecture documentation
-- **PROGRESS.md** - Development progress tracking
-- **TASKS.md** - Granular task management
+- **architecture.md** - Project architecture documentation
+- **progress.md** - Development progress tracking
+- **tasks.md** - Granular task management
 - **.IDErules** - Bundled context for IDE integration
 
 ## Usage
@@ -166,8 +166,8 @@ class ScriptPackager:
 
 ## Compatible IDE Environments
 
-- **Cursor** - Full support with `.cursorrules` integration
-- **Windsurf** - Full support with `.windsurfrules` integration
+- **cursor** - Full support with `.cursorrules` integration
+- **windsurf** - Full support with `.windsurfrules` integration
 
 ## Advanced Features
 

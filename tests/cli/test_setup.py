@@ -11,7 +11,7 @@ from erasmus.cli.setup import setup, validate_ide_env, validate_base_url
 @pytest.fixture
 def env_example_content():
     return (
-        "IDE_ENV=CURSOR\n"
+        "IDE_ENV=cursor\n"
         "GIT_TOKEN=sk-git-token\n"
         "OPENAI_API_KEY=sk-1234\n"
         "OPENAI_BASE_URL=https://api.openai.com/v1\n"
@@ -25,10 +25,10 @@ def runner():
 def test_validate_ide_env():
     """Test IDE_ENV validation."""
     # Test valid inputs
-    assert validate_ide_env("cursor") == "CURSOR"
-    assert validate_ide_env("C") == "CURSOR"
-    assert validate_ide_env("windsurf") == "WINDSURF"
-    assert validate_ide_env("W") == "WINDSURF"
+    assert validate_ide_env("cursor") == "cursor"
+    assert validate_ide_env("C") == "cursor"
+    assert validate_ide_env("windsurf") == "windsurf"
+    assert validate_ide_env("W") == "windsurf"
     
     # Test invalid inputs
     with pytest.raises(ValueError):
@@ -85,7 +85,7 @@ def test_setup_command(runner, env_example_content, env_exists, tmp_path):
         # Verify .env contents
         with open(".env") as f:
             env_contents = f.read()
-            assert "IDE_ENV=CURSOR" in env_contents
+            assert "IDE_ENV=cursor" in env_contents
             assert "GIT_TOKEN=my-token" in env_contents
             assert "OPENAI_API_KEY=sk-mykey" in env_contents
             assert "OPENAI_BASE_URL=http://localhost:8000" in env_contents
@@ -118,7 +118,7 @@ def test_setup_invalid_inputs(runner, env_example_content, tmp_path):
         # Verify .env contents
         with open(".env") as f:
             env_contents = f.read()
-            assert "IDE_ENV=CURSOR" in env_contents
+            assert "IDE_ENV=cursor" in env_contents
             assert "OPENAI_BASE_URL=http://localhost:8000" in env_contents
 
 def test_setup_missing_env_example(runner, env_example_content, tmp_path):
@@ -134,5 +134,5 @@ def test_setup_missing_env_example(runner, env_example_content, tmp_path):
         # Verify .env.example contents
         with open(".env.example") as f:
             contents = f.read()
-            assert "IDE_ENV=CURSOR" in contents
+            assert "IDE_ENV=cursor" in contents
             assert "OPENAI_BASE_URL=https://api.openai.com/v1" in contents 

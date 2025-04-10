@@ -17,8 +17,8 @@ This module implements a context tracking and injection system designed to enhan
 AI-powered development environments.
 
 The Erasmus Context Watcher monitors project state by tracking changes to key documentation
-files (ARCHITECTURE.md, PROGRESS.md, and TASKS.md), and dynamically updates context files
-that are used by AI-powered IDEs like Cursor and Windsurf to improve their understanding
+files (architecture.md, progress.md, and tasks.md), and dynamically updates context files
+that are used by AI-powered IDEs like cursor and windsurf to improve their understanding
 of the codebase and development process.
 
 Key Components:
@@ -40,12 +40,12 @@ The system can be used in the following ways:
 Environment:
 -----------
 Requires the following configuration in .env file:
-- IDE_ENV: The IDE environment (CURSOR or WINDSURF)
+- IDE_ENV: The IDE environment (cursor or windsurf)
 - OPENAI_API_KEY: OpenAI API key for AI integrations
 - OPENAI_BASE_URL: URL for OpenAI API (or local model)
 - OPENAI_MODEL: Model to use for AI features
 
-Architecture:
+architecture:
 ------------
 The system uses a modular design with several key classes:
 - TaskManager/Task: Track and manage development tasks
@@ -95,7 +95,7 @@ class TaskStatus:
     throughout its lifecycle. Used by the Task class to track current status.
     """
     PENDING = "pending"       # Task is acknowledged but not started
-    IN_PROGRESS = "in_progress"  # Task is actively being worked on
+    IN_progress = "in_progress"  # Task is actively being worked on
     COMPLETED = "completed"   # Task has been finished
     BLOCKED = "blocked"       # Task is blocked by another task or external factor
     NOT_STARTED = "not_started"  # Task has been created but not scheduled
@@ -343,57 +343,57 @@ def detect_ide_environment() -> str:
     1. Check the IDE_ENV environment variable
     2. Prompt the user for input if the environment variable is not set
     3. Check for IDE-specific file markers in the current directory and home directory
-    4. Default to 'WINDSURF' if no environment can be detected
+    4. Default to 'windsurf' if no environment can be detected
     
     The detection is important for determining where to save context files and
     how to format them correctly for the specific IDE.
     
     Returns:
-        str: The detected IDE environment ('WINDSURF' or 'CURSOR')
+        str: The detected IDE environment ('windsurf' or 'cursor')
         
     Example:
-        >>> os.environ['IDE_ENV'] = 'CURSOR'
+        >>> os.environ['IDE_ENV'] = 'cursor'
         >>> detect_ide_environment()
-        'CURSOR'
+        'cursor'
         
         >>> # Without environment variable but with .cursorrules file
         >>> detect_ide_environment()
-        'CURSOR'
+        'cursor'
     """
     # Check environment variable first
     ide_env = os.getenv('IDE_ENV', '')
     if ide_env == "":
-        ide_env = input("Enter your IDE environment (WINDSURF, CURSOR): ").strip()
+        ide_env = input("Enter your IDE environment (windsurf, cursor): ").strip()
     if ide_env:
-        return 'WINDSURF' if ide_env.startswith('W') else 'CURSOR'
+        return 'windsurf' if ide_env.startswith('W') else 'cursor'
     
     # Try to detect based on current working directory or known IDE paths
     cwd = Path.cwd()
     
-    # Windsurf-specific detection
+    # windsurf-specific detection
     windsurf_markers = [
         Path.home() / '.codeium' / 'windsurf',
         cwd / '.windsurfrules'
     ]
     
-    # Cursor-specific detection
+    # cursor-specific detection
     cursor_markers = [
         cwd / '.cursorrules',
         Path.home() / '.cursor'
     ]
     
-    # Check Windsurf markers
+    # Check windsurf markers
     for marker in windsurf_markers:
         if marker.exists():
-            return 'WINDSURF'
+            return 'windsurf'
     
-    # Check Cursor markers
+    # Check cursor markers
     for marker in cursor_markers:
         if marker.exists():
-            return 'CURSOR'
+            return 'cursor'
     
     # Default fallback
-    return 'WINDSURF'
+    return 'windsurf'
 
 
 def prompt_openai_credentials(env_path=".env"):
@@ -548,7 +548,7 @@ def parse_arguments():
                       help="File to update")
     parser.add_argument("--update-value", help="New value to write to the specified file")
     parser.add_argument("--setup", help="Setup project", action="store_true")
-    parser.add_argument("--type", choices=["cursor", "windsurf", "CURSOR", "WINDSURF"], help="Project type", default="cursor")
+    parser.add_argument("--type", choices=["cursor", "windsurf", "cursor", "windsurf"], help="Project type", default="cursor")
     
     # Task management arguments
     task_group = parser.add_argument_group("Task Management")
@@ -556,7 +556,7 @@ def parse_arguments():
                            help="Task management action")
     task_group.add_argument("--task-id", help="Task ID for update/note/get actions")
     task_group.add_argument("--task-description", help="Task description for add action")
-    task_group.add_argument("--task-status", choices=[TaskStatus.PENDING, TaskStatus.IN_PROGRESS, 
+    task_group.add_argument("--task-status", choices=[TaskStatus.PENDING, TaskStatus.IN_progress, 
                                                      TaskStatus.COMPLETED, TaskStatus.BLOCKED],
                            help="Task status for update action")
     task_group.add_argument("--task-note", help="Note content for note action")
@@ -598,17 +598,17 @@ You will be given access to various development tools. Use them as appropriate. 
 
 Your workspace root contains three key documents:
 
-- **ARCHITECTURE.md**  
+- **architecture.md**  
   Primary source of truth. Contains all major components and their requirements.  
   → If missing, ask the user for requirements and generate this document.
 
-- **PROGRESS.md**  
+- **progress.md**  
   Tracks major components and organizes them into a development schedule.  
-  → If missing, generate from `ARCHITECTURE.md`.
+  → If missing, generate from `architecture.md`.
 
-- **TASKS.md**  
+- **tasks.md**  
   Contains action-oriented tasks per component, small enough to develop and test independently.  
-  → If missing, select the next component from `PROGRESS.md` and break it into tasks.
+  → If missing, select the next component from `progress.md` and break it into tasks.
 
 ---
 
@@ -617,32 +617,32 @@ Your workspace root contains three key documents:
 ```mermaid
 flowchart TD
     Start([Start])
-    CheckArchitecture{ARCHITECTURE exists?}
+    Checkarchitecture{architecture exists?}
     AskRequirements["Ask user for requirements"]
-    CheckProgress{PROGRESS exists?}
-    BreakDownArch["Break ARCHITECTURE into major components"]
+    Checkprogress{progress exists?}
+    BreakDownArch["Break architecture into major components"]
     DevSchedule["Organize components into a dev schedule"]
-    CheckTasks{TASKS exist?}
-    CreateTasks["Break next component into individual tasks"]
-    ReviewTasks["Review TASKS"]
+    Checktasks{tasks exist?}
+    Createtasks["Break next component into individual tasks"]
+    Reviewtasks["Review tasks"]
     DevTask["Develop a task"]
     TestTask["Test the task until it passes"]
-    UpdateTasks["Update TASKS"]
-    IsProgressComplete{All PROGRESS completed?}
+    Updatetasks["Update tasks"]
+    IsprogressComplete{All progress completed?}
     LoopBack["Loop"]
     Done([✅ Success])
 
-    Start --> CheckArchitecture
-    CheckArchitecture -- Yes --> CheckProgress
-    CheckArchitecture -- No --> AskRequirements --> CheckProgress
-    CheckProgress -- Yes --> DevSchedule
-    CheckProgress -- No --> BreakDownArch --> DevSchedule
-    DevSchedule --> CheckTasks
-    CheckTasks -- No --> CreateTasks --> ReviewTasks
-    CheckTasks -- Yes --> ReviewTasks
-    ReviewTasks --> DevTask --> TestTask --> UpdateTasks --> IsProgressComplete
-    IsProgressComplete -- No --> LoopBack --> CheckTasks
-    IsProgressComplete -- Yes --> Done
+    Start --> Checkarchitecture
+    Checkarchitecture -- Yes --> Checkprogress
+    Checkarchitecture -- No --> AskRequirements --> Checkprogress
+    Checkprogress -- Yes --> DevSchedule
+    Checkprogress -- No --> BreakDownArch --> DevSchedule
+    DevSchedule --> Checktasks
+    Checktasks -- No --> Createtasks --> Reviewtasks
+    Checktasks -- Yes --> Reviewtasks
+    Reviewtasks --> DevTask --> TestTask --> Updatetasks --> IsprogressComplete
+    IsprogressComplete -- No --> LoopBack --> Checktasks
+    IsprogressComplete -- Yes --> Done
 ```
 
 ---
@@ -684,9 +684,9 @@ flowchart TD
    - Focus on patterns that apply across multiple projects
 
 4. **Project-Specific Information**
-   - Use ARCHITECTURE.md for project structure
-   - Use PROGRESS.md for development tracking
-   - Use TASKS.md for granular task management
+   - Use architecture.md for project structure
+   - Use progress.md for development tracking
+   - Use tasks.md for granular task management
    - Use local documentation for project-specific patterns
 
 ---
@@ -767,7 +767,7 @@ Use your context to track your folder location. Chaining commands is causing an 
 ARGS = parse_arguments()
 if ARGS.setup: 
     IDE_ENV = detect_ide_environment()    
-    KEY_NAME = "WINDSURF" if IDE_ENV.startswith("W")  else "CURSOR"
+    KEY_NAME = "windsurf" if IDE_ENV.startswith("W")  else "cursor"
 
 # === File Paths Configuration ===
 
@@ -787,12 +787,12 @@ def get_rules_file_path(context_type='global') -> Tuple[Path, Path]:
     
     # Mapping for rules file paths using Path for robust resolution
     rules_paths = {
-        'WINDSURF': {
+        'windsurf': {
             'global': Path.home() / '.codeium' / 'windsurf' / 'memories' / 'global_rules.md',
             'context': Path.cwd() / '.windsurfrules'
         },
-        'CURSOR': {
-            'global': Path.cwd() / 'global_rules.md',  # User must manually set in Cursor settings
+        'cursor': {
+            'global': Path.cwd() / 'global_rules.md',  # User must manually set in cursor settings
             'context': Path.cwd() / '.cursorrules'
         }
     }
@@ -830,11 +830,11 @@ def save_global_rules(rules_content):
     except Exception as e:
         logger.error(f"Failed to save global rules: {e}")
     
-    # If Cursor, show the warning but don't return early
-    if detect_ide_environment() == 'CURSOR':
+    # If cursor, show the warning but don't return early
+    if detect_ide_environment() == 'cursor':
         logger.warning(
-            "For Cursor, please also manually copy global rules to settings. "
-            "The file has been saved to global_rules.md, but you need to add this content to Cursor settings."
+            "For cursor, please also manually copy global rules to settings. "
+            "The file has been saved to global_rules.md, but you need to add this content to cursor settings."
         )
         print(rules_content)
 
@@ -874,9 +874,9 @@ def setup_project():
     if not safe_read_file(CONTEXT_RULES_PATH):
         # Initialize with current architecture, progress and tasks
         context = {
-            "architecture": safe_read_file(ARCHITECTURE_PATH),
-            "progress": safe_read_file(PROGRESS_PATH),
-            "tasks": safe_read_file(TASKS_PATH),
+            "architecture": safe_read_file(architecture_PATH),
+            "progress": safe_read_file(progress_PATH),
+            "tasks": safe_read_file(tasks_PATH),
         }
         update_context(context)
     
@@ -902,8 +902,8 @@ def update_context(context):
     if context.get("architecture"):
         content["architecture"] = context["architecture"]
     else:
-        if ARCHITECTURE_PATH.exists():
-            content["architecture"] = safe_read_file(ARCHITECTURE_PATH)
+        if architecture_PATH.exists():
+            content["architecture"] = safe_read_file(architecture_PATH)
         else:
             content["architecture"] = ""
     
@@ -911,8 +911,8 @@ def update_context(context):
     if context.get("progress"):
         content["progress"] = context["progress"]
     else:
-        if PROGRESS_PATH.exists():
-            content["progress"] = safe_read_file(PROGRESS_PATH)
+        if progress_PATH.exists():
+            content["progress"] = safe_read_file(progress_PATH)
         else:
             content["progress"] = ""
     
@@ -920,8 +920,8 @@ def update_context(context):
     if context.get("tasks"):
         content["tasks"] = context["tasks"]
     else:
-        if TASKS_PATH.exists():
-            content["tasks"] = safe_read_file(TASKS_PATH)
+        if tasks_PATH.exists():
+            content["tasks"] = safe_read_file(tasks_PATH)
         else:
             content["tasks"] = ""
             
@@ -937,13 +937,13 @@ def update_specific_file(file_type, content):
     Update a specific project file with new content.
     
     This function allows targeted updates to individual project files based on their
-    logical type (e.g., ARCHITECTURE, PROGRESS, TASKS). It handles the special case
+    logical type (e.g., architecture, progress, tasks). It handles the special case
     of CONTEXT updates and ensures that the context tracking system is updated
     and changes are committed to Git after file modifications.
     
     Args:
         file_type (str): The type of file to update. Must be one of the keys in
-            SETUP_FILES dictionary (e.g., "ARCHITECTURE", "PROGRESS", "TASKS")
+            SETUP_FILES dictionary (e.g., "architecture", "progress", "tasks")
             or "CONTEXT" for special handling of context updates.
         content (str): The new content to write to the file.
     
@@ -958,9 +958,9 @@ def update_specific_file(file_type, content):
         
     Note:
         The file_type parameter is case-insensitive. It will be converted to
-        uppercase before processing.
+        lowercase before processing.
     """
-    file_type = file_type.upper()
+    file_type = file_type.lower()
     
     if file_type == "CONTEXT":
         # Special case to update entire context
@@ -1514,7 +1514,7 @@ class MarkdownWatcher(BaseWatcher):
     Specialized watcher for monitoring markdown documentation files.
     
     This watcher subclass is specifically designed to monitor the project's
-    documentation files (ARCHITECTURE.md, PROGRESS.md, TASKS.md, etc.).
+    documentation files (architecture.md, progress.md, tasks.md, etc.).
     When any of these files change, it automatically updates the context
     tracking system and creates a Git commit to track the changes.
     
@@ -1540,7 +1540,7 @@ class MarkdownWatcher(BaseWatcher):
         and configures the callback to update context and create a Git commit.
         """
         # Build the file mapping from SETUP_FILES:
-        # SETUP_FILES is assumed to be a dict mapping keys (e.g., "ARCHITECTURE") to Path objects.
+        # SETUP_FILES is assumed to be a dict mapping keys (e.g., "architecture") to Path objects.
         file_mapping = {str(path.resolve()): name for name, path in SETUP_FILES.items()}
         super().__init__(file_mapping, self.markdown_callback)
 
@@ -1554,7 +1554,7 @@ class MarkdownWatcher(BaseWatcher):
         
         Args:
             file_key (str): Identifier of the file that was modified
-                (e.g., "ARCHITECTURE", "PROGRESS", "TASKS")
+                (e.g., "architecture", "progress", "tasks")
         """
         # Handle markdown file updates:
         logger.info(f"Processing update from {file_key}")
@@ -1820,20 +1820,20 @@ def manage_task(action: str, **kwargs):
         # Update tasks in cursor rules
         rules_content = safe_read_file(GLOBAL_RULES_PATH)
         if not rules_content:
-            rules_content = "# Tasks"
-        # Check if Tasks section exists
-        if "# Tasks" not in rules_content:
-            rules_content += "\n\n# Tasks"
-        # Find the Tasks section and append the new task
+            rules_content = "# tasks"
+        # Check if tasks section exists
+        if "# tasks" not in rules_content:
+            rules_content += "\n\n# tasks"
+        # Find the tasks section and append the new task
         lines = rules_content.split("\n")
         tasks_section_idx = -1
         for i, line in enumerate(lines):
-            if line.strip() == "# Tasks":
+            if line.strip() == "# tasks":
                 tasks_section_idx = i
                 break
         
         if tasks_section_idx >= 0:
-            # Find where to insert the new task (after the last task or after the Tasks header)
+            # Find where to insert the new task (after the last task or after the tasks header)
             insert_idx = tasks_section_idx + 1
             for i in range(tasks_section_idx + 1, len(lines)):
                 if lines[i].startswith("### Task"):
@@ -1995,21 +1995,21 @@ def extract_project_name(content):
     return ""
 
 SETUP_FILES = {
-    "ARCHITECTURE": Path("ARCHITECTURE.md").resolve(),
-    "PROGRESS": Path("PROGRESS.md").resolve(),
-    "TASKS": Path("TASKS.md").resolve(),
+    "architecture": Path("architecture.md").resolve(),
+    "progress": Path("progress.md").resolve(),
+    "tasks": Path("tasks.md").resolve(),
 }
 
-ARCHITECTURE_PATH = SETUP_FILES["ARCHITECTURE"]
-PROGRESS_PATH = SETUP_FILES["PROGRESS"]
-TASKS_PATH = SETUP_FILES["TASKS"]
+architecture_PATH = SETUP_FILES["architecture"]
+progress_PATH = SETUP_FILES["progress"]
+tasks_PATH = SETUP_FILES["tasks"]
 
 def safe_read_file(file_path):
     """Safely read a file with proper error handling"""
     error_message = {
-        ARCHITECTURE_PATH: "Architecture file not found. Please ask the user for requirements to create it.",
-        PROGRESS_PATH: "Progress file not found. Please generate from ARCHITECTURE.md",
-        TASKS_PATH: "Tasks file not found. Please generate from PROGRESS.md",
+        architecture_PATH: "architecture file not found. Please ask the user for requirements to create it.",
+        progress_PATH: "progress file not found. Please generate from architecture.md",
+        tasks_PATH: "tasks file not found. Please generate from progress.md",
     }
     msg = ""
     try:

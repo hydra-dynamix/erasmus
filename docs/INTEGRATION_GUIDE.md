@@ -54,7 +54,7 @@ task_manager = TaskManager()
 task = task_manager.add_task("Implement feature X")
 
 # Update task status
-task_manager.update_task_status(task.id, TaskStatus.IN_PROGRESS)
+task_manager.update_task_status(task.id, TaskStatus.IN_progress)
 ```
 
 ### File Synchronization
@@ -98,11 +98,11 @@ git_manager.commit_changes("Implement new features")
 
 ## 5. IDE-Specific Setup
 
-### Cursor IDE
-- Automatically detects Cursor workspace
+### cursor IDE
+- Automatically detects cursor workspace
 - Uses `.erasmus/rules.json` for configuration
 
-### Windsurf IDE
+### windsurf IDE
 - Set `IDE_ENV=windsurf` in `.env`
 - Configure workspace in `.erasmus/config.yaml`
 

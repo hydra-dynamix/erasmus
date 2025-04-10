@@ -15,17 +15,17 @@ echo -e "${YELLOW}============================${NC}"
 
 # Prompt for IDE environment first
 echo -e "${YELLOW}Please enter your IDE environment:${NC}"
-echo -e "1) Cursor (default)"
-echo -e "2) Windsurf"
+echo -e "1) cursor (default)"
+echo -e "2) windsurf"
 read -p "Select option [1-2]: " ide_option
 
 # Set IDE_ENV based on selection
 case $ide_option in
     2)
-        IDE_ENV="WINDSURF"
+        IDE_ENV="windsurf"
         ;;
     *)
-        IDE_ENV="CURSOR"
+        IDE_ENV="cursor"
         ;;
 esac
 

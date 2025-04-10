@@ -43,9 +43,9 @@ class FileSynchronizer:
     """Manages synchronization of project files to the rules directory."""
     
     TRACKED_FILES = {
-        'ARCHITECTURE.md': 'architecture',
-        'TASKS.md': 'tasks',
-        'PROGRESS.md': 'progress'
+        'architecture.md': 'architecture',
+        'tasks.md': 'tasks',
+        'progress.md': 'progress'
     }
     
     def __init__(self, workspace_path: Path, rules_dir: Path):

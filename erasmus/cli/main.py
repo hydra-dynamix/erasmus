@@ -1,15 +1,12 @@
 """Main CLI entry point."""
 import click
 
-from erasmus.cli.setup import setup
+from erasmus.cli.commands import cli
 
-@click.group()
-def cli():
-    """Erasmus - AI Context Watcher for Development."""
-    pass
 
-# Register commands
-cli.add_command(setup)
+def main():
+    """Main entry point for the CLI."""
+    cli(auto_envvar_prefix='ERASMUS')
 
 if __name__ == '__main__':
-    cli() 
+    main()

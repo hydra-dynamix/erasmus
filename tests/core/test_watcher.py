@@ -45,9 +45,9 @@ def mock_event():
 def setup_files(temp_dir):
     """Create temporary markdown files for testing."""
     files = {
-        "ARCHITECTURE": temp_dir / "ARCHITECTURE.md",
-        "PROGRESS": temp_dir / "PROGRESS.md",
-        "TASKS": temp_dir / "TASKS.md"
+        "architecture": temp_dir / "architecture.md",
+        "progress": temp_dir / "progress.md",
+        "tasks": temp_dir / "tasks.md"
     }
     
     # Create files with content
@@ -164,10 +164,10 @@ def test_markdown_watcher_event_handling(setup_files, mock_event):
     watcher = MarkdownWatcher(setup_files, callback)
     
     # Test modification event
-    path = setup_files["ARCHITECTURE"]
+    path = setup_files["architecture"]
     event = mock_event(str(path))
     watcher.on_modified(event)
-    assert modified_files == ["ARCHITECTURE"]
+    assert modified_files == ["architecture"]
     
     # Test non-markdown file
     modified_files.clear()
@@ -194,11 +194,11 @@ def test_markdown_watcher_content_validation(setup_files, mock_event):
     watcher = MarkdownWatcher(setup_files, callback)
     
     # Test valid markdown content
-    path = setup_files["ARCHITECTURE"]
+    path = setup_files["architecture"]
     path.write_text("# Valid Markdown\n\n- List item\n- Another item")
     event = mock_event(str(path))
     watcher.on_modified(event)
-    assert modified_files == ["ARCHITECTURE"]
+    assert modified_files == ["architecture"]
     
     # Test invalid markdown content
     modified_files.clear()
@@ -361,7 +361,7 @@ def test_watcher_factory_start_and_stop(setup_files, test_script, mock_callback)
     script_watcher = factory.create_script_watcher(test_script, mock_callback)
     
     # Create and start observers
-    factory.create_observer(markdown_watcher, str(setup_files["ARCHITECTURE"].parent))
+    factory.create_observer(markdown_watcher, str(setup_files["architecture"].parent))
     factory.create_observer(script_watcher, str(test_script.parent))
     
     # Start all observers

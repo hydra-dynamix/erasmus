@@ -21,14 +21,16 @@ from typing import Dict, Callable, Optional, List
 from threading import Thread, Lock
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
+from rich.console import Console
 
-# Configure logging
+# Configure logging and console
 logger = logging.getLogger(__name__)
+console = Console()
 
 class BaseWatcher(FileSystemEventHandler):
     """Base class for file system event handlers."""
     
-    def __init__(self, file_paths: Dict[str, Path], callback: Callable[[str], None]):
+    def __init__(self, file_paths: Dict[str, Path], callback: Callable[[str, str], None]):
         """Initialize the watcher.
         
         Args:
@@ -39,7 +41,11 @@ class BaseWatcher(FileSystemEventHandler):
         # Store both the original mapping and the normalized paths
         self.file_paths = file_paths
         self.callback = callback  # Store the callback
-        self._path_mapping = {str(path.resolve()): key for key, path in file_paths.items()}
+        self._path_mapping = {}
+        for key, path in file_paths.items():
+            resolved = str(path.resolve())
+            self._path_mapping[resolved] = key
+            logger.debug(f"Watching {key}: {resolved}")
         self._event_lock = Lock()
         self._last_events: Dict[str, float] = {}
     
@@ -74,8 +80,11 @@ class BaseWatcher(FileSystemEventHandler):
         """
         try:
             resolved_path = str(Path(file_path).resolve())
+            logger.debug(f"Looking up file key for: {resolved_path}")
+            logger.debug(f"Known paths: {list(self._path_mapping.keys())}")
             return self._path_mapping.get(resolved_path)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error getting file key: {e}")
             return None
     
     def _handle_event(self, event: FileSystemEvent) -> None:
@@ -100,10 +109,11 @@ class BaseWatcher(FileSystemEventHandler):
                 with open(file_path, 'r') as f:
                     content = f.read()
                 if self._validate_content(content):
-                    self.callback(file_key)
+                    console.print(f"📝 Detected changes in {file_key}")
+                    self.callback(file_key, content)
             else:
-                # For deletion events, we still want to notify
-                self.callback(file_key)
+                # For deletion events, we still want to notify with empty content
+                self.callback(file_key, "")
         except Exception as e:
             logger.error(f"Error handling event for {file_path}: {e}")
     
@@ -136,6 +146,8 @@ class BaseWatcher(FileSystemEventHandler):
 
 class MarkdownWatcher(BaseWatcher):
     """Specialized watcher for markdown documentation files."""
+    def __init__(self, file_paths: Dict[str, Path], callback: Callable[[str], None]):
+        super().__init__(file_paths, callback)
     
     def _validate_content(self, content: str) -> bool:
         """Validate markdown content.
@@ -158,22 +170,30 @@ class MarkdownWatcher(BaseWatcher):
         return True
 
 class ScriptWatcher(BaseWatcher):
-    """Specialized watcher for script files."""
+    """Specialized watcher for script files.
     
-    def __init__(self, script_path: Path, callback: Callable[[str], None]):
+    TODO:
+    - Integrate LSP for real-time validation
+    - Add linting checks on file changes
+    - Add dynamic unit test runner
+    - Add context section for focus=path/to/script.py to track active development
+    """
+    def __init__(self, file_paths: Dict[str, Path | str], callback: Callable[[str], None]):
         """Initialize the script watcher.
         
         Args:
-            script_path: Path to the script file to watch
-            callback: Function to call when the script changes
+            file_paths: Dictionary mapping script keys to paths
+            callback: Function to call when scripts change
         """
-        script_path = Path(script_path)
-        if not str(script_path).endswith('.py'):
-            raise ValueError("Script path must end with .py")
+        # Validate all paths
+        normalized_paths = {}
+        for key, path in file_paths.items():
+            path = Path(path)
+            if not str(path).endswith('.py'):
+                raise ValueError(f"Script path {path} must end with .py")
+            normalized_paths[key] = path
         
-        # Use the script name without extension as the key
-        script_key = script_path.stem
-        super().__init__({script_key: script_path}, callback)
+        super().__init__(normalized_paths, callback)
     
     def _validate_content(self, content: str) -> bool:
         """Validate Python script content.
@@ -252,17 +272,17 @@ class WatcherFactory:
         """
         return MarkdownWatcher(file_paths, callback)
     
-    def create_script_watcher(self, script_path: Path, callback: Callable[[str], None]) -> ScriptWatcher:
+    def create_script_watcher(self, file_paths: Dict[str, Path], callback: Callable[[str], None]) -> ScriptWatcher:
         """Create a script watcher.
         
         Args:
-            script_path: Path to the script file
-            callback: Function to call when the script changes
+            file_paths: Dictionary mapping script keys to paths
+            callback: Function to call when scripts change
             
         Returns:
             Configured ScriptWatcher
         """
-        return ScriptWatcher(script_path, callback)
+        return ScriptWatcher(file_paths, callback)
     
     def create_observer(self, watcher: FileSystemEventHandler, directory: str) -> Observer:
         """Create and configure an observer.
@@ -276,7 +296,6 @@ class WatcherFactory:
         """
         observer = Observer()
         observer.schedule(watcher, directory, recursive=False)
-        observer.start()
         self.observers.append(observer)
         return observer
     

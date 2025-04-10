@@ -161,7 +161,7 @@ class DynamicUpdateManager:
             # Component-specific validation
             if component == "tasks":
                 if not isinstance(new_value, dict):
-                    return False, "Tasks must be a dictionary"
+                    return False, "tasks must be a dictionary"
                 for task_id, task_data in new_value.items():
                     if not isinstance(task_data, dict):
                         return False, f"Task {task_id} data must be a dictionary"

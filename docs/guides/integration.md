@@ -28,7 +28,7 @@ This guide explains how to integrate the Erasmus context management system into 
 1. **Required Environment Variables**
    Create a `.env` file in your project root:
    ```env
-   IDE_TYPE=Cursor
+   IDE_TYPE=cursor
    RULES_DIR=.cursorrules
    WORKSPACE_ROOT=/path/to/workspace
    OPENAI_API_KEY=your-api-key
@@ -40,9 +40,9 @@ This guide explains how to integrate the Erasmus context management system into 
    workspace/
    ├── .cursorrules/
    │   └── rules.json
-   ├── ARCHITECTURE.md
-   ├── PROGRESS.md
-   └── TASKS.md
+   ├── architecture.md
+   ├── progress.md
+   └── tasks.md
    ```
 
 ## Context Management
@@ -69,7 +69,7 @@ observer.schedule(watcher, str(workspace_path), recursive=False)
 # Queue an update
 success = await context_manager.queue_update(
     component="architecture",
-    content="# Updated Architecture"
+    content="# Updated architecture"
 )
 
 # Handle the result
@@ -93,7 +93,7 @@ sync = SyncIntegration(context_manager, workspace_path)
 await sync.start()
 
 # Handle file changes
-await sync.handle_file_change(Path("ARCHITECTURE.md"))
+await sync.handle_file_change(Path("architecture.md"))
 ```
 
 ### Error Recovery

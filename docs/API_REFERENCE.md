@@ -116,7 +116,7 @@ task_manager = TaskManager()
 task = task_manager.add_task("Implement API documentation")
 
 # Update task status
-task_manager.update_task_status(task.id, TaskStatus.IN_PROGRESS)
+task_manager.update_task_status(task.id, TaskStatus.IN_progress)
 ```
 
 ### File Synchronization

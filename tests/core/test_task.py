@@ -23,14 +23,14 @@ def test_task_creation():
 def test_task_serialization():
     """Test task serialization and deserialization."""
     task = Task("1", "Test task")
-    task.status = TaskStatus.IN_PROGRESS
+    task.status = TaskStatus.IN_progress
     task.notes.append("Test note")
     
     # Serialize
     data = task.to_dict()
     assert data["id"] == "1"
     assert data["description"] == "Test task"
-    assert data["status"] == TaskStatus.IN_PROGRESS
+    assert data["status"] == TaskStatus.IN_progress
     assert data["notes"] == ["Test note"]
     
     # Deserialize
@@ -87,7 +87,7 @@ def test_task_manager_list_tasks():
     
     # Update task statuses
     task1.status = TaskStatus.COMPLETED
-    task2.status = TaskStatus.IN_PROGRESS
+    task2.status = TaskStatus.IN_progress
     task3.status = TaskStatus.COMPLETED
     
     # List all tasks
@@ -100,9 +100,9 @@ def test_task_manager_list_tasks():
     assert all(t.status == TaskStatus.COMPLETED for t in completed)
     
     # List in-progress tasks
-    in_progress = manager.list_tasks(TaskStatus.IN_PROGRESS)
+    in_progress = manager.list_tasks(TaskStatus.IN_progress)
     assert len(in_progress) == 1
-    assert in_progress[0].status == TaskStatus.IN_PROGRESS
+    assert in_progress[0].status == TaskStatus.IN_progress
 
 def test_task_manager_update_status():
     """Test updating task status."""
@@ -110,8 +110,8 @@ def test_task_manager_update_status():
     task = manager.add_task("Test task")
     
     # Update to in-progress
-    manager.update_task_status("1", TaskStatus.IN_PROGRESS)
-    assert task.status == TaskStatus.IN_PROGRESS
+    manager.update_task_status("1", TaskStatus.IN_progress)
+    assert task.status == TaskStatus.IN_progress
     assert task.completion_time is None
     
     # Update to completed

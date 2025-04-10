@@ -24,9 +24,9 @@ def test_task_creation():
 def test_task_status_update():
     """Test updating task status."""
     task = Task("1", "Test task")
-    task.status = TaskStatus.IN_PROGRESS
+    task.status = TaskStatus.IN_progress
     
-    assert task.status == TaskStatus.IN_PROGRESS
+    assert task.status == TaskStatus.IN_progress
     
     task.status = TaskStatus.COMPLETED
     assert task.status == TaskStatus.COMPLETED
@@ -68,7 +68,7 @@ def test_task_serialization():
     """Test task dictionary conversion and recreation."""
     task_manager = TaskManager()
     task = task_manager.add_task("Test task")
-    task.status = TaskStatus.IN_PROGRESS
+    task.status = TaskStatus.IN_progress
     task.add_note_to_task("Test note")
     
     # Convert to dict

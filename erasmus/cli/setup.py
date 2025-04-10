@@ -8,6 +8,7 @@ import click
 from rich.console import Console
 from rich.prompt import Prompt
 from dotenv import load_dotenv
+from ..utils.context import setup_project
 
 load_dotenv()
 
@@ -15,16 +16,16 @@ console = Console()
 
 def validate_ide_env(value: str) -> str:
     """Validate and transform IDE_ENV value."""
-    # Convert to uppercase for consistency
-    value = value.upper()
+    # Convert to lowercase for consistency
+    value = value.lower()
     
     # Check first letter and standardize
-    if value.startswith('C'):
-        return 'CURSOR'
-    elif value.startswith('W'):
-        return 'WINDSURF'
+    if value.startswith('c'):
+        return 'cursor'
+    elif value.startswith('w'):
+        return 'windsurf'
     else:
-        raise ValueError("IDE_ENV must start with 'C' for Cursor or 'W' for Windsurf")
+        raise ValueError("IDE_ENV must start with 'C' for cursor or 'W' for windsurf")
 
 def validate_base_url(value: str) -> str:
     """Validate OPENAI_BASE_URL value."""
@@ -74,7 +75,7 @@ def write_env_file(values: Dict[str, str]) -> None:
 def create_default_env_example() -> None:
     """Create a default .env.example file."""
     with open(".env.example", "w") as f:
-        f.write("IDE_ENV=CURSOR\n")
+        f.write("IDE_ENV=cursor\n")
         f.write("GIT_TOKEN=\n")
         f.write("OPENAI_API_KEY=sk-1234\n")
         f.write("OPENAI_BASE_URL=https://api.openai.com/v1\n")
@@ -118,9 +119,9 @@ def get_default_prompts(defaults: Dict[str, str]) -> Dict[str, str]:
         "GIT_TOKEN": f"Please enter your git token[default: {defaults['GIT_TOKEN']}]"
     }
 
-@click.command()
 def setup():
     """Set up environment configuration with interactive prompts."""
+    setup_project()
     defaults = {}
     
     try:

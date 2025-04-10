@@ -40,7 +40,7 @@ The script will:
 
 ## Environment Variables
 
-- `IDE_ENV`: Set to `CURSOR` for testing
+- `IDE_ENV`: Set to `cursor` for testing
 
 ## Troubleshooting
 

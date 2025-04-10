@@ -29,9 +29,9 @@ class SyncIntegration:
         self._last_sync = {}
         self._update_retries = {}
         self.source_files = {
-            "architecture": workspace_path / "ARCHITECTURE.md",
-            "progress": workspace_path / "PROGRESS.md",
-            "tasks": workspace_path / "TASKS.md"
+            "architecture": workspace_path / "architecture.md",
+            "progress": workspace_path / "progress.md",
+            "tasks": workspace_path / "tasks.md"
         }
         
     async def start(self):
