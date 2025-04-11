@@ -116,7 +116,7 @@ class SetupPaths(FilePaths):
         return instance
 
     rules_file_path: Path = Field(
-        default=Path().cwd() / ".cursorrules",
+        default=Path().cwd() / ".windsurfrules",
         description="Rules file path",
     )
     project_root: Path = Field(
@@ -139,13 +139,33 @@ class SetupPaths(FilePaths):
     @property
     def rules_file(self) -> Path:
         """Get the rules file path based on IDE environment."""
+        from erasmus.utils.logging import get_logger
+        logger = get_logger(__name__)
+
+        # Load .env file directly to ensure environment variables are up to date
+        from dotenv import load_dotenv
+        load_dotenv()
+
         ide_env = os.getenv("IDE_ENV", "").lower()
-        if ide_env.startswith("w"):
-            self.rules_file_path = self.project_root / ".windsurfrules"
+        logger.info(f"Detected IDE environment: '{ide_env}'")
+
+        windsurf_rules = self.project_root / ".windsurfrules"
+        cursor_rules = self.project_root / ".cursorrules"
+        # First check if .windsurfrules exists - if it does, use it regardless of IDE_ENV
+        if windsurf_rules.exists():
+            logger.info(".windsurfrules exists, using Windsurf rules")
+            self.rules_file_path = windsurf_rules
+        # Then check IDE_ENV if .windsurfrules doesn't exist
+        elif ide_env.startswith("w"):
+            logger.info("Using Windsurf rules file at %s based on IDE_ENV", windsurf_rules)
+            self.rules_file_path = windsurf_rules
         elif ide_env.startswith("c"):
-            self.rules_file_path = self.project_root / ".cursorrules"
+            logger.info("Using Cursor rules file at %s based on IDE_ENV", cursor_rules)
+            self.rules_file_path = cursor_rules
         else:
-            self.rules_file_path = self.project_root / ".cursorrules"  # Default
+            logger.info("Using default Cursor rules file at %s", cursor_rules)
+            self.rules_file_path = cursor_rules  # Default
+
         return self.rules_file_path
 
     @property

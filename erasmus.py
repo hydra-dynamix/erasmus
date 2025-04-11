@@ -365,7 +365,7 @@ def detect_ide_environment() -> str:
     if ide_env == "":
         ide_env = input("Enter your IDE environment (windsurf, cursor): ").strip()
     if ide_env:
-        return 'windsurf' if ide_env.startswith('W') else 'cursor'
+        return 'windsurf' if ide_env.startswith('w') else 'cursor'
 
     # Try to detect based on current working directory or known IDE paths
     cwd = Path.cwd()
@@ -766,7 +766,7 @@ Use your context to track your folder location. Chaining commands is causing an 
 ARGS = parse_arguments()
 if ARGS.setup:
     IDE_ENV = detect_ide_environment()
-    KEY_NAME = "windsurf" if IDE_ENV.startswith("W")  else "cursor"
+    KEY_NAME = "windsurf" if IDE_ENV.startswith("w")  else "cursor"
 
 # === File Paths Configuration ===
 

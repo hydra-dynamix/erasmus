@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
 
-from erasmus.utils.context import setup_project
+# setup_project is imported in the function to avoid circular imports
 
 load_dotenv()
 
@@ -120,7 +120,7 @@ def get_default_prompts(defaults: dict[str, str]) -> dict[str, str]:
 
 def setup():
     """Set up environment configuration with interactive prompts."""
-    setup_project()
+    # Get defaults first
     defaults = {}
 
     try:
@@ -161,6 +161,14 @@ def setup():
 
         # Write to .env file
         write_env_file(values)
+        
+        # Set the IDE_ENV in the current process environment
+        import os
+        os.environ["IDE_ENV"] = values.get("IDE_ENV", "")
+
+        # Now that IDE_ENV is set, run setup_project
+        from erasmus.utils.context import setup_project
+        setup_project()
 
         console.print("\n[green]Environment configuration completed successfully![/green]")
         console.print("The .env file has been created with your settings.")

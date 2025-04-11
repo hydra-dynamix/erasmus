@@ -152,6 +152,19 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
 
 def setup_project() -> None:
     """Set up a new project with necessary files."""
+    # Import logging here to avoid circular imports
+    from erasmus.utils.logging import get_logger
+    logger = get_logger(__name__)
+
+    # Make sure .env is loaded
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    # Check IDE environment before creating SetupPaths
+    import os
+    ide_env = os.getenv("IDE_ENV", "").lower()
+    logger.info(f"Setup project detected IDE environment: '{ide_env}'")
+
     setup_paths = SetupPaths.with_project_root(Path.cwd())
 
     # Create required files
@@ -200,14 +213,17 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
     with LogContext(logger, f"update_specific_file({file_type})"):
         setup_paths = SetupPaths.with_project_root(Path.cwd())
         file_map = setup_paths.markdown_files
-        logger.debug(f"Available file types: {list(file_map.keys())}")
+        # Get available file types from the MarkdownPaths object
+        available_types = ["architecture", "progress", "tasks"]
+        logger.debug(f"Available file types: {available_types}")
 
-        if file_type not in file_map:
+        if file_type not in available_types:
             logger.error(f"Invalid file type: {file_type}")
             console.print(f"Invalid file type: {file_type}", style="red")
             return
 
-        path = file_map[file_type]
+        # Access the path attribute directly based on the file_type
+        path = getattr(file_map, file_type)
         logger.debug(f"Updating file: {path}")
 
         # If no content provided, read from file
