@@ -56,7 +56,7 @@ async def test_sync_all_files(file_sync, temp_workspace, temp_rules_dir):
         assert rules[key] == source_content
 
 @pytest.mark.asyncio
-async def test_sync_single_file(file_sync, temp_workspace, temp_rules_dir):
+async def test_sync_single_file(file_sync, temp_rules_dir):
     """Test synchronizing a single file to rules directory."""
     # Sync only architecture.md
     await file_sync.sync_file("architecture.md")
@@ -72,14 +72,14 @@ async def test_sync_single_file(file_sync, temp_workspace, temp_rules_dir):
     assert "progress" not in rules
 
 @pytest.mark.asyncio
-async def test_handle_missing_source_file(file_sync, temp_workspace, temp_rules_dir):
+async def test_handle_missing_source_file(file_sync):
     """Test handling of missing source files."""
     # Try to sync a non-existent file
     with pytest.raises(FileNotFoundError):
         await file_sync.sync_file("NONEXISTENT.md")
 
 @pytest.mark.asyncio
-async def test_handle_permission_error(file_sync, temp_workspace, temp_rules_dir):
+async def test_handle_permission_error(file_sync):
     """Test handling of permission errors during sync."""
     # Make rules directory read-only
     temp_rules_dir.chmod(0o444)
@@ -146,7 +146,7 @@ async def test_cleanup_removed_files(file_sync, temp_workspace, temp_rules_dir):
     assert "tasks" not in rules
 
 @pytest.mark.asyncio
-async def test_sync_file_runtime_error(file_sync, temp_workspace, temp_rules_dir):
+async def test_sync_file_runtime_error(file_sync):
     """Test handling of runtime errors during file sync."""
     # Create a mock that raises a runtime error
     with patch('erasmus.sync.file_sync.safe_write_file', side_effect=RuntimeError("Mock error")):
@@ -155,7 +155,7 @@ async def test_sync_file_runtime_error(file_sync, temp_workspace, temp_rules_dir
         assert "Failed to sync file" in str(exc_info.value)
 
 @pytest.mark.asyncio
-async def test_cleanup_error_handling(file_sync, temp_workspace, temp_rules_dir, caplog):
+async def test_cleanup_error_handling(file_sync, temp_workspace, caplog):
     """Test error handling during cleanup."""
     # Set up logging capture
     caplog.set_level(logging.WARNING)
@@ -175,14 +175,14 @@ async def test_cleanup_error_handling(file_sync, temp_workspace, temp_rules_dir,
         assert "Error during cleanup" in caplog.text
 
 @pytest.mark.asyncio
-async def test_get_sync_status(file_sync, temp_workspace, temp_rules_dir):
+async def test_get_sync_status(file_sync, temp_workspace):
     """Test getting synchronization status for all files."""
     # Initial state - no files in rules directory
     status = await file_sync.get_sync_status()
     assert len(status) == len(FileSynchronizer.TRACKED_FILES)
 
     # Check initial status
-    for key, info in status.items():
+    for _, info in status.items():
         assert info["exists"] is True
         assert info["synced"] is False
         assert info["last_sync"] is None
@@ -202,7 +202,7 @@ async def test_get_sync_status(file_sync, temp_workspace, temp_rules_dir):
     assert status["architecture.md"]["synced"] is False
 
 @pytest.mark.asyncio
-async def test_get_sync_status_with_errors(file_sync, temp_workspace, temp_rules_dir):
+async def test_get_sync_status_with_errors(file_sync, temp_workspace):
     """Test sync status handling when file operations fail."""
     # Initial sync
     await file_sync.sync_all()

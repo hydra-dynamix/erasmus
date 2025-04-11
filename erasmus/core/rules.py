@@ -66,7 +66,7 @@ class RulesManager:
 
     def __init__(self, workspace_root: Path):
         """Initialize the rules manager.
-        
+
         Args:
             workspace_root: Path to the project workspace root
         """
@@ -195,11 +195,11 @@ class RulesManager:
 
     def validate_code(self, code: str, rules: list[Rule] | None = None) -> list[str]:
         """Validate code against a set of rules.
-        
+
         Args:
             code: The code to validate
             rules: Optional list of rules to validate against. If None, uses active_rules.
-            
+
         Returns:
             List of validation errors, empty if code is valid
         """
@@ -236,7 +236,7 @@ class RulesManager:
 
     def export_rules(self, project_rules_path: Path, global_rules_path: Path) -> None:
         """Export current rules to files.
-        
+
         Args:
             project_rules_path: Path to export project rules
             global_rules_path: Path to export global rules
@@ -253,7 +253,7 @@ class RulesManager:
 
     def import_rules(self, project_rules_path: Path, global_rules_path: Path) -> None:
         """Import rules from files.
-        
+
         Args:
             project_rules_path: Path to import project rules from
             global_rules_path: Path to import global rules from
@@ -281,7 +281,7 @@ class RulesManager:
 
     def _write_rules_file(self, rules: list[Rule], path: Path, title: str) -> None:
         """Write rules to a file.
-        
+
         Args:
             rules: List of rules to write
             path: Path to write rules to
@@ -306,10 +306,10 @@ class RulesManager:
 
     def get_rules_for_file(self, file_path: Path) -> list[Rule]:
         """Get applicable rules for a file.
-        
+
         Args:
             file_path: Path to the file to get rules for
-            
+
         Returns:
             List of applicable rules
         """

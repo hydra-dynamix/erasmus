@@ -37,7 +37,7 @@ def test_env(tmp_path):
     version_json.write_text(json.dumps(version_data))
 
     # Store original paths
-    old_cwd = os.getcwd()
+    old_cwd = Path.cwd()
     old_version_file = VersionManager.VERSION_FILE
 
     # Set up test paths
@@ -65,7 +65,7 @@ def test_convert_scripts_missing_shell(test_env):
     result = main.convert_scripts("1.0.0")
     assert result == 1
 
-@pytest.mark.parametrize("command,args,expected_version", [
+@pytest.mark.parametrize(("command", "args", "expected_version"), [
     (["version", "get"], None, "0.0.1"),
     (["version", "patch"], None, "0.0.2"),
     (["version", "minor"], None, "0.1.0"),
@@ -75,20 +75,19 @@ def test_version_commands(test_env, command, args, expected_version):
     """Test version management commands."""
     test_args = command if args is None else command + args
 
-    with patch("sys.argv", ["main.py"] + test_args):
-        with patch("builtins.print") as mock_print:
-            main.main()
+    with patch("sys.argv", ["main.py", *test_args]), patch("builtins.print") as mock_print:
+        main.main()
 
-            # Check if version was printed
-            if command[1] == "get":
-                mock_print.assert_called_with(f"Current version: {expected_version}")
-            else:
-                mock_print.assert_called_with(f"Updated to version: {expected_version}")
+        # Check if version was printed
+        if command[1] == "get":
+            mock_print.assert_called_with(f"Current version: {expected_version}")
+        else:
+            mock_print.assert_called_with(f"Updated to version: {expected_version}")
 
-            # Check version file was updated
-            with open(VersionManager.VERSION_FILE) as f:
-                version_data = json.load(f)
-                assert version_data["version"] == expected_version
+        # Check version file was updated
+        with open(VersionManager.VERSION_FILE) as f:
+            version_data = json.load(f)
+            assert version_data["version"] == expected_version
 
 def test_version_increment_with_message(test_env):
     """Test version increment with custom message."""

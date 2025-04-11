@@ -21,10 +21,10 @@ if src_path not in sys.path:
 def temp_dir() -> Generator[Path, None, None]:
     """
     Create a temporary directory for test files.
-    
+
     Yields:
         Path: Path to the temporary directory
-        
+
     Note:
         The directory is automatically cleaned up after the test.
     """
@@ -35,10 +35,10 @@ def temp_dir() -> Generator[Path, None, None]:
 def setup_files(temp_dir: Path) -> dict[str, Path]:
     """
     Create a dictionary of test setup files.
-    
+
     Args:
         temp_dir: Temporary directory fixture
-        
+
     Returns:
         Dict[str, Path]: Dictionary mapping file keys to their paths
     """
@@ -58,10 +58,10 @@ def setup_files(temp_dir: Path) -> dict[str, Path]:
 def test_script(temp_dir: Path) -> Path:
     """
     Create a test script file.
-    
+
     Args:
         temp_dir: Temporary directory fixture
-        
+
     Returns:
         Path: Path to the test script
     """

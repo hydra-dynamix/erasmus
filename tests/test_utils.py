@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pytest
 
@@ -16,13 +17,14 @@ def temp_project_dir(tmp_path):
     (tmp_path / "test.py").write_text("print('test')")
 
     # Change to temp directory for test
-    original_dir = os.getcwd()
+    original_dir = Path.cwd()
     os.chdir(tmp_path)
 
     yield tmp_path
 
     # Cleanup and restore original directory
     os.chdir(original_dir)
+
 
 def test_backup_rules_file(temp_project_dir):
     """Test that backup_rules_file creates backups correctly."""
@@ -32,6 +34,7 @@ def test_backup_rules_file(temp_project_dir):
     backup_path = temp_project_dir / ".cursorrules.old"
     assert backup_path.exists()
     assert backup_path.read_text() == "test rules"
+
 
 def test_cleanup_project(temp_project_dir):
     """Test that cleanup_project removes generated files and creates backups."""

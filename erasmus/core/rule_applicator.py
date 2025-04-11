@@ -14,18 +14,18 @@ class RuleApplicationError(Exception):
 class RuleChain:
     """
     Represents a chain of rules to be applied in sequence.
-    
+
     A rule chain maintains an ordered list of rules that should be applied
     to code in the specified order, regardless of rule priorities.
-    
+
     Attributes:
         rules (List[Rule]): Ordered list of rules in the chain
     """
 
-    def __init__(self, rules: list[Rule] = None):
+    def __init__(self, rules: list[Rule] | None = None):
         """
         Initialize a rule chain.
-        
+
         Args:
             rules (List[Rule], optional): Initial list of rules. Defaults to None.
         """
@@ -34,7 +34,7 @@ class RuleChain:
     def add_rule(self, rule: Rule) -> None:
         """
         Add a rule to the chain.
-        
+
         Args:
             rule (Rule): Rule to add to the chain
         """
@@ -43,10 +43,10 @@ class RuleChain:
     def remove_rule(self, rule_name: str) -> None:
         """
         Remove a rule from the chain by name.
-        
+
         Args:
             rule_name (str): Name of the rule to remove
-            
+
         Raises:
             RuleApplicationError: If the rule is not found in the chain
         """
@@ -59,10 +59,10 @@ class RuleChain:
 class RuleApplicator:
     """
     Manages and applies rules to code.
-    
+
     This class handles the creation of rule chains and the application
     of rules to code in a specified order.
-    
+
     Attributes:
         rules (List[Rule]): Available rules for application
         _rule_map (Dict[str, Rule]): Mapping of rule names to Rule objects
@@ -71,7 +71,7 @@ class RuleApplicator:
     def __init__(self, rules: list[Rule]):
         """
         Initialize the rule applicator.
-        
+
         Args:
             rules (List[Rule]): List of available rules
         """
@@ -82,13 +82,13 @@ class RuleApplicator:
     def get_rule(self, rule_name: str) -> Rule:
         """
         Get a rule by name.
-        
+
         Args:
             rule_name (str): Name of the rule to retrieve
-            
+
         Returns:
             Rule: The requested rule
-            
+
         Raises:
             RuleApplicationError: If the rule is not found
         """
@@ -100,13 +100,13 @@ class RuleApplicator:
     def create_chain(self, rule_names: list[str]) -> RuleChain:
         """
         Create a new rule chain from a list of rule names.
-        
+
         Args:
             rule_names (List[str]): Names of rules to include in the chain
-            
+
         Returns:
             RuleChain: A new rule chain containing the specified rules
-            
+
         Raises:
             RuleApplicationError: If any rule name is not found
         """
@@ -121,14 +121,14 @@ class RuleApplicator:
     def apply_chain(self, chain: RuleChain, code: str) -> list[ValidationError]:
         """
         Apply a chain of rules to code.
-        
+
         Rules are applied in the order specified by the chain, not by
         their individual priorities.
-        
+
         Args:
             chain (RuleChain): Chain of rules to apply
             code (str): Code to validate
-            
+
         Returns:
             List[ValidationError]: List of validation errors found
         """
@@ -152,11 +152,11 @@ class RuleApplicator:
     def _apply_rule(self, rule: Rule, code: str) -> list[ValidationError]:
         """
         Apply a single rule to code.
-        
+
         Args:
             rule (Rule): Rule to apply
             code (str): Code to validate
-            
+
         Returns:
             List[ValidationError]: List of validation errors found
         """

@@ -78,10 +78,10 @@ exclude_lines = [
 line-length = 100
 target-version = "py310"
 src = ["erasmus"]
+ignore = ["G004", "TRY003", "TRY002"]
 
 # Enable Pyflakes (`F`), isort (`I`), and many other linters
 select = ["E", "F", "I", "W", "N", "B", "A", "COM", "C4", "DTZ", "T10", "ISC", "ICN", "G", "PIE", "PYI", "PT", "RET", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PL", "TRY", "UP", "RUF"]
-ignore = []
 
 # Allow autofix for all enabled rules (when `--fix`) is provided
 fixable = ["ALL"]
@@ -159,8 +159,6 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
-
-
 
 [tool.uv.workspace]
 members = ["gamesync_demo"]

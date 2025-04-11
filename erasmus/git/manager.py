@@ -2,7 +2,7 @@
 import subprocess
 from pathlib import Path
 
-from ..utils.logging import LogContext, get_logger, log_execution
+from erasmus.utils.logging import LogContext, get_logger, log_execution
 
 logger = get_logger(__name__)
 
@@ -29,8 +29,7 @@ class GitManager:
                 subprocess.run(
                     ["git", "rev-parse", "--is-inside-work-tree"],
                     cwd=self.repo_path,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    capture_output=True,
                     check=True,
                 )
                 logger.debug(f"Confirmed git repository at {self.repo_path}")
@@ -75,10 +74,9 @@ class GitManager:
             try:
                 logger.debug(f"Running git command: {' '.join(command)}")
                 result = subprocess.run(
-                    ["git"] + command,
+                    ["git", *command],
                     cwd=self.repo_path,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    capture_output=True,
                     text=True,
                     check=True,
                 )

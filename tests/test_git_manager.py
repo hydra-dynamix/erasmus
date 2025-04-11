@@ -129,7 +129,7 @@ def test_run_git_command(git_manager, mock_subprocess):
 
     # Verify command was called correctly
     run_call = mock_subprocess.run.call_args
-    assert run_call[0][0] == ["git"] + command
+    assert run_call[0][0] == ["git", *command]
     assert stdout == "test output"
     assert stderr == ""
 

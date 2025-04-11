@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
 
-from ..utils.context import setup_project
+from erasmus.utils.context import setup_project
 
 load_dotenv()
 

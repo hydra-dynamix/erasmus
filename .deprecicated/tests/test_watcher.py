@@ -52,7 +52,7 @@ def test_task_manager_operations():
 def test_task_note_addition():
     """Test adding notes to a task."""
     task_manager = TaskManager()
-    task = task_manager.add_task("Test task")
+    task_manager.add_task("Test task")
 
     task_manager.add_note_to_task("1", "First note")
     task_manager.add_note_to_task("1", "Second note")

@@ -2,8 +2,8 @@ import json
 import logging
 from pathlib import Path
 
-from ..cli.setup import validate_ide_env
-from ..utils.file_ops import safe_read_file, safe_write_file
+from erasmus.cli.setup import validate_ide_env
+from erasmus.utils.file_ops import safe_read_file, safe_write_file
 
 
 def start(self) -> None:

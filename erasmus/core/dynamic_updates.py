@@ -28,7 +28,7 @@ class ChangeRecord:
 class DynamicUpdateManager:
     """
     Manages dynamic updates to the context management system.
-    
+
     This class handles:
     - Change detection and validation
     - Update application with rollback support
@@ -68,7 +68,7 @@ class DynamicUpdateManager:
             else:
                 self.changes = []
         except Exception as e:
-            logger.error(f"Failed to load changes: {e}")
+            logger.exception(f"Failed to load changes: {e}")
             self.changes = []
 
     def _save_changes(self) -> None:
@@ -87,7 +87,7 @@ class DynamicUpdateManager:
             ]
             self.changes_file.write_text(json.dumps(changes_data, indent=2))
         except Exception as e:
-            logger.error(f"Failed to save changes: {e}")
+            logger.exception(f"Failed to save changes: {e}")
 
     def detect_changes(self, component: str, new_value: Any) -> tuple[bool, dict[str, Any] | None]:
         """
@@ -112,10 +112,10 @@ class DynamicUpdateManager:
                 return True, {"type": "initial", "component": component}
 
             # Compare values based on type
-            if isinstance(new_value, (str, int, float, bool)):
+            if isinstance(new_value, str | int | float | bool):
                 has_changed = new_value != current_value
                 diff = {"type": "value_change", "old": current_value, "new": new_value} if has_changed else None
-            elif isinstance(new_value, (list, dict)):
+            elif isinstance(new_value, list | dict):
                 has_changed = json.dumps(new_value, sort_keys=True) != json.dumps(current_value, sort_keys=True)
                 diff = {"type": "structure_change", "component": component} if has_changed else None
             else:
@@ -125,7 +125,7 @@ class DynamicUpdateManager:
             return has_changed, diff
 
         except Exception as e:
-            logger.error(f"Error detecting changes: {e}")
+            logger.exception(f"Error detecting changes: {e}")
             return False, None
 
     def validate_update(self, component: str, new_value: Any) -> tuple[bool, str | None]:
@@ -154,7 +154,7 @@ class DynamicUpdateManager:
                 return False, "New value must be JSON serializable"
 
             # Type-specific validation
-            if not isinstance(new_value, (str, int, float, bool, list, dict)):
+            if not isinstance(new_value, str | int | float | bool | list | dict):
                 return False, "New value must be a basic type (str, int, float, bool) or a container (list, dict)"
 
             # Component-specific validation
@@ -170,10 +170,10 @@ class DynamicUpdateManager:
             return True, None
 
         except Exception as e:
-            logger.error(f"Error validating update: {e}")
+            logger.exception(f"Error validating update: {e}")
             return False, str(e)
 
-    def apply_update(self, component: str, new_value: Any, source: str, metadata: dict[str, Any] = None) -> bool:
+    def apply_update(self, component: str, new_value: Any, source: str, metadata: dict[str, Any] | None = None) -> bool:
         """
         Apply an update to a component with rollback support.
 
@@ -224,7 +224,7 @@ class DynamicUpdateManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error applying update: {e}")
+            logger.exception(f"Error applying update: {e}")
             return False
 
     def rollback_last_change(self, component: str) -> bool:
@@ -267,7 +267,7 @@ class DynamicUpdateManager:
             return True
 
         except Exception as e:
-            logger.error(f"Error rolling back change: {e}")
+            logger.exception(f"Error rolling back change: {e}")
             return False
 
     def get_change_history(self, component: str | None = None, limit: int = 10) -> list[ChangeRecord]:

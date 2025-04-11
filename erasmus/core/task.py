@@ -17,7 +17,7 @@ import time
 class TaskStatus:
     """
     Task status constants.
-    
+
     This class defines constants representing different states of a task
     throughout its lifecycle. Used by the Task class to track current status.
     """
@@ -30,11 +30,11 @@ class TaskStatus:
 class Task:
     """
     Represents a single development task with tracking information.
-    
+
     This class provides methods for managing a task's state, including
     serialization/deserialization and metadata tracking. Each task has a
     unique ID, description, status, and timestamps for lifecycle events.
-    
+
     Attributes:
         id (str): Unique identifier for the task
         description (str): Detailed description of the task
@@ -47,7 +47,7 @@ class Task:
     def __init__(self, id: str, description: str):
         """
         Initialize a new Task with given ID and description.
-        
+
         Args:
             id (str): Unique identifier for the task
             description (str): Detailed description of what the task involves
@@ -63,7 +63,7 @@ class Task:
     def to_dict(self) -> dict:
         """
         Convert task to dictionary representation for serialization.
-        
+
         Returns:
             dict: Dictionary containing all task attributes
         """
@@ -81,10 +81,10 @@ class Task:
     def from_dict(cls, data: dict) -> 'Task':
         """
         Create a Task instance from a dictionary representation.
-        
+
         Args:
             data (dict): Dictionary containing task attributes
-            
+
         Returns:
             Task: New Task instance with restored attributes
         """
@@ -99,18 +99,18 @@ class Task:
 class TaskManager:
     """
     Manages a collection of tasks and provides operations for the task lifecycle.
-    
+
     This class handles creating, retrieving, updating, and listing tasks. It also
     provides serialization/deserialization to integrate with the context tracking
     system.
-    
+
     Attributes:
         tasks (Dict[str, Task]): Dictionary mapping task IDs to Task objects
     """
     def __init__(self, tasks: dict[str, dict] | None = None):
         """
         Initialize a new TaskManager with optional initial tasks.
-        
+
         Args:
             tasks (Optional[Dict[str, dict]]): Dictionary of tasks to initialize with. Can be
                                    either Task objects or dictionaries to deserialize.
@@ -125,13 +125,13 @@ class TaskManager:
     def add_task(self, description: str) -> Task:
         """
         Add a new task with the given description.
-        
+
         Creates a new Task with an automatically assigned sequential ID and
         adds it to the task collection.
-        
+
         Args:
             description (str): Description of the new task
-            
+
         Returns:
             Task: The newly created Task object
         """
@@ -143,10 +143,10 @@ class TaskManager:
     def get_task(self, task_id: str) -> Task | None:
         """
         Retrieve a task by its ID.
-        
+
         Args:
             task_id (str): ID of the task to retrieve
-            
+
         Returns:
             Optional[Task]: The Task if found, None otherwise
         """
@@ -155,11 +155,11 @@ class TaskManager:
     def list_tasks(self, status: str | None = None) -> list[Task]:
         """
         List all tasks, optionally filtered by status.
-        
+
         Args:
             status (Optional[str]): If provided, only tasks with this status
                                   will be returned
-                                           
+
         Returns:
             List[Task]: List of tasks matching the filter criteria
         """
@@ -171,7 +171,7 @@ class TaskManager:
     def update_task_status(self, task_id: str, status: str) -> None:
         """
         Update a task's status.
-        
+
         Args:
             task_id (str): ID of the task to update
             status (str): New status to set
@@ -185,7 +185,7 @@ class TaskManager:
     def add_note_to_task(self, task_id: str, note: str) -> None:
         """
         Add a note to a task.
-        
+
         Args:
             task_id (str): ID of the task to add the note to
             note (str): Content of the note to add
@@ -198,10 +198,10 @@ class TaskManager:
     def from_dict(cls, data: dict[str, dict]) -> 'TaskManager':
         """
         Create a TaskManager from a dictionary representation.
-        
+
         Args:
             data (Dict[str, dict]): Dictionary mapping task IDs to task data dictionaries
-            
+
         Returns:
             TaskManager: New TaskManager instance with restored tasks
         """

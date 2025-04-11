@@ -1,4 +1,5 @@
 """File operation utilities."""
+import contextlib
 import logging
 import os
 import tempfile
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 def safe_write_file(file_path: Path, content: str) -> None:
     """
     Safely write content to a file using a temporary file to ensure atomic writes.
-    
+
     Args:
         file_path: Path to the target file
         content: Content to write to the file
@@ -28,31 +29,29 @@ def safe_write_file(file_path: Path, content: str) -> None:
             file_path.unlink()
 
         # Rename temporary file to target file (atomic on Unix)
-        os.replace(temp_path, file_path)
-    except Exception as e:
+        Path(temp_path).replace(file_path)
+    except Exception:
         # Clean up temp file if something goes wrong
-        try:
-            os.unlink(temp_path)
-        except OSError:
-            pass
-        raise e
+        with contextlib.suppress(OSError):
+            Path(temp_path).unlink()
+        raise
 
 def safe_read_file(file_path: Path) -> str:
     """
     Safely read content from a file.
-    
+
     Args:
         file_path: Path to the file to read
-        
+
     Returns:
         The content of the file as a string
-        
+
     Raises:
         FileNotFoundError: If the file doesn't exist
     """
     try:
-        with open(file_path) as f:
+        with file_path.open() as f:
             return f.read()
-    except Exception as e:
-        logger.error(f"Error reading file {file_path}: {e}")
+    except Exception:
+        logger.exception("Error reading file %s", file_path)
         raise

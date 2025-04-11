@@ -52,7 +52,7 @@ class BatchScriptGenerator:
 
     def configure_paths(self, shell_script_path: str | Path | None = None, release_path: str | Path | None = None):
         """Configure input and output paths for script generation.
-        
+
         Args:
             shell_script_path: Path to source shell script, defaults to './install.sh'
             release_path: Path to output directory, defaults to './release'

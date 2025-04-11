@@ -8,6 +8,7 @@ cursor's requirements.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import time
@@ -18,7 +19,9 @@ from typing import Any
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from ..utils.file import safe_read_file, safe_write_file
+from erasmus.utils.file import safe_read_file, safe_write_file
+from erasmus.utils.paths import SetupPaths
+
 from .sync_integration import SyncIntegration
 
 logger = logging.getLogger(__name__)
@@ -29,7 +32,12 @@ class CursorContextManager:
     def __init__(self, workspace_path: Path):
         """Initialize the CursorContextManager."""
         self.workspace_path = workspace_path
-        self.rules_file = workspace_path / ".cursorrules" / "rules.json"
+
+        # Use SetupPaths to get the correct rules file path based on IDE environment
+        setup_paths = SetupPaths.with_project_root(workspace_path)
+        rules_dir = setup_paths.rules_file
+        self.rules_file = rules_dir / "rules.json"
+
         self.batch_delay = 0.1  # seconds
         self._update_queue = asyncio.Queue()
         self._current_rules = {}
@@ -73,7 +81,7 @@ class CursorContextManager:
                 content = safe_read_file(self.rules_file)
                 self._current_rules = json.loads(content) if content else {}
             except (json.JSONDecodeError, FileNotFoundError) as e:
-                logger.error(f"Error loading rules file: {e}")
+                logger.exception(f"Error loading rules file: {e}")
                 self._current_rules = {}
                 # Ensure we have a valid rules file
                 safe_write_file(self.rules_file, "{}")
@@ -113,7 +121,7 @@ class CursorContextManager:
             await asyncio.sleep(0.5)
 
         except Exception as e:
-            logger.error(f"Error starting context manager: {e}")
+            logger.exception(f"Error starting context manager: {e}")
             # Clean up on error
             await self.stop()
             raise
@@ -139,10 +147,8 @@ class CursorContextManager:
         for task in [self._update_task, self._recovery_task, self._file_change_task, self._thread_task]:
             if task and not task.done():
                 task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await task
-                except asyncio.CancelledError:
-                    pass
 
         # Clear state
         self._watcher = None
@@ -188,11 +194,11 @@ class CursorContextManager:
                 return False
 
             except asyncio.TimeoutError:
-                logger.error(f"Timeout waiting for update to complete: {component}")
+                logger.exception(f"Timeout waiting for update to complete: {component}")
                 return False
 
         except Exception as e:
-            logger.error(f"Error queueing update: {e}")
+            logger.exception(f"Error queueing update: {e}")
             return False
 
         finally:
@@ -248,14 +254,14 @@ class CursorContextManager:
                                 try:
                                     await self._sync_integration.handle_context_change(component, content)
                                 except Exception as e:
-                                    logger.error(f"Error in sync integration: {e}")
+                                    logger.exception(f"Error in sync integration: {e}")
 
                         finally:
                             if temp_file.exists():
                                 temp_file.unlink()
 
                     except Exception as e:
-                        logger.error(f"Error processing update for {component}: {e}")
+                        logger.exception(f"Error processing update for {component}: {e}")
                         # Set event even on error to prevent timeouts
                         if component in self._update_events:
                             self._update_events[component].set()
@@ -263,7 +269,7 @@ class CursorContextManager:
                             del self._pending_updates[component]
 
             except Exception as e:
-                logger.error(f"Error in update loop: {e}")
+                logger.exception(f"Error in update loop: {e}")
                 await asyncio.sleep(0.1)
 
     async def _process_file_changes(self):
@@ -278,7 +284,7 @@ class CursorContextManager:
                     await self._sync_integration.handle_file_change(file_path)
 
             except Exception as e:
-                logger.error(f"Error processing file change: {e}")
+                logger.exception(f"Error processing file change: {e}")
                 await asyncio.sleep(0.1)
 
     async def _process_thread_queue(self):
@@ -292,7 +298,7 @@ class CursorContextManager:
                 await self._file_change_queue.put(file_path)
 
             except Exception as e:
-                logger.error(f"Error processing thread queue: {e}")
+                logger.exception(f"Error processing thread queue: {e}")
                 await asyncio.sleep(0.1)
 
     async def _monitor_and_recover(self):
@@ -302,7 +308,7 @@ class CursorContextManager:
                 # Check if rules file is valid
                 content = safe_read_file(self.rules_file)
                 try:
-                    current = json.loads(content) if content else {}
+                    json.loads(content) if content else {}
                 except json.JSONDecodeError:
                     # File is corrupted, restore from backup
                     logger.warning("Rules file corrupted, restoring from current state")
@@ -312,7 +318,7 @@ class CursorContextManager:
                 await asyncio.sleep(1.0)
 
             except Exception as e:
-                logger.error(f"Error in recovery monitor: {e}")
+                logger.exception(f"Error in recovery monitor: {e}")
                 await asyncio.sleep(1.0)
 
 class CursorRulesHandler(FileSystemEventHandler):
@@ -353,7 +359,7 @@ class CursorRulesHandler(FileSystemEventHandler):
                             self.manager._external_changes[comp] = cont
 
                 except Exception as e:
-                    logger.error(f"Error handling external change: {e}")
+                    logger.exception(f"Error handling external change: {e}")
 
             # Handle source file changes
             elif file_path.suffix == ".md" and file_path.stem.lower() in ["architecture", "progress", "tasks"]:
@@ -361,4 +367,4 @@ class CursorRulesHandler(FileSystemEventHandler):
                     # Put the file path directly into the thread-safe queue
                     self.manager._thread_queue.put_nowait(file_path)
                 except Exception as e:
-                    logger.error(f"Error queueing file change: {e}")
+                    logger.exception(f"Error queueing file change: {e}")

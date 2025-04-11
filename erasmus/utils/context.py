@@ -8,9 +8,9 @@ from typing import Any
 
 from rich import console
 
-from ..git.manager import GitManager
-from ..utils.logging import LogContext, get_logger, log_execution
-from ..utils.paths import SetupPaths
+from erasmus.git.manager import GitManager
+from erasmus.utils.logging import LogContext, get_logger, log_execution
+from erasmus.utils.paths import SetupPaths
 
 # Configure logging
 logger = get_logger(__name__)
@@ -65,6 +65,13 @@ def determine_commit_type(diff_output: str) -> str:
     return 'chore'
 
 console = console.Console()
+
+# Define ASCII character limit constant
+ASCII_CHAR_LIMIT = 128
+
+
+class ProcessError(Exception):
+    """Exception raised when a process fails."""
 
 def read_file(path: Path) -> str:
     """Read a file and return its contents."""
@@ -188,7 +195,7 @@ def setup_project() -> None:
     console.print("Project setup complete!")
 
 @log_execution()
-def update_specific_file(file_type: str, content: str = None) -> None:
+def update_specific_file(file_type: str, content: str | None = None) -> None:
     """Update a specific project file."""
     with LogContext(logger, f"update_specific_file({file_type})"):
         setup_paths = SetupPaths.with_project_root(Path.cwd())
@@ -338,19 +345,19 @@ def make_atomic_commit() -> bool:
             original_length = len(diff_output)
             if original_length > max_diff_length:
                 diff_output = diff_output[:max_diff_length] + "... (diff truncated)"
-                logger.debug(f"Truncated diff from {original_length} to {max_diff_length} chars")
+                logger.debug("Truncated diff from %s to %s chars", original_length, max_diff_length)
 
             # Sanitize diff output
-            diff_output = ''.join(char for char in diff_output if ord(char) < 128)
-            logger.debug(f"Sanitized diff output, final length: {len(diff_output)}")
+            diff_output = ''.join(char for char in diff_output if ord(char) < ASCII_CHAR_LIMIT)
+            logger.debug("Sanitized diff output, final length: %s", len(diff_output))
 
         except Exception as e:
-            logger.error(f"Failed to get diff output: {e}")
-            raise ProcessError(f"Failed to get diff output: {e}")
+            logger.exception("Failed to get diff output")
+            raise ProcessError("Failed to get diff output") from e
 
         # Determine commit type programmatically
         commit_type = determine_commit_type(diff_output)
-        logger.debug(f"Determined commit type: {commit_type}")
+        logger.debug("Determined commit type: %s", commit_type)
 
         # If we can use OpenAI, generate a message
         if check_creds() and CLIENT is not None:
@@ -368,7 +375,7 @@ Guidelines:
 - Prefer imperative mood"""
 
             try:
-                logger.debug(f"Making API request with model: {OPENAI_MODEL}")
+                logger.debug("Making API request with model: %s", OPENAI_MODEL)
                 response = CLIENT.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=[
@@ -380,8 +387,8 @@ Guidelines:
 
                 # Sanitize commit message
                 raw_message = response.choices[0].message.content
-                commit_message = ''.join(char for char in raw_message if ord(char) < 128)
-                logger.debug(f"Raw commit message: {raw_message}")
+                commit_message = ''.join(char for char in raw_message if ord(char) < ASCII_CHAR_LIMIT)
+                logger.debug("Raw commit message: %s", raw_message)
 
                 # Ensure commit message starts with the determined type
                 if not commit_message.startswith(f"{commit_type}:"):
@@ -389,9 +396,9 @@ Guidelines:
                     commit_message = f"{commit_type}: {commit_message}"
 
                 commit_message = extract_commit_message(commit_message)
-                logger.info(f"Generated commit message via API: {commit_message}")
+                logger.info("Generated commit message via API: %s", commit_message)
             except Exception as e:
-                logger.warning(f"Failed to generate commit message via API: {e}", exc_info=True)
+                logger.warning("Failed to generate commit message via API", exc_info=True)
                 commit_message = None
         else:
             logger.debug("Skipping OpenAI commit message generation")
@@ -406,27 +413,233 @@ Guidelines:
             if file_change:
                 # Extract the file name from the diff line
                 file_name = file_change.split(' b/')[-1]
-                logger.debug(f"Found changed file: {file_name}")
+                logger.debug("Found changed file: %s", file_name)
             else:
                 file_name = "project files"
                 logger.debug("No specific file changes found")
 
             # Create a simple commit message based on the type and changed files
             commit_message = f"{commit_type}: Update {file_name}"
-            logger.info(f"Generated fallback commit message: {commit_message}")
+            logger.info("Generated fallback commit message: %s", commit_message)
 
         # Validate commit message
         is_valid, validation_message = git_manager.validate_commit_message(commit_message)
-        logger.debug(f"Commit message validation: {validation_message}")
+        logger.debug("Commit message validation: %s", validation_message)
 
         if not is_valid:
-            logger.warning(f"Generated commit message invalid: {validation_message}")
+            logger.warning("Generated commit message invalid: %s", validation_message)
             commit_message = f"{commit_type}: Update project files ({time.strftime('%Y-%m-%d')})"
-            logger.info(f"Using default commit message: {commit_message}")
+            logger.info("Using default commit message: %s", commit_message)
 
         # Commit changes
         if git_manager.commit_changes(commit_message):
-            logger.info(f"Successfully committed changes: {commit_message}")
+            logger.info("Successfully committed changes: %s", commit_message)
             return True
         logger.error("Failed to commit changes")
         return False
+
+def store_context(setup_paths: SetupPaths) -> bool:
+    """Store the current context in the context directory.
+
+    Args:
+        setup_paths: The setup paths object containing file paths
+
+    Returns:
+        bool: True if context was stored successfully, False otherwise
+    """
+    import shutil
+
+    try:
+        context_dir = setup_paths.stored_context
+        if not context_dir.exists():
+            context_dir.mkdir(parents=True, exist_ok=True)
+
+        progress_file = setup_paths.markdown_files.progress
+        tasks_file = setup_paths.markdown_files.tasks
+        architecture_file = setup_paths.markdown_files.architecture
+
+        # Ensure architecture file exists and has content
+        if not architecture_file.exists() or not architecture_file.read_text().strip():
+            logger.error("Architecture file is empty or does not exist")
+            return False
+
+        architecture_content = architecture_file.read_text().splitlines()
+        # Get the first line and sanitize it for use as a directory name
+        raw_title = architecture_content[0].strip('#').strip()
+        
+        # Replace illegal characters for file paths
+        # Windows disallows: < > : " / \ | ? *
+        # Unix systems disallow: /
+        # Also replace spaces with underscores for better readability
+        illegal_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*', ' ']
+        architecture_title = raw_title
+        for char in illegal_chars:
+            architecture_title = architecture_title.replace(char, '_')
+            
+        # Remove any leading/trailing underscores or dots
+        architecture_title = architecture_title.strip('_.')
+        
+        if not architecture_title:
+            architecture_title = "unnamed_project"
+
+        arch_context_dir = context_dir / architecture_title
+        if not arch_context_dir.exists():
+            arch_context_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy files to context directory
+        shutil.copy2(architecture_file, arch_context_dir / "architecture.md")
+        shutil.copy2(progress_file, arch_context_dir / "progress.md")
+        shutil.copy2(tasks_file, arch_context_dir / "tasks.md")
+
+        # Clear original files if needed
+        architecture_file.write_text("")
+        progress_file.write_text("")
+        tasks_file.write_text("")
+
+        logger.info("Context stored successfully in %s", arch_context_dir)
+        return True
+    except Exception:
+        logger.exception("Failed to store context")
+        return False
+
+def restore_context(setup_paths: SetupPaths, arch_context_dir: Path) -> bool:
+    """Restore the context from the context directory.
+
+    Args:
+        setup_paths: The setup paths object containing file paths
+        arch_context_dir: The context directory to restore from
+
+    Returns:
+        bool: True if context was restored successfully, False otherwise
+    """
+    import shutil
+
+    try:
+        if not arch_context_dir.exists():
+            logger.error("Context directory does not exist: %s", arch_context_dir)
+            return False
+
+        architecture_file = arch_context_dir / "architecture.md"
+        progress_file = arch_context_dir / "progress.md"
+        tasks_file = arch_context_dir / "tasks.md"
+
+        # Check if all required files exist
+        missing_files = []
+        if not architecture_file.exists():
+            missing_files.append("architecture.md")
+        if not progress_file.exists():
+            missing_files.append("progress.md")
+        if not tasks_file.exists():
+            missing_files.append("tasks.md")
+
+        if missing_files:
+            logger.error("Missing files in context directory: %s", ", ".join(missing_files))
+            return False
+
+        # Copy files to project directory
+        shutil.copy2(architecture_file, setup_paths.markdown_files.architecture)
+        shutil.copy2(progress_file, setup_paths.markdown_files.progress)
+        shutil.copy2(tasks_file, setup_paths.markdown_files.tasks)
+
+        logger.info("Context restored successfully from %s", arch_context_dir)
+        return True
+    except Exception:
+        logger.exception("Failed to restore context")
+        return False
+
+def list_context_dirs(setup_paths: SetupPaths) -> list[str]:
+    """List all context directories.
+
+    Args:
+        setup_paths: The setup paths object containing file paths
+
+    Returns:
+        list[str]: List of context directory paths as strings
+    """
+    try:
+        context_dir = setup_paths.stored_context
+        if not context_dir.exists():
+            logger.debug("Context directory does not exist: %s", context_dir)
+            return []
+
+        # Get all directories that contain the required context files
+        valid_dirs = []
+        for d in context_dir.iterdir():
+            files_to_check = ["architecture.md", "progress.md", "tasks.md"]
+            if d.is_dir() and all((d / f).exists() for f in files_to_check):
+                valid_dirs.append(str(d))
+
+        if not valid_dirs:
+            logger.debug("No valid context directories found in %s", context_dir)
+            return valid_dirs
+
+        logger.debug("Found %d valid context directories", len(valid_dirs))
+        return valid_dirs
+    except Exception:
+        logger.exception("Error listing context directories")
+        return []
+
+def print_context_dirs(setup_paths: SetupPaths) -> None:
+    """Print all context directories.
+
+    Args:
+        setup_paths: The setup paths object containing file paths
+    """
+    context_dirs = list_context_dirs(setup_paths)
+    if not context_dirs:
+        console.print("No context directories found")
+        return
+
+    console.print("Available context directories:")
+    for i, context_dir in enumerate(context_dirs, 1):
+        # Try to extract a more readable name from the path
+        dir_name = Path(context_dir).name
+        # Get the first line of architecture.md as title if possible
+        arch_file = Path(context_dir) / "architecture.md"
+        if arch_file.exists():
+            try:
+                with arch_file.open() as f:
+                    first_line = f.readline().strip('#').strip()
+                    if first_line:
+                        dir_name = f"{dir_name} - {first_line}"
+            except Exception:
+                pass  # Just use the directory name if we can't read the file
+
+        console.print(f"{i}. {dir_name}")
+
+def select_context_dir(setup_paths: SetupPaths) -> Path | None:
+    """Select a context directory.
+
+    Args:
+        setup_paths: The setup paths object containing file paths
+
+    Returns:
+        Path | None: The selected context directory path, or None if no selection was made
+    """
+    context_dirs = list_context_dirs(setup_paths)
+    if not context_dirs:
+        console.print("No context directories found")
+        return None
+
+    print_context_dirs(setup_paths)
+
+    while True:
+        try:
+            prompt = "Enter the number of the context directory to restore (or 'q' to quit): "
+            selection_input = console.input(prompt)
+
+            if selection_input.lower() in ('q', 'quit', 'exit'):
+                return None
+
+            try:
+                selection = int(selection_input)
+                if 1 <= selection <= len(context_dirs):
+                    return Path(context_dirs[selection - 1])
+                
+                msg = f"Invalid selection. Enter a number between 1 and {len(context_dirs)}."
+                console.print(msg)
+            except ValueError:
+                console.print("Invalid input, please enter a number or 'q' to quit.")
+        except KeyboardInterrupt:
+            console.print("\nSelection cancelled")
+            return None

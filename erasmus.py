@@ -13,7 +13,7 @@
 Erasmus: AI Context Watcher for Development
 ===========================================
 
-This module implements a context tracking and injection system designed to enhance 
+This module implements a context tracking and injection system designed to enhance
 AI-powered development environments.
 
 The Erasmus Context Watcher monitors project state by tracking changes to key documentation
@@ -90,7 +90,7 @@ GIT_COMMITS = True
 class TaskStatus:
     """
     Task status constants.
-    
+
     This class defines constants representing different states of a task
     throughout its lifecycle. Used by the Task class to track current status.
     """
@@ -103,11 +103,11 @@ class TaskStatus:
 class Task:
     """
     Represents a single development task with tracking information.
-    
+
     This class provides methods for managing a task's state, including
     serialization/deserialization and metadata tracking. Each task has a
     unique ID, description, status, and timestamps for lifecycle events.
-    
+
     Attributes:
         id (str): Unique identifier for the task
         description (str): Detailed description of the task
@@ -120,7 +120,7 @@ class Task:
     def __init__(self, id: str, description: str):
         """
         Initialize a new Task with given ID and description.
-        
+
         Args:
             id (str): Unique identifier for the task
             description (str): Detailed description of what the task involves
@@ -136,7 +136,7 @@ class Task:
     def to_dict(self) -> dict:
         """
         Convert task to dictionary representation for serialization.
-        
+
         Returns:
             dict: Dictionary containing all task attributes
         """
@@ -154,10 +154,10 @@ class Task:
     def from_dict(cls, data: dict) -> 'Task':
         """
         Create a Task instance from a dictionary representation.
-        
+
         Args:
             data (dict): Dictionary containing task attributes
-            
+
         Returns:
             Task: New Task instance with restored attributes
         """
@@ -172,18 +172,18 @@ class Task:
 class TaskManager:
     """
     Manages a collection of tasks and provides operations for the task lifecycle.
-    
+
     This class handles creating, retrieving, updating, and listing tasks. It also
     provides serialization/deserialization to integrate with the context tracking
     system.
-    
+
     Attributes:
         tasks (Dict[str, Task]): Dictionary mapping task IDs to Task objects
     """
-    def __init__(self, tasks: dict = None):
+    def __init__(self, tasks: dict | None = None):
         """
         Initialize a new TaskManager with optional initial tasks.
-        
+
         Args:
             tasks (Optional[dict]): Dictionary of tasks to initialize with. Can be
                                    either Task objects or dictionaries to deserialize.
@@ -198,13 +198,13 @@ class TaskManager:
     def add_task(self, description: str) -> Task:
         """
         Add a new task with the given description.
-        
+
         Creates a new Task with an automatically assigned sequential ID and
         adds it to the task collection.
-        
+
         Args:
             description (str): Description of the new task
-            
+
         Returns:
             Task: The newly created Task object
         """
@@ -216,10 +216,10 @@ class TaskManager:
     def get_task(self, task_id: str) -> Task | None:
         """
         Retrieve a task by its ID.
-        
+
         Args:
             task_id (str): ID of the task to retrieve
-            
+
         Returns:
             Optional[Task]: The Task if found, None otherwise
         """
@@ -228,11 +228,11 @@ class TaskManager:
     def list_tasks(self, status: TaskStatus | None = None) -> list[Task]:
         """
         List all tasks, optionally filtered by status.
-        
+
         Args:
             status (Optional[TaskStatus]): If provided, only tasks with this status
                                            will be returned
-                                           
+
         Returns:
             List[Task]: List of tasks matching the filter criteria
         """
@@ -244,7 +244,7 @@ class TaskManager:
     def update_task_status(self, task_id: str, status: TaskStatus) -> None:
         """
         Update a task's status.
-        
+
         Args:
             task_id (str): ID of the task to update
             status (TaskStatus): New status to set
@@ -258,7 +258,7 @@ class TaskManager:
     def add_note_to_task(self, task_id: str, note: str) -> None:
         """
         Add a note to a task.
-        
+
         Args:
             task_id (str): ID of the task to add the note to
             note (str): Content of the note to add
@@ -271,10 +271,10 @@ class TaskManager:
     def from_dict(cls, data):
         """
         Create a TaskManager from a dictionary representation.
-        
+
         Args:
             data (dict): Dictionary mapping task IDs to task data dictionaries
-            
+
         Returns:
             TaskManager: New TaskManager instance with restored tasks
         """
@@ -289,21 +289,21 @@ class TaskManager:
 def is_valid_url(url: str) -> bool:
     """
     Validate a URL string to ensure it's properly formatted.
-    
+
     This function performs regex-based validation for URLs used in API connections.
     It supports both standard web URLs and localhost/IP-based URLs for local development.
-    
+
     Accepted URL formats:
     - Standard HTTP/HTTPS URLs: https://api.openai.com/v1
     - Localhost URLs with optional port: http://localhost:11434/v1
     - IP-based localhost URLs: http://127.0.0.1:8000/v1
-    
+
     Args:
         url (str): The URL string to validate
-        
+
     Returns:
         bool: True if the URL matches a valid pattern, False otherwise
-        
+
     Example:
         >>> is_valid_url("https://api.openai.com/v1")
         True
@@ -338,24 +338,24 @@ def is_valid_url(url: str) -> bool:
 def detect_ide_environment() -> str:
     """
     Detect the current IDE environment based on environment variables or file markers.
-    
+
     This function uses multiple detection strategies in order of preference:
     1. Check the IDE_ENV environment variable
     2. Prompt the user for input if the environment variable is not set
     3. Check for IDE-specific file markers in the current directory and home directory
     4. Default to 'windsurf' if no environment can be detected
-    
+
     The detection is important for determining where to save context files and
     how to format them correctly for the specific IDE.
-    
+
     Returns:
         str: The detected IDE environment ('windsurf' or 'cursor')
-        
+
     Example:
         >>> os.environ['IDE_ENV'] = 'cursor'
         >>> detect_ide_environment()
         'cursor'
-        
+
         >>> # Without environment variable but with .cursorrules file
         >>> detect_ide_environment()
         'cursor'
@@ -513,7 +513,6 @@ def init_openai_client():
             # Check again after prompting
             if not api_key:
                 logger.error("Failed to initialize OpenAI client: missing API key")
-                GIT_COMMITS = False
                 return None, None
             if not model:
                 logger.error("Failed to initialize OpenAI client: missing model name")
@@ -531,7 +530,7 @@ def init_openai_client():
         client = OpenAI(api_key=api_key, base_url=base_url)
         return client, model
     except Exception as e:
-        logger.error(f"Failed to initialize OpenAI client: {e}")
+        logger.exception(f"Failed to initialize OpenAI client: {e}")
         return None, None
 
 # Global variables
@@ -598,16 +597,16 @@ You will be given access to various development tools. Use them as appropriate. 
 
 Your workspace root contains three key documents:
 
-- **architecture.md**  
-  Primary source of truth. Contains all major components and their requirements.  
+- **architecture.md**
+  Primary source of truth. Contains all major components and their requirements.
   → If missing, ask the user for requirements and generate this document.
 
-- **progress.md**  
-  Tracks major components and organizes them into a development schedule.  
+- **progress.md**
+  Tracks major components and organizes them into a development schedule.
   → If missing, generate from `architecture.md`.
 
-- **tasks.md**  
-  Contains action-oriented tasks per component, small enough to develop and test independently.  
+- **tasks.md**
+  Contains action-oriented tasks per component, small enough to develop and test independently.
   → If missing, select the next component from `progress.md` and break it into tasks.
 
 ---
@@ -649,19 +648,19 @@ flowchart TD
 
 ## 🧩 CORE PRINCIPLES
 
-1. **Assume limited context**  
+1. **Assume limited context**
    When unsure, preserve existing functionality and avoid destructive edits.
 
-2. **Improve the codebase**  
+2. **Improve the codebase**
    Enhance clarity, performance, and structure — but incrementally, not at the cost of stability.
 
-3. **Adopt best practices**  
+3. **Adopt best practices**
    Use typing, structure, and meaningful naming. Write clear, testable, and maintainable code.
 
 4. **Test driven development**
-  Use tests to validate code generations. A component is not complete with out accompanying tests. 
+  Use tests to validate code generations. A component is not complete with out accompanying tests.
 
-4. **Ask questions**  
+4. **Ask questions**
    If anything is unclear, *ask*. Thoughtful questions lead to better outcomes.
 
 ## 🗃️ MEMORY MANAGEMENT
@@ -775,10 +774,10 @@ if ARGS.setup:
 def get_rules_file_path(context_type='global') -> tuple[Path, Path]:
     """
     Determine the appropriate rules file paths based on IDE environment.
-    
+
     Args:
         context_type (str): Type of rules file, either 'global' or 'context'
-    
+
     Returns:
         Tuple[Path, Path]: Resolved paths to the context and global rules files
     """
@@ -816,7 +815,7 @@ def get_rules_file_path(context_type='global') -> tuple[Path, Path]:
 def save_global_rules(rules_content):
     """
     Save global rules to the appropriate location based on IDE environment.
-    
+
     Args:
         rules_content (str): Content of the global rules
     """
@@ -828,7 +827,7 @@ def save_global_rules(rules_content):
             f.write(rules_content)
         logger.info(f"Global rules saved to {global_rules_path}")
     except Exception as e:
-        logger.error(f"Failed to save global rules: {e}")
+        logger.exception(f"Failed to save global rules: {e}")
 
     # If cursor, show the warning but don't return early
     if detect_ide_environment() == 'cursor':
@@ -841,7 +840,7 @@ def save_global_rules(rules_content):
 def save_context_rules(context_content):
     """
     Save context-specific rules to the appropriate location.
-    
+
     Args:
         context_content (str): Content of the context rules
     """
@@ -852,7 +851,7 @@ def save_context_rules(context_content):
             f.write(context_content)
         logger.info(f"Context rules saved to {context_rules_path}")
     except Exception as e:
-        logger.error(f"Failed to save context rules: {e}")
+        logger.exception(f"Failed to save context rules: {e}")
 
 # Update global variables to use resolved paths
 CONTEXT_RULES_PATH, GLOBAL_RULES_PATH = get_rules_file_path()
@@ -932,27 +931,27 @@ def update_context(context):
 def update_specific_file(file_type, content):
     """
     Update a specific project file with new content.
-    
+
     This function allows targeted updates to individual project files based on their
     logical type (e.g., architecture, progress, tasks). It handles the special case
     of CONTEXT updates and ensures that the context tracking system is updated
     and changes are committed to Git after file modifications.
-    
+
     Args:
         file_type (str): The type of file to update. Must be one of the keys in
             SETUP_FILES dictionary (e.g., "architecture", "progress", "tasks")
             or "CONTEXT" for special handling of context updates.
         content (str): The new content to write to the file.
-    
+
     Returns:
         bool: Implicitly returns True if successful, False otherwise
             (through the called functions).
-    
+
     Side Effects:
         - Updates the specified file with new content
         - Updates the context tracking system
         - Creates a Git commit with the changes
-        
+
     Note:
         The file_type parameter is case-insensitive. It will be converted to
         lowercase before processing.
@@ -975,15 +974,15 @@ def update_specific_file(file_type, content):
 class GitManager:
     """
     Lightweight Git repository management for context tracking.
-    
+
     This class provides a simplified interface for common Git operations
     required by the Erasmus context watcher. It handles repository initialization,
     staging changes, creating commits, and retrieving repository status.
-    
+
     The GitManager is designed to work with the local repository where the
     watcher is running, allowing for automated commits when context files
     are updated.
-    
+
     Attributes:
         repo_path (Path): Path to the Git repository
     """
@@ -991,10 +990,10 @@ class GitManager:
     def __init__(self, repo_path: str | Path):
         """
         Initialize GitManager with a repository path.
-        
+
         Args:
             repo_path (str | Path): Path to the repository to manage
-        
+
         Note:
             If the specified path is not a Git repository, it will be
             initialized as one automatically.
@@ -1006,10 +1005,10 @@ class GitManager:
     def _is_git_repo(self) -> bool:
         """
         Check if the path is a git repository.
-        
+
         Returns:
             bool: True if the path is a Git repository, False otherwise
-            
+
         Implementation:
             Uses 'git rev-parse --is-inside-work-tree' to determine if
             the directory is already a Git repository
@@ -1018,8 +1017,7 @@ class GitManager:
             subprocess.run(
                 ["git", "rev-parse", "--is-inside-work-tree"],
                 cwd=self.repo_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 check=True,
             )
             return True
@@ -1029,11 +1027,11 @@ class GitManager:
     def _init_git_repo(self):
         """
         Initialize a new git repository if one doesn't exist.
-        
+
         This method:
         1. Initializes a new Git repository at the specified path
         2. Configures default user information for commits
-        
+
         Raises:
             Logs error if repository initialization fails
         """
@@ -1055,45 +1053,44 @@ class GitManager:
                 check=True,
             )
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to initialize git repository: {e}")
+            logger.exception(f"Failed to initialize git repository: {e}")
 
     def _run_git_command(self, command: list[str]) -> tuple[str, str]:
         """
         Run a git command and return stdout and stderr.
-        
+
         This is a utility method used by other class methods to execute
         Git commands with proper error handling.
-        
+
         Args:
             command (List[str]): Git command arguments (excluding 'git')
-            
+
         Returns:
             Tuple[str, str]: A tuple containing (stdout, stderr) of the command
-            
+
         Raises:
             Logs error if the command fails but doesn't raise exceptions
         """
         try:
             result = subprocess.run(
-                ["git"] + command,
+                ["git", *command],
                 cwd=self.repo_path,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 text=True,
                 check=True,
             )
             return result.stdout.strip(), result.stderr.strip()
         except subprocess.CalledProcessError as e:
-            logger.error(f"Git command failed: {e}")
+            logger.exception(f"Git command failed: {e}")
             return "", e.stderr.strip()
 
     def stage_all_changes(self) -> bool:
         """
         Stage all changes in the repository.
-        
+
         This method is equivalent to running 'git add -A' and stages
         all modifications, additions, and deletions.
-        
+
         Returns:
             bool: True if changes were staged successfully, False otherwise
         """
@@ -1101,22 +1098,22 @@ class GitManager:
             self._run_git_command(["add", "-A"])
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to stage changes: {e}")
+            logger.exception(f"Failed to stage changes: {e}")
             return False
         except Exception as e:
-            logger.error(f"Unexpected error while staging changes: {e}")
+            logger.exception(f"Unexpected error while staging changes: {e}")
             return False
 
     def commit_changes(self, message: str) -> bool:
         """
         Commit staged changes with a given message.
-        
+
         Args:
             message (str): Commit message to use
-            
+
         Returns:
             bool: True if changes were committed successfully, False otherwise
-            
+
         Note:
             This method assumes changes have already been staged.
             Use stage_all_changes() before this method if needed.
@@ -1125,27 +1122,27 @@ class GitManager:
             self._run_git_command(["commit", "-m", message])
             return True
         except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to commit changes: {e}")
+            logger.exception(f"Failed to commit changes: {e}")
             return False
         except Exception as e:
-            logger.error(f"Unexpected error while committing changes: {e}")
+            logger.exception(f"Unexpected error while committing changes: {e}")
             return False
 
     def validate_commit_message(self, message: str) -> tuple[bool, str]:
         """
         Validate a commit message against conventions.
-        
+
         This method checks if the commit message follows conventional
         commit format and other best practices.
-        
+
         Args:
             message (str): Commit message to validate
-            
+
         Returns:
             Tuple[bool, str]: (is_valid, validation_message) where
                 is_valid - True if the message is valid, False otherwise
                 validation_message - Reason for validation result
-                
+
         Conventions checked:
         - Message cannot be empty
         - Maximum length of 72 characters
@@ -1173,17 +1170,17 @@ class GitManager:
     def get_repository_state(self) -> dict:
         """
         Get the current state of the repository.
-        
+
         This method retrieves and parses information about the current
         state of the repository, including branch name and file statuses.
-        
+
         Returns:
             dict: A dictionary containing:
                 - branch (str): Current branch name
                 - staged (List[str]): Files staged for commit
                 - unstaged (List[str]): Modified files not staged
                 - untracked (List[str]): Untracked files
-                
+
         Note:
             Returns a dict with empty lists and "unknown" branch on error.
         """
@@ -1220,7 +1217,7 @@ class GitManager:
                 "untracked": untracked,
             }
         except Exception as e:
-            logger.error(f"Failed to get repository state: {e}")
+            logger.exception(f"Failed to get repository state: {e}")
             return {
                 "branch": "unknown",
                 "staged": [],
@@ -1231,7 +1228,7 @@ class GitManager:
     def get_current_branch(self) -> str:
         """
         Get the name of the current branch.
-        
+
         Returns:
             str: Name of the current branch, or "unknown" on error
         """
@@ -1239,20 +1236,20 @@ class GitManager:
             branch_output, _ = self._run_git_command(["rev-parse", "--abbrev-ref", "HEAD"])
             return branch_output.strip()
         except Exception as e:
-            logger.error(f"Failed to get current branch: {e}")
+            logger.exception(f"Failed to get current branch: {e}")
             return "unknown"
 
 def determine_commit_type(diff_output: str) -> str:
     """
     Programmatically determine the most appropriate commit type based on diff content.
-    
+
     This function analyzes the Git diff output to identify the most appropriate
     conventional commit type prefix based on the changes detected. It uses pattern
     matching on keywords commonly associated with different types of changes.
-    
+
     Args:
         diff_output (str): The output from 'git diff --staged' command
-    
+
     Returns:
         str: One of the conventional commit type prefixes:
             - feat: New feature or functionality addition
@@ -1262,7 +1259,7 @@ def determine_commit_type(diff_output: str) -> str:
             - refactor: Code restructuring without changing functionality
             - test: Adding or modifying tests
             - chore: Maintenance tasks, updates to build process, etc.
-    
+
     Decision Logic:
         The function applies the following priority order when analyzing the diff:
         1. 'test' - If keywords like 'test', 'pytest', or '_test.py' are found
@@ -1272,7 +1269,7 @@ def determine_commit_type(diff_output: str) -> str:
         5. 'refactor' - If keywords like 'refactor' or 'restructure' are found
         6. 'feat' - If new code elements like 'def ', 'class ', or 'new ' are found
         7. 'chore' - Default for all other types of changes
-        
+
     Note:
         This function makes a best-effort determination based on simple pattern matching.
         It may not always correctly identify the commit type for complex changes that
@@ -1307,9 +1304,7 @@ def determine_commit_type(diff_output: str) -> str:
 def check_creds():
     api_key, base_url, model = get_openai_credentials()
     print(api_key, base_url, model)
-    if "sk-1234" in api_key and "openai" in base_url:
-        return False
-    return True
+    return not ("sk-1234" in api_key and "openai" in base_url)
 
 
 
@@ -1394,16 +1389,16 @@ Guidelines:
         return False
 
     except Exception as e:
-        logger.error(f"Error in atomic commit: {e}")
+        logger.exception(f"Error in atomic commit: {e}")
         return False
 
 def extract_commit_message(response: str) -> str:
     """
     Extract commit message from AI response, handling markdown blocks and ensuring conciseness.
-    
+
     Args:
         response: Raw response from AI
-    
+
     Returns:
         Extracted commit message, trimmed to 72 characters
     """
@@ -1435,29 +1430,29 @@ def restart_program():
     """Restart the current program."""
     logger.info("Restarting the program...")
     python = sys.executable
-    os.execv(python, [python] + sys.argv)
+    os.execv(python, [python, *sys.argv])
 
 class BaseWatcher(FileSystemEventHandler):
     """
     Base file system event handler for monitoring file changes.
-    
+
     This class extends watchdog's FileSystemEventHandler to provide a configurable
     file monitoring system. It maps specific file paths to identifiers and executes
     a callback function when any of the monitored files are modified.
-    
+
     The watcher normalizes all file paths to absolute paths to ensure consistent
     path comparison across different operating systems and environments.
-    
+
     Attributes:
         file_paths (Dict[str, str]): Dictionary mapping normalized absolute file paths
             to their logical identifiers/keys
         callback (Callable): Function to call when a watched file is modified.
             The callback receives the file identifier as its argument.
-    
+
     Methods:
         on_modified: Overridden method from FileSystemEventHandler that processes
             file modification events
-    
+
     Example:
         >>> def on_change(file_id):
         ...     print(f"File {file_id} was changed")
@@ -1472,7 +1467,7 @@ class BaseWatcher(FileSystemEventHandler):
     def __init__(self, file_paths: dict, callback):
         """
         Initialize a new file watcher.
-        
+
         Args:
             file_paths (Dict[str, str]): Dictionary mapping file paths to their
                 logical identifiers/keys. Keys in this dictionary will be used
@@ -1489,11 +1484,11 @@ class BaseWatcher(FileSystemEventHandler):
     def on_modified(self, event):
         """
         Handle file modification events.
-        
+
         This method is automatically called by the watchdog Observer when a file
         in the watched directory is modified. It checks if the modified file is
         one of the tracked files and executes the callback if it is.
-        
+
         Args:
             event (FileSystemEvent): Event object containing information about
                 the file system change
@@ -1508,21 +1503,21 @@ class BaseWatcher(FileSystemEventHandler):
 class MarkdownWatcher(BaseWatcher):
     """
     Specialized watcher for monitoring markdown documentation files.
-    
+
     This watcher subclass is specifically designed to monitor the project's
     documentation files (architecture.md, progress.md, tasks.md, etc.).
     When any of these files change, it automatically updates the context
     tracking system and creates a Git commit to track the changes.
-    
+
     The file mapping is built automatically from the SETUP_FILES dictionary,
     which defines the standard set of project documentation files.
-    
+
     Attributes:
         Inherits all attributes from BaseWatcher
-        
+
     Methods:
         markdown_callback: Callback function executed when a markdown file changes
-    
+
     Note:
         This watcher is a key component of the automatic context tracking system,
         ensuring that documentation changes are immediately reflected in the
@@ -1531,7 +1526,7 @@ class MarkdownWatcher(BaseWatcher):
     def __init__(self):
         """
         Initialize a new MarkdownWatcher.
-        
+
         Automatically builds the file mapping from the SETUP_FILES global dictionary
         and configures the callback to update context and create a Git commit.
         """
@@ -1543,11 +1538,11 @@ class MarkdownWatcher(BaseWatcher):
     def markdown_callback(self, file_key):
         """
         Process updates to markdown documentation files.
-        
+
         This callback is triggered whenever a watched markdown file is modified.
         It updates the context tracking system and creates an atomic Git commit
         to track the changes.
-        
+
         Args:
             file_key (str): Identifier of the file that was modified
                 (e.g., "architecture", "progress", "tasks")
@@ -1561,22 +1556,22 @@ class MarkdownWatcher(BaseWatcher):
 class ScriptWatcher(BaseWatcher):
     """
     Specialized watcher for monitoring the script file itself.
-    
+
     This watcher is responsible for detecting changes to the watcher.py script
     itself and triggering a self-restart when changes are detected. This allows
     the script to be updated while running, ensuring that new functionality is
     immediately available without manual intervention.
-    
+
     Attributes:
         Inherits all attributes from BaseWatcher
-        
+
     Methods:
         script_callback: Callback function executed when the script file changes
     """
     def __init__(self, script_path):
         """
         Initialize a new ScriptWatcher.
-        
+
         Args:
             script_path (str): Path to the script file to monitor (usually __file__)
         """
@@ -1587,11 +1582,11 @@ class ScriptWatcher(BaseWatcher):
     def script_callback(self, file_key):
         """
         Process updates to the script file.
-        
+
         This callback is triggered when the script file itself is modified.
         It triggers a self-restart of the script to ensure the new version
         is running.
-        
+
         Args:
             file_key (str): Identifier of the file that was modified
                 (always "Script File" for this watcher)
@@ -1603,13 +1598,13 @@ class ScriptWatcher(BaseWatcher):
 def run_observer(observer: Observer):
     """
     Run a watchdog Observer in a blocking manner.
-    
+
     This helper function starts an Observer and blocks until the Observer
     is stopped. It's typically used to run Observers in separate threads.
-    
+
     Args:
         observer (Observer): The watchdog Observer to run
-        
+
     Note:
         This function is blocking and will not return until the Observer
         is stopped. It should typically be run in a separate thread.
@@ -1620,7 +1615,7 @@ def run_observer(observer: Observer):
 def main():
     """Main function to handle arguments and execute appropriate actions"""
     try:
-        ide_env = detect_ide_environment()
+        detect_ide_environment()
 
         # Handle setup action first
         if ARGS.setup:
@@ -1667,7 +1662,7 @@ def main():
                     context["repo_path"] = str(Path(ARGS.git_repo).resolve())
                     write_context_file(context)
                 except Exception as e:
-                    logger.error(f"Failed to initialize git manager: {e}")
+                    logger.exception(f"Failed to initialize git manager: {e}")
                     return 1
 
             if not git_manager:
@@ -1705,7 +1700,7 @@ def main():
                     if stderr:
                         logger.error(stderr)
             except Exception as e:
-                logger.error(f"Git action failed: {e}")
+                logger.exception(f"Git action failed: {e}")
                 return 1
 
             if not ARGS.watch:
@@ -1753,7 +1748,7 @@ def main():
 def save_rules(context_content: str) -> None:
     """
     Save rules content to the appropriate file based on IDE environment.
-    
+
     Args:
         context_content: The content to save to the rules file
     """
@@ -1764,18 +1759,18 @@ def save_rules(context_content: str) -> None:
         save_global_rules(context_content)
         logger.info("Rules saved successfully")
     except Exception as e:
-        logger.error(f"Failed to save rules: {e}")
+        logger.exception(f"Failed to save rules: {e}")
 
 # Add new function to manage tasks
 def manage_task(action: str, **kwargs):
     """
     Manage tasks in the context tracking system with integration to Git workflow.
-    
-    This function provides a central interface for task management operations, including 
-    creating, updating, adding notes to, and listing tasks. It also updates the global 
-    rules file to reflect task changes and integrates with Git workflow by creating 
+
+    This function provides a central interface for task management operations, including
+    creating, updating, adding notes to, and listing tasks. It also updates the global
+    rules file to reflect task changes and integrates with Git workflow by creating
     task-specific branches when needed.
-    
+
     Args:
         action (str): The task action to perform:
             - 'add': Create a new task (requires 'description' in kwargs)
@@ -1788,13 +1783,13 @@ def manage_task(action: str, **kwargs):
             - task_id (str): ID of the task to operate on (for 'update', 'note', 'get')
             - status (str): New status to set (for 'update' action)
             - note (str): Note content to add (for 'note' action)
-    
+
     Returns:
-        Task or List[Task] or None: 
+        Task or List[Task] or None:
             - For 'add', 'update', 'note', 'get': Returns the task object
             - For 'list': Returns a list of task objects
             - Returns None if action fails
-    
+
     Side Effects:
         - Updates the context file with task changes
         - Updates the global rules file to reflect task changes
@@ -1863,7 +1858,7 @@ def manage_task(action: str, **kwargs):
                 sys.stderr.write(f"\nCreated branch {branch_name} for task {result.id}\n")
                 sys.stderr.flush()
             except Exception as e:
-                logger.error(f"Failed to create branch for task: {e}")
+                logger.exception(f"Failed to create branch for task: {e}")
     elif action == "update":
         task_manager.update_task_status(kwargs["task_id"], kwargs["status"])
         result = task_manager.get_task(kwargs["task_id"])
@@ -1895,7 +1890,7 @@ def manage_task(action: str, **kwargs):
                 sys.stderr.write(f"\nMerged task branch for task {kwargs['task_id']}\n")
                 sys.stderr.flush()
             except Exception as e:
-                logger.error(f"Failed to merge task branch: {e}")
+                logger.exception(f"Failed to merge task branch: {e}")
     elif action == "note":
         task_manager.add_note_to_task(kwargs["task_id"], kwargs["note"])
         result = task_manager.get_task(kwargs["task_id"])
@@ -1945,7 +1940,7 @@ def read_context_file() -> dict:
                     context["tasks"] = {}
                 return context
     except Exception as e:
-        logger.error(f"Error reading existing context: {e}")
+        logger.exception(f"Error reading existing context: {e}")
     return {
         "tasks": {},
         "repo_path": str(Path.cwd()),
@@ -1966,7 +1961,7 @@ def write_context_file(context: dict) -> None:
         with open(CONTEXT_RULES_PATH, "w") as f:
             json.dump(context, f, indent=2)
     except Exception as e:
-        logger.error(f"Error writing context file: {e}")
+        logger.exception(f"Error writing context file: {e}")
 
 def update_file_content(context, key, file_path):
     """Update context with file content for a specific key"""
@@ -2012,15 +2007,12 @@ def safe_read_file(file_path):
         with open(file_path, encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        if file_path in error_message:
-            msg = error_message[file_path]
-        else:
-            msg = f"File not found: {file_path}"
+        msg = error_message.get(file_path, f"File not found: {file_path}")
         logger.warning(msg)
         return msg
     except Exception as e:
         msg = f"Error reading file {file_path}: {e}"
-        logger.error(msg)
+        logger.exception(msg)
         return msg
 
 def safe_write_file(file_path, content):
@@ -2031,7 +2023,7 @@ def safe_write_file(file_path, content):
         logger.info(f"File written successfully: {file_path}")
         return True
     except Exception as e:
-        logger.error(f"Error writing to file {file_path}: {e}")
+        logger.exception(f"Error writing to file {file_path}: {e}")
         return False
 
 def ensure_file_exists(file_path):
@@ -2043,8 +2035,8 @@ def ensure_file_exists(file_path):
             return True
         return True
     except Exception as e:
-        logger.error(f"Failed to create {file_path}: {e}")
+        logger.exception(f"Failed to create {file_path}: {e}")
         return False
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

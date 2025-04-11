@@ -12,10 +12,10 @@ from pathlib import Path
 def safe_read_file(file_path: str | Path) -> str:
     """
     Safely read a file's contents.
-    
+
     Args:
         file_path: Path to the file to read
-        
+
     Returns:
         str: File contents, or empty string if file doesn't exist
     """
@@ -31,12 +31,12 @@ def safe_read_file(file_path: str | Path) -> str:
 def safe_write_file(file_path: str | Path, content: str, backup: bool = True) -> bool:
     """
     Safely write content to a file with optional backup.
-    
+
     Args:
         file_path: Path to the file to write
         content: Content to write to the file
         backup: Whether to create a backup before writing
-        
+
     Returns:
         bool: True if write was successful, False otherwise
     """
@@ -62,11 +62,11 @@ def safe_write_file(file_path: str | Path, content: str, backup: bool = True) ->
 def ensure_file_exists(file_path: str | Path, content: str | None = None) -> bool:
     """
     Ensure a file exists, optionally creating it with content.
-    
+
     Args:
         file_path: Path to the file
         content: Optional content to write if file doesn't exist
-        
+
     Returns:
         bool: True if file exists or was created, False otherwise
     """
@@ -87,11 +87,11 @@ def ensure_file_exists(file_path: str | Path, content: str | None = None) -> boo
 def backup_file(file_path: str | Path, backup_suffix: str = '.bak') -> bool:
     """
     Create a backup of a file.
-    
+
     Args:
         file_path: Path to the file to backup
         backup_suffix: Suffix to use for backup file
-        
+
     Returns:
         bool: True if backup was successful, False otherwise
     """

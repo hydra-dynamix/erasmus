@@ -20,7 +20,7 @@ class ContextFileHandler:
 
     def __init__(self, workspace_root: str | Path):
         """Initialize the context file handler.
-        
+
         Args:
             workspace_root: Path to the workspace root directory
         """
@@ -35,13 +35,13 @@ class ContextFileHandler:
 
     def _parse_markdown_rules(self, content: str) -> dict[str, list[str] | dict[str, list[str]]]:
         """Parse markdown content into a rules dictionary.
-        
+
         Args:
             content: Markdown content to parse
-            
+
         Returns:
             Dict containing parsed rules
-            
+
         Raises:
             ContextValidationError: If the content is not valid markdown rules
         """
@@ -119,10 +119,10 @@ class ContextFileHandler:
 
     def read_rules(self) -> dict[str, list[str] | dict[str, list[str]]]:
         """Read and parse the project rules file.
-        
+
         Returns:
             Dict containing parsed rules
-            
+
         Raises:
             ContextValidationError: If the rules file is invalid
         """
@@ -136,10 +136,10 @@ class ContextFileHandler:
 
     def read_global_rules(self) -> dict[str, list[str] | dict[str, list[str]]]:
         """Read and parse the global rules file.
-        
+
         Returns:
             Dict containing parsed global rules
-            
+
         Raises:
             ContextValidationError: If the global rules file is invalid
         """
@@ -153,10 +153,10 @@ class ContextFileHandler:
 
     def read_context(self) -> dict[str, Any]:
         """Read and parse the context file.
-        
+
         Returns:
             Dict containing context configuration
-            
+
         Raises:
             ContextValidationError: If the context file is invalid
         """
@@ -189,11 +189,11 @@ class ContextFileHandler:
 
     def update_context(self, new_context: dict[str, Any], partial: bool = False) -> None:
         """Update the context file.
-        
+
         Args:
             new_context: New context configuration
             partial: If True, only update specified fields
-            
+
         Raises:
             ContextValidationError: If the new context is invalid
         """
@@ -218,7 +218,7 @@ class ContextFileHandler:
 
     def backup_rules(self) -> None:
         """Create backups of rules files.
-        
+
         Creates .bak files for both rules.md and global_rules.md if they exist.
         """
         try:

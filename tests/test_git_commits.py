@@ -11,6 +11,7 @@ from erasmus.utils.context import (
     make_atomic_commit,
 )
 
+MAX_COMMIT_MESSAGE_LENGTH = 72
 
 @pytest.fixture
 def mock_env_vars():
@@ -98,10 +99,10 @@ def test_extract_commit_message_long():
     """Test extract_commit_message with long message."""
     message = "feat: " + "x" * 100
     result = extract_commit_message(message)
-    assert len(result) <= 72
+    assert len(result) <= MAX_COMMIT_MESSAGE_LENGTH
     assert result.endswith("...")
 
-def test_make_atomic_commit_openai_success(mock_env_vars, mock_git_manager, mock_subprocess):
+def test_make_atomic_commit_openai_success(mock_env_vars, mock_git_manager):
     """Test successful commit with OpenAI generation."""
     mock_env_vars["OPENAI_API_KEY"] = "sk-real-key"
     mock_env_vars["OPENAI_BASE_URL"] = "http://localhost:1234"
@@ -114,7 +115,7 @@ def test_make_atomic_commit_openai_success(mock_env_vars, mock_git_manager, mock
         assert make_atomic_commit()
         mock_git_manager.commit_changes.assert_called_once()
 
-def test_make_atomic_commit_fallback(mock_env_vars, mock_git_manager, mock_subprocess):
+def test_make_atomic_commit_fallback(mock_env_vars, mock_git_manager):
     """Test commit with fallback message generation."""
     mock_env_vars["OPENAI_API_KEY"] = "sk-1234"
     mock_env_vars["OPENAI_BASE_URL"] = "https://api.openai.com/v1"
@@ -131,7 +132,7 @@ def test_make_atomic_commit_no_changes(mock_git_manager):
     assert not make_atomic_commit()
     mock_git_manager.commit_changes.assert_not_called()
 
-def test_make_atomic_commit_invalid_message(mock_env_vars, mock_git_manager, mock_subprocess):
+def test_make_atomic_commit_invalid_message(mock_env_vars, mock_git_manager):
     """Test commit with invalid message validation."""
     mock_env_vars["OPENAI_API_KEY"] = "sk-real-key"
     mock_env_vars["OPENAI_BASE_URL"] = "http://localhost:1234"

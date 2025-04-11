@@ -87,8 +87,8 @@ def test_error_recovery(temp_workspace):
         nonlocal error_count
         processed_files.append(file_key)
         error_count += 1
-        if error_count <= 2:  # Fail first two times
-            raise Exception(f"Test error {error_count}")
+        if error_count <= 2:
+            raise Exception("Test error")
 
     # Create factory and watchers
     factory = WatcherFactory()
@@ -99,6 +99,7 @@ def test_error_recovery(temp_workspace):
 
     # Create observer
     factory.create_observer(markdown_watcher, str(workspace / "docs"))
+    num_of_processes = 3
 
     try:
         # Start watching
@@ -111,7 +112,7 @@ def test_error_recovery(temp_workspace):
             time.sleep(0.2)  # Increase delay to ensure events are processed
 
         # Verify system continued processing after errors
-        assert len(processed_files) >= 3  # At least 3 events should be processed
+        assert len(processed_files) >= num_of_processes  # At least 3 events should be processed
 
     finally:
         factory.stop_all()

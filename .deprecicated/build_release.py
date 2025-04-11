@@ -118,7 +118,7 @@ def convert_to_batch(version, version_dir):
     """Convert shell scripts to batch files for Windows."""
     # Define paths
     batch_path = version_dir / f'erasmus_v{version}.bat'
-    shell_path = version_dir / f'erasmus_v{version}.sh'
+    version_dir / f'erasmus_v{version}.sh'
 
     print(f"Creating Windows batch installer: {batch_path}")
 

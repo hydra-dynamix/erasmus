@@ -12,12 +12,22 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-from ..core.task import TaskManager, TaskStatus
-from ..core.watcher import WatcherFactory
-from ..git.manager import GitManager
-from ..utils.context import cleanup_project, update_context, update_specific_file
-from ..utils.logging import LogContext, get_logger
-from ..utils.paths import SetupPaths
+from erasmus.core.task import TaskManager, TaskStatus
+from erasmus.core.watcher import WatcherFactory
+from erasmus.git.manager import GitManager
+from erasmus.utils.context import (
+    cleanup_project,
+    store_context,
+    restore_context,
+    list_context_dirs,
+    print_context_dirs,
+    select_context_dir,
+    update_context,
+    update_specific_file,
+)
+from erasmus.utils.logging import LogContext, get_logger
+from erasmus.utils.paths import SetupPaths
+
 from .setup import setup as setup_env
 
 load_dotenv()
@@ -278,6 +288,91 @@ def watch():
         except Exception as e:
             logger.error("Failed to initialize watchers", exc_info=True)
             console.print(f"❌ Failed to start watchers: {e!s}", style="red")
+
+@cli.group()
+@log_command
+def context():
+    """Context management commands."""
+    return
+
+@context.command()
+@log_command
+def store():
+    """Store the current context in the context directory."""
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+    success = store_context(setup_paths)
+    if success:
+        console.print("✨ Context stored successfully")
+    else:
+        console.print("❌ Failed to store context. Check logs for details.", style="red")
+
+@context.command()
+@log_command
+@click.argument('context_dir', required=False)
+@click.option('--arch_context_dir', type=str, help='Context directory to restore (deprecated, use positional argument instead)')
+def restore(context_dir: str = None, arch_context_dir: str = None):
+    """Restore the context from the specified context directory."""
+    # Use context_dir if provided, otherwise fall back to arch_context_dir
+    directory_path = context_dir or arch_context_dir
+    
+    if not directory_path:
+        console.print("❌ No context directory specified. Please provide a context directory path.", style="red")
+        return
+
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+    context_path = Path(directory_path)
+
+    if not context_path.exists():
+        console.print(f"❌ Context directory not found: {directory_path}", style="red")
+        return
+
+    success = restore_context(setup_paths, context_path)
+    if success:
+        console.print("✨ Context restored successfully")
+    else:
+        console.print("❌ Failed to restore context. Check logs for details.", style="red")
+
+@context.command()
+@log_command
+def list_context():
+    """List all context directories."""
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+    dirs = list_context_dirs(setup_paths)
+    
+    if dirs:
+        console.print("Available context directories:")
+        for i, dir_path in enumerate(dirs, 1):
+            # Try to get a readable name from the directory
+            dir_name = Path(dir_path).name
+            console.print(f"{i}. {dir_name}")
+    else:
+        console.print("No context directories found")
+
+    console.print("✨ Context directories listed successfully")
+
+@context.command()
+@log_command
+def select():
+    """Select a context directory to restore."""
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+    arch_context_dir = select_context_dir(setup_paths)
+
+    if not arch_context_dir:
+        console.print("No context directory selected", style="yellow")
+        return
+
+    console.print(f"Selected context directory: {arch_context_dir}")
+
+    # Confirm before restoring
+    prompt = "Do you want to restore this context? This will overwrite current files."
+    if click.confirm(prompt):
+        success = restore_context(setup_paths, arch_context_dir)
+        if success:
+            console.print("✨ Context restored successfully")
+        else:
+            console.print("❌ Failed to restore context. Check logs for details.", style="red")
+    else:
+        console.print("Context restoration cancelled")
 
 if __name__ == '__main__':
     cli()

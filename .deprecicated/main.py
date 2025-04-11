@@ -29,7 +29,7 @@ def convert_scripts(version_str: str) -> int:
 
     # Print debug info
     sys.stderr.write(f"Python executable: {sys.executable}\n")
-    sys.stderr.write(f"Current directory: {os.getcwd()}\n")
+    sys.stderr.write(f"Current directory: {Path.cwd()}\n")
     sys.stderr.write(f"Project root: {project_root}\n")
     sys.stderr.write(f"Script directory: {script_dir}\n")
     sys.stderr.write("Function templates in converter:\n")
@@ -146,10 +146,10 @@ def main():
     convert_parser.add_argument("--version", "-v", help="Version to convert (defaults to current version)")
 
     # Build command
-    build_parser = subparsers.add_parser("build", help="Build the complete release package")
+    subparsers.add_parser("build", help="Build the complete release package")
 
     # Test command
-    test_parser = subparsers.add_parser("test", help="Run Docker tests for the installer")
+    subparsers.add_parser("test", help="Run Docker tests for the installer")
 
     args = parser.parse_args()
     vm = VersionManager()
@@ -178,6 +178,7 @@ def main():
 
     if args.command == "test":
         return run_tests()
+    return None
 
 if __name__ == '__main__':
     main()

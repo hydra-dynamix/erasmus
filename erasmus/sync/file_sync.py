@@ -7,6 +7,7 @@ ensuring that context files are properly copied and updated.
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 from collections.abc import Callable
@@ -16,7 +17,7 @@ from pathlib import Path
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from ..utils.file import safe_read_file, safe_write_file
+from erasmus.utils.file import safe_read_file, safe_write_file
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class FileChangeHandler(FileSystemEventHandler):
 
     def __init__(self, filename: str, callback: Callable[[str], None]):
         """Initialize the handler.
-        
+
         Args:
             filename: Name of the file to track
             callback: Function to call when file changes
@@ -50,7 +51,7 @@ class FileSynchronizer:
 
     def __init__(self, workspace_path: Path, rules_dir: Path):
         """Initialize the FileSynchronizer.
-        
+
         Args:
             workspace_path: Root path of the workspace
             rules_dir: Path to the rules directory (.cursorrules)
@@ -114,10 +115,8 @@ class FileSynchronizer:
         self._running = False
         if self._sync_task:
             self._sync_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._sync_task
-            except asyncio.CancelledError:
-                pass
 
         # Stop observers
         for observer in self._observers.values():
@@ -143,10 +142,10 @@ class FileSynchronizer:
 
     async def sync_file(self, filename: str):
         """Synchronize a specific file.
-        
+
         Args:
             filename: Name of the file to synchronize
-            
+
         Raises:
             FileNotFoundError: If the source file does not exist or is not tracked
             PermissionError: If there are permission issues
@@ -168,7 +167,7 @@ class FileSynchronizer:
                         del current_rules[component]
                         safe_write_file(rules_file, json.dumps(current_rules, indent=2))
                 except Exception as e:
-                    logger.error(f"Error cleaning up missing file {filename}: {e}")
+                    logger.exception(f"Error cleaning up missing file {filename}: {e}")
             raise FileNotFoundError(f"Source file does not exist: {filename}")
 
         try:
@@ -183,7 +182,7 @@ class FileSynchronizer:
                 try:
                     current_rules = json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
                 except json.JSONDecodeError:
-                    logger.error("Invalid JSON in rules file")
+                    logger.exception("Invalid JSON in rules file")
                     current_rules = {}
 
                 # Update the specific component
@@ -200,12 +199,12 @@ class FileSynchronizer:
                     raise RuntimeError(f"Failed to sync file {filename}: {e}")
 
         except (PermissionError, RuntimeError) as e:
-            logger.error(f"Error synchronizing {filename}: {e}")
+            logger.exception(f"Error synchronizing {filename}: {e}")
             raise
 
     async def _handle_file_change(self, filename: str):
         """Handle a file change event.
-        
+
         Args:
             filename: Name of the changed file
         """
@@ -231,12 +230,12 @@ class FileSynchronizer:
                 await asyncio.sleep(0.1)  # Brief sleep to prevent busy loop
 
             except Exception as e:
-                logger.error(f"Error processing syncs: {e}")
+                logger.exception(f"Error processing syncs: {e}")
                 await asyncio.sleep(1.0)  # Longer sleep on error
 
     async def get_sync_status(self) -> dict[str, dict]:
         """Get the last sync time for each tracked file.
-        
+
         Returns:
             Dict mapping filenames to status information including:
                 - last_sync: timestamp of last sync
@@ -249,7 +248,7 @@ class FileSynchronizer:
         try:
             current_rules = json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
         except json.JSONDecodeError:
-            logger.error("Invalid JSON in rules file")
+            logger.exception("Invalid JSON in rules file")
             current_rules = {}
 
         for filename, component in self.TRACKED_FILES.items():
@@ -276,7 +275,7 @@ class FileSynchronizer:
 
     async def cleanup(self):
         """Clean up files that no longer exist in workspace.
-        
+
         Raises:
             PermissionError: If there are permission issues writing to rules file
             RuntimeError: If there are other cleanup errors
@@ -290,7 +289,7 @@ class FileSynchronizer:
                 try:
                     current_rules = json.loads(safe_read_file(rules_file))
                 except json.JSONDecodeError:
-                    logger.error("Invalid JSON in rules file")
+                    logger.exception("Invalid JSON in rules file")
                     return
 
                 # Check each tracked file
@@ -308,5 +307,5 @@ class FileSynchronizer:
                     raise PermissionError(f"Permission denied writing to rules file: {e}")
 
         except Exception as e:
-            logger.error(f"Error during cleanup: {e}")
+            logger.exception(f"Error during cleanup: {e}")
             raise RuntimeError(f"Failed to clean up rules: {e}")

@@ -21,6 +21,22 @@ if [ -f "$PROJECT_ROOT/global_rules.md" ]; then
     rm "$PROJECT_ROOT/"global_rules.md""
 fi
 
+if [ -d "$PROJECT_ROOT/.context" ]; then
+    rm -rf "$PROJECT_ROOT/.context"
+fi
+
+if [ -f "$PROJECT_ROOT/.windsurfrules.old" ]; then
+    rm -rf "$PROJECT_ROOT/.windsurfrules.old"
+fi
+
+if [ -f "$PROJECT_ROOT/.cursorrules.old" ]; then
+    rm -rf "$PROJECT_ROOT/.cursorrules.old"
+fi
+
+if [ -f "$PROJECT_ROOT/context_watcher.log" ]; then
+    rm -r "$PROJECT_ROOT/context_watcher.log"
+fi
+
 
 version=$(jq -r '.version' version.json)
 

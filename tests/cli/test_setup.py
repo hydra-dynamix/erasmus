@@ -53,7 +53,7 @@ def test_validate_base_url():
 @pytest.mark.parametrize("env_exists", [True, False])
 def test_setup_command(runner, env_example_content, env_exists, tmp_path):
     """Test the setup command with and without existing .env."""
-    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+    with runner.isolated_filesystem(temp_dir=tmp_path):
         # Create .env.example
         with open(".env.example", "w") as f:
             f.write(env_example_content)
@@ -93,7 +93,7 @@ def test_setup_command(runner, env_example_content, env_exists, tmp_path):
 
 def test_setup_invalid_inputs(runner, env_example_content, tmp_path):
     """Test the setup command with invalid inputs that are then corrected."""
-    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+    with runner.isolated_filesystem(temp_dir=tmp_path):
         # Create .env.example
         with open(".env.example", "w") as f:
             f.write(env_example_content)
@@ -123,7 +123,7 @@ def test_setup_invalid_inputs(runner, env_example_content, tmp_path):
 
 def test_setup_missing_env_example(runner, env_example_content, tmp_path):
     """Test setup behavior when .env.example is missing."""
-    with runner.isolated_filesystem(temp_dir=tmp_path) as fs:
+    with runner.isolated_filesystem(temp_dir=tmp_path):
         # Mock user choosing to create default .env.example
         with patch("click.confirm", return_value=True):
             result = runner.invoke(setup)

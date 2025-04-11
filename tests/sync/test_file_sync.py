@@ -155,7 +155,7 @@ async def test_concurrent_updates(sync_env):
     # Verify all updates were processed
     rules_file = rules_dir / "rules.json"
     rules = json.loads(rules_file.read_text())
-    for i, (filename, key) in enumerate(FileSynchronizer.TRACKED_FILES.items()):
+    for i, (_, key) in enumerate(FileSynchronizer.TRACKED_FILES.items()):
         assert rules[key] == f"Concurrent update {i}"
 
 @pytest.mark.asyncio

@@ -54,14 +54,14 @@ def get_logger(
     backup_count: int = 5,
 ) -> logging.Logger:
     """Get a configured logger instance.
-    
+
     Args:
         name: Logger name, typically __name__
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Optional file to log to
         max_bytes: Maximum size of each log file
         backup_count: Number of backup files to keep
-        
+
     Returns:
         Configured logger instance
     """
@@ -106,10 +106,10 @@ def get_logger(
 
 def log_execution(level: str = "DEBUG") -> Callable:
     """Decorator to log function execution with timing.
-    
+
     Args:
         level: Log level for the timing message
-        
+
     Returns:
         Decorator function
     """
@@ -143,7 +143,7 @@ def init_logging(
     log_dir: Path | None = None,
 ) -> None:
     """Initialize global logging configuration.
-    
+
     Args:
         level: Default log level
         log_dir: Directory for log files

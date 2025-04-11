@@ -21,9 +21,9 @@ class FilePaths(BaseModel):
 
     def items(self):
         """Return an items view of the model fields.
-        
+
         This allows the class to be used like a dictionary in for loops.
-        
+
         Returns:
             An items view of (key, value) pairs
         """
@@ -104,10 +104,10 @@ class SetupPaths(FilePaths):
     @classmethod
     def with_project_root(cls, project_root: Path | str) -> 'SetupPaths':
         """Create a SetupPaths instance with a specific project root.
-        
+
         Args:
             project_root: Path to the project root directory
-            
+
         Returns:
             SetupPaths: Configured with the specified project root
         """
@@ -130,6 +130,10 @@ class SetupPaths(FilePaths):
     script_files: ScriptPaths = Field(
         default_factory=ScriptPaths,
         description="Script file paths",
+    )
+    stored_context: Path = Field(
+        default=Path.cwd() / ".context",
+        description="Path to the stored context file",
     )
 
     @property
@@ -162,7 +166,7 @@ class SetupPaths(FilePaths):
 
     def validate_paths(self) -> None:
         """Validate that required files exist.
-        
+
         Raises:
             FileNotFoundError: If a required file is missing
         """

@@ -11,7 +11,7 @@ import json
 import logging
 from pathlib import Path
 
-from ..utils.file import safe_read_file, safe_write_file
+from erasmus.utils.file import safe_read_file, safe_write_file
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +98,7 @@ class SyncIntegration:
                                     logger.error(f"Initial sync verification failed for {component} after retry")
 
                             except asyncio.TimeoutError:
-                                logger.error(f"Timeout during initial sync of {component}")
+                                logger.exception(f"Timeout during initial sync of {component}")
                                 if attempt == 1:  # Second attempt
                                     raise
                             finally:
@@ -118,7 +118,7 @@ class SyncIntegration:
                             del self._file_change_events[component]
 
         except Exception as e:
-            logger.error(f"Error during sync_all: {e}")
+            logger.exception(f"Error during sync_all: {e}")
             raise
 
     async def handle_file_change(self, file_path: Path) -> None:
@@ -169,7 +169,7 @@ class SyncIntegration:
                     del self._file_change_events[component]
 
         except Exception as e:
-            logger.error(f"Error handling file change for {file_path}: {e}")
+            logger.exception(f"Error handling file change for {file_path}: {e}")
             raise
 
     async def handle_context_change(self, component: str, content: str) -> None:
@@ -198,5 +198,5 @@ class SyncIntegration:
                             temp_path.unlink()
 
         except Exception as e:
-            logger.error(f"Error handling context change for {component}: {e}")
+            logger.exception(f"Error handling context change for {component}: {e}")
             raise

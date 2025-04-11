@@ -12,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from ..utils.file_ops import safe_read_file
+from erasmus.utils.file_ops import safe_read_file
 
 
 class RuleType(Enum):
@@ -27,7 +27,7 @@ class RuleType(Enum):
 class Rule:
     """
     Represents a single rule with its properties.
-    
+
     Attributes:
         name (str): Unique identifier for the rule
         description (str): Human-readable description of the rule
@@ -63,7 +63,7 @@ class RuleValidationError(Exception):
 class ValidationError:
     """
     Represents a validation error found during rule checking.
-    
+
     Attributes:
         rule (Rule): The rule that was violated
         message (str): Description of the violation
@@ -78,10 +78,10 @@ class ValidationError:
 class RulesParser:
     """
     Parser for reading and validating rules from files.
-    
+
     This class handles reading rules from markdown files, parsing their content,
     and validating code against the rules.
-    
+
     Attributes:
         rules_file (Path): Path to the rules file
         rules (List[Rule]): List of parsed rules
@@ -91,10 +91,10 @@ class RulesParser:
     def __init__(self, rules_file: Path):
         """
         Initialize the RulesParser with a rules file.
-        
+
         Args:
             rules_file (Path): Path to the rules file to parse
-            
+
         Raises:
             RuleValidationError: If the rules file is invalid
         """
@@ -105,10 +105,10 @@ class RulesParser:
     def _parse_rules(self) -> list[Rule]:
         """
         Parse rules from the rules file.
-        
+
         Returns:
             List[Rule]: List of parsed rules
-            
+
         Raises:
             RuleValidationError: If the rules file is invalid
         """
@@ -159,13 +159,13 @@ class RulesParser:
     def _create_rule(self, rule_data: dict[str, Any]) -> Rule:
         """
         Create a Rule object from parsed data.
-        
+
         Args:
             rule_data (Dict[str, Any]): Dictionary of rule properties
-            
+
         Returns:
             Rule: Created Rule object
-            
+
         Raises:
             RuleValidationError: If required fields are missing or invalid
         """
@@ -198,10 +198,10 @@ class RulesParser:
     def validate_code(self, code: str) -> list[ValidationError]:
         """
         Validate code against all rules.
-        
+
         Args:
             code (str): Code to validate
-            
+
         Returns:
             List[ValidationError]: List of validation errors found
         """
@@ -251,13 +251,13 @@ class RulesParser:
 
     def parse_rules_file(self, file_path: Path) -> list[Rule]:
         """Parse rules from a markdown file.
-        
+
         Args:
             file_path: Path to the markdown file containing rules
-            
+
         Returns:
             List of Rule objects parsed from the file
-            
+
         Raises:
             FileNotFoundError: If the rules file does not exist
             RuleParsingError: If there are errors parsing the rules

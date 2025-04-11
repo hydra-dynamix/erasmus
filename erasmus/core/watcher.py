@@ -23,7 +23,7 @@ from rich.console import Console
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-from ..utils.logging import LogContext, get_logger, log_execution
+from erasmus.utils.logging import LogContext, get_logger, log_execution
 
 # Configure logging and console
 logger = get_logger(__name__)
@@ -34,7 +34,7 @@ class BaseWatcher(FileSystemEventHandler):
 
     def __init__(self, file_paths: dict[str, Path], callback: Callable[[str, str], None]):
         """Initialize the watcher.
-        
+
         Args:
             file_paths: Dictionary mapping file keys to their paths
             callback: Function to call when a file changes
@@ -53,10 +53,10 @@ class BaseWatcher(FileSystemEventHandler):
 
     def _should_process_event(self, event_path: str) -> bool:
         """Check if an event should be processed based on debouncing.
-        
+
         Args:
             event_path: Path of the file that triggered the event
-            
+
         Returns:
             True if the event should be processed, False otherwise
         """
@@ -73,10 +73,10 @@ class BaseWatcher(FileSystemEventHandler):
 
     def _get_file_key(self, file_path: str) -> str | None:
         """Get the file key for a given path.
-        
+
         Args:
             file_path: Path to look up
-            
+
         Returns:
             File key if found, None otherwise
         """
@@ -86,13 +86,13 @@ class BaseWatcher(FileSystemEventHandler):
             logger.debug(f"Known paths: {list(self._path_mapping.keys())}")
             return self._path_mapping.get(resolved_path)
         except Exception as e:
-            logger.error(f"Error getting file key: {e}")
+            logger.exception(f"Error getting file key: {e}")
             return None
 
     @log_execution()
     def _handle_event(self, event: FileSystemEvent) -> None:
         """Handle a file system event.
-        
+
         Args:
             event: The file system event to handle
         """
@@ -130,10 +130,10 @@ class BaseWatcher(FileSystemEventHandler):
 
     def _validate_content(self, content: str) -> bool:
         """Validate file content.
-        
+
         Args:
             content: Content to validate
-            
+
         Returns:
             Always returns True to accept any content
         """
@@ -162,10 +162,10 @@ class MarkdownWatcher(BaseWatcher):
 
     def _validate_content(self, content: str) -> bool:
         """Validate markdown content.
-        
+
         Args:
             content: Content to validate
-            
+
         Returns:
             True if content is valid markdown, False otherwise
         """
@@ -175,14 +175,11 @@ class MarkdownWatcher(BaseWatcher):
             return False
 
         # Check for title
-        if not lines[0].startswith("# "):
-            return False
-
-        return True
+        return lines[0].startswith("# ")
 
 class ScriptWatcher(BaseWatcher):
     """Specialized watcher for script files.
-    
+
     TODO:
     - Integrate LSP for real-time validation
     - Add linting checks on file changes
@@ -191,7 +188,7 @@ class ScriptWatcher(BaseWatcher):
     """
     def __init__(self, file_paths: dict[str, Path | str], callback: Callable[[str], None]):
         """Initialize the script watcher.
-        
+
         Args:
             file_paths: Dictionary mapping script keys to paths
             callback: Function to call when scripts change
@@ -208,10 +205,10 @@ class ScriptWatcher(BaseWatcher):
 
     def _validate_content(self, content: str) -> bool:
         """Validate Python script content.
-        
+
         Args:
             content: Content to validate
-            
+
         Returns:
             True if content is valid Python, False otherwise
         """
@@ -223,7 +220,7 @@ class ScriptWatcher(BaseWatcher):
 
 def run_observer(observer: Observer):
     """Run an observer in a separate thread.
-    
+
     Args:
         observer: Observer to run
     """
@@ -240,13 +237,13 @@ def create_file_watchers(setup_files: dict[str, Path],
                         script_path: Path,
                         restart_callback: Callable[[str], None]) -> tuple[Observer, Observer]:
     """Create and configure file watchers.
-    
+
     Args:
         setup_files: Dictionary mapping file keys to their paths
         update_callback: Callback for file updates
         script_path: Path to the script file
         restart_callback: Callback for script restarts
-        
+
     Returns:
         Tuple of (markdown_observer, script_observer)
     """
@@ -273,11 +270,11 @@ class WatcherFactory:
 
     def create_markdown_watcher(self, file_paths: dict[str, Path], callback: Callable[[str], None]) -> MarkdownWatcher:
         """Create a markdown watcher.
-        
+
         Args:
             file_paths: Dictionary mapping file keys to their paths
             callback: Function to call when files change
-            
+
         Returns:
             Configured MarkdownWatcher
         """
@@ -285,11 +282,11 @@ class WatcherFactory:
 
     def create_script_watcher(self, file_paths: dict[str, Path], callback: Callable[[str], None]) -> ScriptWatcher:
         """Create a script watcher.
-        
+
         Args:
             file_paths: Dictionary mapping script keys to paths
             callback: Function to call when scripts change
-            
+
         Returns:
             Configured ScriptWatcher
         """
@@ -297,11 +294,11 @@ class WatcherFactory:
 
     def create_observer(self, watcher: FileSystemEventHandler, directory: str) -> Observer:
         """Create and configure an observer.
-        
+
         Args:
             watcher: Event handler to use
             directory: Directory to watch
-            
+
         Returns:
             Configured Observer
         """
