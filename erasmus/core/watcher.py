@@ -14,7 +14,6 @@ Classes:
 
 import os
 import time
-import logging
 import ast
 from pathlib import Path
 from typing import Dict, Callable, Optional, List
@@ -23,8 +22,10 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from rich.console import Console
 
+from ..utils.logging import get_logger, LogContext, log_execution
+
 # Configure logging and console
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 console = Console()
 
 class BaseWatcher(FileSystemEventHandler):
@@ -87,6 +88,7 @@ class BaseWatcher(FileSystemEventHandler):
             logger.error(f"Error getting file key: {e}")
             return None
     
+    @log_execution()
     def _handle_event(self, event: FileSystemEvent) -> None:
         """Handle a file system event.
         
@@ -94,28 +96,36 @@ class BaseWatcher(FileSystemEventHandler):
             event: The file system event to handle
         """
         if event.is_directory:
+            logger.debug(f"Ignoring directory event: {event.src_path}")
             return
         
         file_path = event.src_path
         if not self._should_process_event(file_path):
+            logger.debug(f"Debouncing event for: {file_path}")
             return
         
         file_key = self._get_file_key(file_path)
         if file_key is None:
+            logger.debug(f"No file key found for: {file_path}")
             return
         
-        try:
-            if os.path.exists(file_path):
-                with open(file_path, 'r') as f:
-                    content = f.read()
-                if self._validate_content(content):
-                    console.print(f"📝 Detected changes in {file_key}")
+        with LogContext(logger, f"handle_event({file_key})"):
+            try:
+                if os.path.exists(file_path):
+                    with open(file_path, 'r') as f:
+                        content = f.read()
+                    # Always accept the content since validation is disabled
+                    logger.info(f"📝 Detected changes in {file_key}")
                     self.callback(file_key, content)
-            else:
-                # For deletion events, we still want to notify with empty content
-                self.callback(file_key, "")
-        except Exception as e:
-            logger.error(f"Error handling event for {file_path}: {e}")
+                else:
+                    # For deletion events, we still want to notify with empty content
+                    logger.info(f"File deleted: {file_key}")
+                    self.callback(file_key, "")
+            except Exception as e:
+                logger.error(
+                    f"Error handling event for {file_path}",
+                    exc_info=True
+                )
     
     def _validate_content(self, content: str) -> bool:
         """Validate file content.
@@ -124,7 +134,7 @@ class BaseWatcher(FileSystemEventHandler):
             content: Content to validate
             
         Returns:
-            True if content is valid, False otherwise
+            Always returns True to accept any content
         """
         return True
     

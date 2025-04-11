@@ -5,7 +5,6 @@ import shutil
 import subprocess
 import time
 import re
-import logging
 from typing import Dict, Any, Optional
 
 from rich import console
@@ -13,9 +12,10 @@ from openai import OpenAI
 
 from ..git.manager import GitManager
 from ..utils.paths import SetupPaths
+from ..utils.logging import get_logger, LogContext, log_execution
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Global variables
 PWD = Path(__file__).parent
@@ -181,120 +181,173 @@ def setup_project() -> None:
     
     console.print("Project setup complete!")
 
+@log_execution()
 def update_specific_file(file_type: str, content: str = None) -> None:
     """Update a specific project file."""
-    setup_paths = SetupPaths(Path.cwd())
-    file_map = setup_paths.markdown_files
-    
-    if file_type not in file_map:
-        console.print(f"Invalid file type: {file_type}", style="red")
-        return
-    
-    path = file_map[file_type]
-    
-    # If no content provided, read from file
-    if content is None and path.exists():
-        content = read_file(path)
-    
-    if content is not None:
-        if write_file(path, content, backup=False):
-            console.print(f"Updated {path}")
-            if file_type != "context":
-                # Read current context
-                current_context = {}
-                rules_path = get_rules_path()
-                if rules_path.exists():
-                    try:
-                        current_context = json.loads(read_file(rules_path))
-                    except json.JSONDecodeError:
-                        pass
-                
-                # Update only the changed file's content
-                current_context[file_type] = content
-                console.print(f"💾 Updating rules with changes from {file_type}")
-                update_context(current_context, backup=False)
+    with LogContext(logger, f"update_specific_file({file_type})"):
+        setup_paths = SetupPaths(Path.cwd())
+        file_map = setup_paths.markdown_files
+        logger.debug(f"Available file types: {list(file_map.keys())}")
+        
+        if file_type not in file_map:
+            logger.error(f"Invalid file type: {file_type}")
+            console.print(f"Invalid file type: {file_type}", style="red")
+            return
+        
+        path = file_map[file_type]
+        logger.debug(f"Updating file: {path}")
+        
+        # If no content provided, read from file
+        if content is None and path.exists():
+            try:
+                content = read_file(path)
+                logger.debug(f"Read existing content from {path}")
+            except Exception as e:
+                logger.error(f"Failed to read {path}: {e}", exc_info=True)
+                raise
+        
+        if content is not None:
+            try:
+                if write_file(path, content, backup=False):
+                    logger.info(f"Successfully updated {path}")
+                    if file_type != "context":
+                        # Read current context
+                        current_context = {}
+                        rules_path = get_rules_path()
+                        if rules_path.exists():
+                            try:
+                                current_context = json.loads(read_file(rules_path))
+                                logger.debug(f"Read existing context: {list(current_context.keys())}")
+                            except json.JSONDecodeError as e:
+                                # If context file is invalid JSON, start fresh
+                                logger.warning(f"Failed to parse context file, starting fresh: {e}")
+                                current_context = {}
+                        
+                        # Just update the content and save
+                        current_context[file_type] = content
+                        logger.info(f"💾 Updating rules with changes from {file_type}")
+                        write_file(rules_path, json.dumps(current_context, indent=2), backup=False)
+            except Exception as e:
+                logger.error(f"Failed to update {path}: {e}", exc_info=True)
+                raise
 
+@log_execution()
 def cleanup_project() -> None:
     """Remove all generated files and restore backups if available."""
-    rules_path = get_rules_path()
-    files_to_remove = [
-        str(rules_path),
-        "global_rules.md"
-    ]
-    
-    # First, create backups of all files
-    for filename in files_to_remove:
-        path = Path(filename)
-        if path.exists():
-            backup_rules_file(path)
-    
-    # Then remove generated files
-    for filename in files_to_remove:
-        path = Path(filename)
-        if path.exists():
-            try:
-                path.unlink()
-                console.print(f"Removed {path}")
-            except Exception as e:
-                console.print(f"Error removing {path}: {e}", style="red")
-    
-    # Remove cache directories
-    cache_patterns = [
-        "__pycache__",
-        ".pytest_cache",
-        "*.pyc",
-    ]
+    with LogContext(logger, "cleanup_project"):
+        rules_path = get_rules_path()
+        files_to_remove = [
+            str(rules_path),
+            "global_rules.md"
+        ]
+        logger.debug(f"Files to clean up: {files_to_remove}")
+        
+        # First, create backups of all files
+        for filename in files_to_remove:
+            path = Path(filename)
+            if path.exists():
+                try:
+                    backup_rules_file(path)
+                    logger.info(f"Created backup for {path}")
+                except Exception as e:
+                    logger.error(f"Failed to backup {path}: {e}", exc_info=True)
+                    raise
+        
+        # Then remove generated files
+        for filename in files_to_remove:
+            path = Path(filename)
+            if path.exists():
+                try:
+                    path.unlink()
+                    logger.info(f"Successfully removed {path}")
+                except Exception as e:
+                    logger.error(f"Failed to remove {path}: {e}", exc_info=True)
+                    console.print(f"Error removing {path}: {e}", style="red")
+                    raise
+        
+        # Remove cache directories
+        cache_patterns = [
+            "__pycache__",
+            ".pytest_cache",
+            "*.pyc",
+        ]
+        logger.debug(f"Cache patterns to clean: {cache_patterns}")
     
     for pattern in cache_patterns:
         for path in Path().rglob(pattern):
-            if path.is_file():
-                path.unlink()
-            elif path.is_dir():
-                shutil.rmtree(path)
+            try:
+                if path.is_file():
+                    path.unlink()
+                    logger.debug(f"Removed cache file: {path}")
+                elif path.is_dir():
+                    shutil.rmtree(path)
+                    logger.debug(f"Removed cache directory: {path}")
+            except Exception as e:
+                logger.error(f"Failed to remove cache {path}: {e}", exc_info=True)
+                raise
 
-def check_creds():
+@log_execution()
+def check_creds() -> bool:
     """Check if OpenAI credentials are valid for API calls."""
-    api_key, base_url, model = get_openai_credentials()
-    
-    # Skip API call if using default key or OpenAI base URL
-    if api_key == "sk-1234" or "api.openai.com" in base_url.lower():
-        return False
-    return True
+    with LogContext(logger, "check_creds"):
+        api_key, base_url, model = get_openai_credentials()
+        logger.debug(f"Using base URL: {base_url}, model: {model}")
+        
+        # Skip API call if using default key or OpenAI base URL
+        if api_key == "sk-1234" or "api.openai.com" in base_url.lower():
+            logger.warning("Using default credentials, skipping API check")
+            return False
+        
+        logger.info("OpenAI credentials validated")
+        return True
 
-def make_atomic_commit():
+@log_execution()
+def make_atomic_commit() -> bool:
     """Makes an atomic commit with AI-generated commit message or falls back to diff-based message."""
-    # Initialize GitManager with current directory
-    git_manager = GitManager(PWD)
-    
-    # Stage all changes
-    if not git_manager.stage_all_changes():
-        logger.warning("No changes to commit or staging failed.")
-        return False
-    
-    try:
-        # Get the diff output
-        diff_output = subprocess.check_output(
-            ["git", "diff", "--staged"], 
-            cwd=PWD, 
-            text=True,
-            universal_newlines=True,
-            encoding='utf-8',
-            errors='replace'  # Replace undecodable bytes
-        )
+    with LogContext(logger, "make_atomic_commit"):
+        # Initialize GitManager with current directory
+        git_manager = GitManager(PWD)
+        logger.debug(f"Initialized GitManager with path: {PWD}")
         
-        # Truncate diff if it's too long
-        max_diff_length = 4000
-        if len(diff_output) > max_diff_length:
-            diff_output = diff_output[:max_diff_length] + "... (diff truncated)"
+        # Stage all changes
+        if not git_manager.stage_all_changes():
+            logger.warning("No changes to commit or staging failed")
+            return False
         
-        # Sanitize diff output
-        diff_output = ''.join(char for char in diff_output if ord(char) < 128)
+        try:
+            # Get the diff output
+            logger.debug("Getting staged diff output")
+            diff_output = subprocess.check_output(
+                ["git", "diff", "--staged"], 
+                cwd=PWD, 
+                text=True,
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='replace'  # Replace undecodable bytes
+            )
+            
+            # Truncate diff if it's too long
+            max_diff_length = 4000
+            original_length = len(diff_output)
+            if original_length > max_diff_length:
+                diff_output = diff_output[:max_diff_length] + "... (diff truncated)"
+                logger.debug(f"Truncated diff from {original_length} to {max_diff_length} chars")
+            
+            # Sanitize diff output
+            diff_output = ''.join(char for char in diff_output if ord(char) < 128)
+            logger.debug(f"Sanitized diff output, final length: {len(diff_output)}")
+        
+        except Exception as e:
+            logger.error(f"Failed to get diff output: {e}")
+            raise ProcessError(f"Failed to get diff output: {e}")
         
         # Determine commit type programmatically
         commit_type = determine_commit_type(diff_output)
+        logger.debug(f"Determined commit type: {commit_type}")
         
         # If we can use OpenAI, generate a message
         if check_creds() and CLIENT is not None:
+            logger.debug("Using OpenAI to generate commit message")
             prompt = f"""Generate a concise, descriptive commit message for the following git diff.
 The commit type has been determined to be '{commit_type}'.
 
@@ -308,6 +361,7 @@ Guidelines:
 - Prefer imperative mood"""
             
             try:
+                logger.debug(f"Making API request with model: {OPENAI_MODEL}")
                 response = CLIENT.chat.completions.create(
                     model=OPENAI_MODEL,
                     messages=[
@@ -320,47 +374,54 @@ Guidelines:
                 # Sanitize commit message
                 raw_message = response.choices[0].message.content
                 commit_message = ''.join(char for char in raw_message if ord(char) < 128)
+                logger.debug(f"Raw commit message: {raw_message}")
                 
                 # Ensure commit message starts with the determined type
                 if not commit_message.startswith(f"{commit_type}:"):
+                    logger.debug("Adding commit type prefix")
                     commit_message = f"{commit_type}: {commit_message}"
                 
                 commit_message = extract_commit_message(commit_message)
+                logger.info(f"Generated commit message via API: {commit_message}")
             except Exception as e:
-                logger.warning(f"Failed to generate commit message via API: {e}")
+                logger.warning(f"Failed to generate commit message via API: {e}", exc_info=True)
                 commit_message = None
         else:
+            logger.debug("Skipping OpenAI commit message generation")
             commit_message = None
             
         # If we don't have a commit message, generate one from the diff
         if not commit_message:
+            logger.debug("Generating commit message from diff")
             # Get the first line of the diff that shows a file change
             diff_lines = diff_output.split('\n')
             file_change = next((line for line in diff_lines if line.startswith('diff --git')), '')
             if file_change:
                 # Extract the file name from the diff line
                 file_name = file_change.split(' b/')[-1]
+                logger.debug(f"Found changed file: {file_name}")
             else:
                 file_name = "project files"
+                logger.debug("No specific file changes found")
             
             # Create a simple commit message based on the type and changed files
             commit_message = f"{commit_type}: Update {file_name}"
+            logger.info(f"Generated fallback commit message: {commit_message}")
         
         # Validate commit message
         is_valid, validation_message = git_manager.validate_commit_message(commit_message)
+        logger.debug(f"Commit message validation: {validation_message}")
         
         if not is_valid:
             logger.warning(f"Generated commit message invalid: {validation_message}")
             commit_message = f"{commit_type}: Update project files ({time.strftime('%Y-%m-%d')})"
+            logger.info(f"Using default commit message: {commit_message}")
         
         # Commit changes
         if git_manager.commit_changes(commit_message):
-            logger.info(f"Committed changes: {commit_message}")
+            logger.info(f"Successfully committed changes: {commit_message}")
             return True
         else:
-            logger.error("Commit failed")
+            logger.error("Failed to commit changes")
             return False
     
-    except Exception as e:
-        logger.error(f"Error in atomic commit: {e}")
-        return False 
