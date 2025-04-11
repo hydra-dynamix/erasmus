@@ -142,3 +142,5 @@
 2025-04-09 19:25:01,752 - context_watcher - INFO - Processing update from PROGRESS
 2025-04-09 19:25:01,772 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
 2025-04-09 21:08:17,290 - context_watcher - INFO - Shutting down...
+2025-04-10 19:19:21,435 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
+2025-04-10 19:19:21,517 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.cursorrules
