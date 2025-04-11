@@ -120,21 +120,22 @@ def restore_rules_backup() -> bool:
 
 def update_context(context: Dict[str, Any], backup: bool = False) -> Dict[str, Any]:
     """Update the context with current file contents."""
-    rules_path = get_rules_path()
+    setup_paths = SetupPaths(Path.cwd())
+    rules_path = setup_paths.rules_file
     global_rules_path = Path("global_rules.md")
     
     # Add architecture if available
-    arch_path = Path("architecture.md")
+    arch_path = setup_paths.markdown_files.architecture
     if arch_path.exists():
         context["architecture"] = read_file(arch_path)
     
     # Add progress if available
-    progress_path = Path("progress.md")
+    progress_path = setup_paths.markdown_files.progress
     if progress_path.exists():
         context["progress"] = read_file(progress_path)
     
     # Add tasks if available
-    tasks_path = Path("tasks.md")
+    tasks_path = setup_paths.markdown_files.tasks
     if tasks_path.exists():
         context["tasks"] = read_file(tasks_path)
     
@@ -146,11 +147,13 @@ def update_context(context: Dict[str, Any], backup: bool = False) -> Dict[str, A
 
 def setup_project() -> None:
     """Set up a new project with necessary files."""
+    setup_paths = SetupPaths(Path.cwd())
+    
     # Create required files
     files = {
-        "architecture.md": "# Project architecture\n\nDescribe your project architecture here.",
-        "progress.md": "# Development progress\n\nTrack your development progress here.",
-        "tasks.md": "# Project tasks\n\nList your project tasks here.",
+        str(setup_paths.markdown_files.architecture): "# Project architecture\n\nDescribe your project architecture here.",
+        str(setup_paths.markdown_files.progress): "# Development progress\n\nTrack your development progress here.",
+        str(setup_paths.markdown_files.tasks): "# Project tasks\n\nList your project tasks here.",
         ".env.example": "IDE_ENV=\nOPENAI_API_KEY=\nOPENAI_BASE_URL=\nOPENAI_MODEL=",
         ".gitignore": ".env\n__pycache__/\n*.pyc\n.pytest_cache/\n",
     }
@@ -168,11 +171,16 @@ def setup_project() -> None:
         context = {}
         
         # Get the correct rules path based on IDE environment
-        rules_path = get_rules_path()
+        rules_path = setup_paths.rules_file
         
         # Read content from files
-        for file_key in ["architecture", "progress", "tasks"]:
-            file_path = Path(f"{file_key}.md")
+        markdown_files = {
+            "architecture": setup_paths.markdown_files.architecture,
+            "progress": setup_paths.markdown_files.progress,
+            "tasks": setup_paths.markdown_files.tasks
+        }
+        
+        for file_key, file_path in markdown_files.items():
             if file_path.exists():
                 context[file_key] = read_file(file_path)
         
@@ -213,7 +221,7 @@ def update_specific_file(file_type: str, content: str = None) -> None:
                     if file_type != "context":
                         # Read current context
                         current_context = {}
-                        rules_path = get_rules_path()
+                        rules_path = setup_paths.rules_file
                         if rules_path.exists():
                             try:
                                 current_context = json.loads(read_file(rules_path))
