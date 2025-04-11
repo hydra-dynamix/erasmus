@@ -12,17 +12,18 @@ Classes:
     WatcherFactory: Factory class for creating and managing watchers
 """
 
+import ast
 import os
 import time
-import ast
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, Callable, Optional, List
-from threading import Thread, Lock
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from rich.console import Console
+from threading import Lock
 
-from ..utils.logging import get_logger, LogContext, log_execution
+from rich.console import Console
+from watchdog.events import FileSystemEvent, FileSystemEventHandler
+from watchdog.observers import Observer
+
+from ..utils.logging import LogContext, get_logger, log_execution
 
 # Configure logging and console
 logger = get_logger(__name__)
@@ -30,8 +31,8 @@ console = Console()
 
 class BaseWatcher(FileSystemEventHandler):
     """Base class for file system event handlers."""
-    
-    def __init__(self, file_paths: Dict[str, Path], callback: Callable[[str, str], None]):
+
+    def __init__(self, file_paths: dict[str, Path], callback: Callable[[str, str], None]):
         """Initialize the watcher.
         
         Args:
@@ -48,8 +49,8 @@ class BaseWatcher(FileSystemEventHandler):
             self._path_mapping[resolved] = key
             logger.debug(f"Watching {key}: {resolved}")
         self._event_lock = Lock()
-        self._last_events: Dict[str, float] = {}
-    
+        self._last_events: dict[str, float] = {}
+
     def _should_process_event(self, event_path: str) -> bool:
         """Check if an event should be processed based on debouncing.
         
@@ -62,15 +63,15 @@ class BaseWatcher(FileSystemEventHandler):
         with self._event_lock:
             current_time = time.time()
             last_time = self._last_events.get(event_path, 0)
-            
+
             # Debounce events within 0.1 seconds
             if current_time - last_time < 0.1:
                 return False
-            
+
             self._last_events[event_path] = current_time
             return True
-    
-    def _get_file_key(self, file_path: str) -> Optional[str]:
+
+    def _get_file_key(self, file_path: str) -> str | None:
         """Get the file key for a given path.
         
         Args:
@@ -87,7 +88,7 @@ class BaseWatcher(FileSystemEventHandler):
         except Exception as e:
             logger.error(f"Error getting file key: {e}")
             return None
-    
+
     @log_execution()
     def _handle_event(self, event: FileSystemEvent) -> None:
         """Handle a file system event.
@@ -98,21 +99,21 @@ class BaseWatcher(FileSystemEventHandler):
         if event.is_directory:
             logger.debug(f"Ignoring directory event: {event.src_path}")
             return
-        
+
         file_path = event.src_path
         if not self._should_process_event(file_path):
             logger.debug(f"Debouncing event for: {file_path}")
             return
-        
+
         file_key = self._get_file_key(file_path)
         if file_key is None:
             logger.debug(f"No file key found for: {file_path}")
             return
-        
+
         with LogContext(logger, f"handle_event({file_key})"):
             try:
                 if os.path.exists(file_path):
-                    with open(file_path, 'r') as f:
+                    with open(file_path) as f:
                         content = f.read()
                     # Always accept the content since validation is disabled
                     logger.info(f"📝 Detected changes in {file_key}")
@@ -121,12 +122,12 @@ class BaseWatcher(FileSystemEventHandler):
                     # For deletion events, we still want to notify with empty content
                     logger.info(f"File deleted: {file_key}")
                     self.callback(file_key, "")
-            except Exception as e:
+            except Exception:
                 logger.error(
                     f"Error handling event for {file_path}",
-                    exc_info=True
+                    exc_info=True,
                 )
-    
+
     def _validate_content(self, content: str) -> bool:
         """Validate file content.
         
@@ -137,28 +138,28 @@ class BaseWatcher(FileSystemEventHandler):
             Always returns True to accept any content
         """
         return True
-    
+
     def on_modified(self, event: FileSystemEvent) -> None:
         """Handle file modification events."""
         self._handle_event(event)
-    
+
     def on_created(self, event: FileSystemEvent) -> None:
         """Handle file creation events."""
         self._handle_event(event)
-    
+
     def on_deleted(self, event: FileSystemEvent) -> None:
         """Handle file deletion events."""
         self._handle_event(event)
-    
+
     def on_moved(self, event: FileSystemEvent) -> None:
         """Handle file movement events."""
         self._handle_event(event)
 
 class MarkdownWatcher(BaseWatcher):
     """Specialized watcher for markdown documentation files."""
-    def __init__(self, file_paths: Dict[str, Path], callback: Callable[[str], None]):
+    def __init__(self, file_paths: dict[str, Path], callback: Callable[[str], None]):
         super().__init__(file_paths, callback)
-    
+
     def _validate_content(self, content: str) -> bool:
         """Validate markdown content.
         
@@ -172,11 +173,11 @@ class MarkdownWatcher(BaseWatcher):
         lines = content.split("\n")
         if not lines:
             return False
-        
+
         # Check for title
         if not lines[0].startswith("# "):
             return False
-        
+
         return True
 
 class ScriptWatcher(BaseWatcher):
@@ -188,7 +189,7 @@ class ScriptWatcher(BaseWatcher):
     - Add dynamic unit test runner
     - Add context section for focus=path/to/script.py to track active development
     """
-    def __init__(self, file_paths: Dict[str, Path | str], callback: Callable[[str], None]):
+    def __init__(self, file_paths: dict[str, Path | str], callback: Callable[[str], None]):
         """Initialize the script watcher.
         
         Args:
@@ -202,9 +203,9 @@ class ScriptWatcher(BaseWatcher):
             if not str(path).endswith('.py'):
                 raise ValueError(f"Script path {path} must end with .py")
             normalized_paths[key] = path
-        
+
         super().__init__(normalized_paths, callback)
-    
+
     def _validate_content(self, content: str) -> bool:
         """Validate Python script content.
         
@@ -234,7 +235,7 @@ def run_observer(observer: Observer):
         observer.stop()
     observer.join()
 
-def create_file_watchers(setup_files: Dict[str, Path], 
+def create_file_watchers(setup_files: dict[str, Path],
                         update_callback: Callable[[str], None],
                         script_path: Path,
                         restart_callback: Callable[[str], None]) -> tuple[Observer, Observer]:
@@ -252,25 +253,25 @@ def create_file_watchers(setup_files: Dict[str, Path],
     # Create watchers
     markdown_watcher = MarkdownWatcher(setup_files, update_callback)
     script_watcher = ScriptWatcher(script_path, restart_callback)
-    
+
     # Create observers
     markdown_observer = Observer()
     script_observer = Observer()
-    
+
     # Schedule watchers
     markdown_observer.schedule(markdown_watcher, str(script_path.parent), recursive=False)
     script_observer.schedule(script_watcher, str(script_path.parent), recursive=False)
-    
+
     return markdown_observer, script_observer
 
 class WatcherFactory:
     """Factory class for creating and managing watchers."""
-    
+
     def __init__(self):
         """Initialize the factory."""
-        self.observers: List[Observer] = []
-    
-    def create_markdown_watcher(self, file_paths: Dict[str, Path], callback: Callable[[str], None]) -> MarkdownWatcher:
+        self.observers: list[Observer] = []
+
+    def create_markdown_watcher(self, file_paths: dict[str, Path], callback: Callable[[str], None]) -> MarkdownWatcher:
         """Create a markdown watcher.
         
         Args:
@@ -281,8 +282,8 @@ class WatcherFactory:
             Configured MarkdownWatcher
         """
         return MarkdownWatcher(file_paths, callback)
-    
-    def create_script_watcher(self, file_paths: Dict[str, Path], callback: Callable[[str], None]) -> ScriptWatcher:
+
+    def create_script_watcher(self, file_paths: dict[str, Path], callback: Callable[[str], None]) -> ScriptWatcher:
         """Create a script watcher.
         
         Args:
@@ -293,7 +294,7 @@ class WatcherFactory:
             Configured ScriptWatcher
         """
         return ScriptWatcher(file_paths, callback)
-    
+
     def create_observer(self, watcher: FileSystemEventHandler, directory: str) -> Observer:
         """Create and configure an observer.
         
@@ -308,13 +309,13 @@ class WatcherFactory:
         observer.schedule(watcher, directory, recursive=False)
         self.observers.append(observer)
         return observer
-    
+
     def start_all(self) -> None:
         """Start all observers."""
         for observer in self.observers:
             if not observer.is_alive():
                 observer.start()
-    
+
     def stop_all(self) -> None:
         """Stop all observers."""
         for observer in self.observers:

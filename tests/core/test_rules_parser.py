@@ -4,10 +4,12 @@ Tests for the RulesParser class.
 This module contains tests for parsing and validating rules in the context management system.
 """
 
-import pytest
 from pathlib import Path
-from typing import Dict, List, Optional
-from erasmus.core.rules_parser import RulesParser, Rule, RuleType, RuleValidationError
+
+import pytest
+
+from erasmus.core.rules_parser import Rule, RulesParser, RuleType, RuleValidationError
+
 
 @pytest.fixture
 def sample_rules_content() -> str:
@@ -93,13 +95,13 @@ def test_rule_priority(rules_parser: RulesParser):
         type=RuleType.CODE_STYLE,
         pattern="test",
         severity="error",
-        priority=1
+        priority=1,
     )
     rules_parser.rules.append(high_priority_rule)
-    
+
     # Sort rules by priority
     rules_parser.rules.sort(key=lambda x: (-x.priority, x.order))
-    
+
     # Rules should be sorted by priority (higher priority first)
     assert rules_parser.rules[0].name == "high_priority"
     assert rules_parser.rules[0].priority == 1
@@ -108,7 +110,7 @@ def test_invalid_rule_file(temp_dir: Path):
     """Test handling of invalid rule file."""
     invalid_file = temp_dir / "invalid_rules.md"
     invalid_file.write_text("invalid content")
-    
+
     with pytest.raises(RuleValidationError):
         RulesParser(invalid_file)
 
@@ -116,13 +118,13 @@ def test_rule_caching(rules_parser: RulesParser):
     """Test rule caching functionality."""
     # First parse should cache the rules
     initial_rules = rules_parser.rules.copy()
-    
+
     # Modify the rules file
     rules_parser.rules_file.write_text("")
-    
+
     # Rules should still be cached
     assert rules_parser.rules == initial_rules
-    
+
     # Force reload
     rules_parser.reload_rules()
-    assert len(rules_parser.rules) == 0 
+    assert len(rules_parser.rules) == 0

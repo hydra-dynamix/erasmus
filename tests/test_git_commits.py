@@ -1,8 +1,8 @@
 """Tests for git commit message generation functionality."""
 import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from erasmus.utils.context import (
     check_creds,
@@ -10,6 +10,7 @@ from erasmus.utils.context import (
     extract_commit_message,
     make_atomic_commit,
 )
+
 
 @pytest.fixture
 def mock_env_vars():
@@ -104,12 +105,12 @@ def test_make_atomic_commit_openai_success(mock_env_vars, mock_git_manager, mock
     """Test successful commit with OpenAI generation."""
     mock_env_vars["OPENAI_API_KEY"] = "sk-real-key"
     mock_env_vars["OPENAI_BASE_URL"] = "http://localhost:1234"
-    
+
     with patch('erasmus.utils.context.CLIENT') as mock_client:
         mock_response = MagicMock()
         mock_response.choices[0].message.content = "feat: add new feature"
         mock_client.chat.completions.create.return_value = mock_response
-        
+
         assert make_atomic_commit()
         mock_git_manager.commit_changes.assert_called_once()
 
@@ -117,7 +118,7 @@ def test_make_atomic_commit_fallback(mock_env_vars, mock_git_manager, mock_subpr
     """Test commit with fallback message generation."""
     mock_env_vars["OPENAI_API_KEY"] = "sk-1234"
     mock_env_vars["OPENAI_BASE_URL"] = "https://api.openai.com/v1"
-    
+
     assert make_atomic_commit()
     mock_git_manager.commit_changes.assert_called_once()
     # Verify the commit message contains the file name from the diff
@@ -135,9 +136,9 @@ def test_make_atomic_commit_invalid_message(mock_env_vars, mock_git_manager, moc
     mock_env_vars["OPENAI_API_KEY"] = "sk-real-key"
     mock_env_vars["OPENAI_BASE_URL"] = "http://localhost:1234"
     mock_git_manager.validate_commit_message.return_value = (False, "Invalid message")
-    
+
     assert make_atomic_commit()
     mock_git_manager.commit_changes.assert_called_once()
     # Verify fallback to default message format
     args = mock_git_manager.commit_changes.call_args[0]
-    assert "Update project files" in args[0] 
+    assert "Update project files" in args[0]

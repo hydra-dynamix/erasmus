@@ -2,7 +2,7 @@
 print("Script converter module loaded!")
 import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+
 
 class ScriptConverter:
     def __init__(self):
@@ -168,19 +168,19 @@ if exist watcher.py (
     echo Error: watcher.py not found
     exit /b 1
 )
-goto :eof'''
+goto :eof''',
         }
 
     def convert_function(self, func_name: str, content: str) -> str:
         """Convert a shell function to a batch label."""
         if func_name in self.function_templates:
             return self.function_templates[func_name]
-        
+
         # Convert the function content
         converted = self._convert_lines(content.split('\n'))
         return f":{func_name}\n{converted}\ngoto :eof\n"
 
-    def _convert_lines(self, lines: List[str]) -> str:
+    def _convert_lines(self, lines: list[str]) -> str:
         """Convert shell script lines to batch script lines."""
         converted_lines = []
         for line in lines:
@@ -239,12 +239,12 @@ goto :eof'''
             '',
             ':start',
             'call :main',
-            'exit /b %ERRORLEVEL%'
+            'exit /b %ERRORLEVEL%',
         ])
 
         return '\n'.join(batch_lines)
 
-    def convert_file(self, shell_path: Path, batch_path: Optional[Path] = None) -> Path:
+    def convert_file(self, shell_path: Path, batch_path: Path | None = None) -> Path:
         """Convert a shell script file to a batch script file."""
         if not shell_path.exists():
             raise FileNotFoundError(f"Shell script not found: {shell_path}")
@@ -280,7 +280,7 @@ def main():
         print(f"Successfully converted script to: {output_path}")
         return 0
     except Exception as e:
-        print(f"Error converting script: {str(e)}")
+        print(f"Error converting script: {e!s}")
         import traceback
         traceback.print_exc()
         return 1

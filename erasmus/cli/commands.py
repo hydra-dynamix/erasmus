@@ -3,25 +3,22 @@
 This module provides the command-line interface for interacting with Erasmus.
 It uses Click for command parsing and handling.
 """
-from typing import Optional
-import os
 import time
-from pathlib import Path
 from functools import wraps
+from pathlib import Path
 
 import click
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.table import Table
 
-from ..core.task import TaskManager, TaskStatus    
+from ..core.task import TaskManager, TaskStatus
 from ..core.watcher import WatcherFactory
-from ..utils.context import update_context, update_specific_file, cleanup_project, setup_project
 from ..git.manager import GitManager
+from ..utils.context import cleanup_project, update_context, update_specific_file
+from ..utils.logging import LogContext, get_logger
 from ..utils.paths import SetupPaths
-from ..utils.logging import get_logger, LogContext, log_execution
 from .setup import setup as setup_env
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -43,7 +40,7 @@ def log_command(f):
                 result = f(*args, **kwargs)
                 logger.info(f"Command {cmd_name} completed successfully")
                 return result
-            except Exception as e:
+            except Exception:
                 logger.error(f"Command {cmd_name} failed", exc_info=True)
                 raise
     return wrapper
@@ -59,7 +56,6 @@ def cli():
 @log_command
 def task():
     """Task management commands."""
-    pass
 
 @task.command()
 @click.argument('description')
@@ -89,13 +85,13 @@ def status(task_id: str, status: str):
 @task.command()
 @click.option('--status', type=click.Choice(['pending', 'in_progress', 'completed', 'blocked']), help='Filter tasks by status')
 @log_command
-def list(status: Optional[str] = None):
+def list(status: str | None = None):
     """List all tasks, optionally filtered by status."""
     with LogContext(logger, "list_tasks"):
         logger.debug(f"Listing tasks with status filter: {status}")
         task_status = TaskStatus[status.lower()] if status else None
         tasks = task_manager.list_tasks(task_status)
-        
+
         if not tasks:
             logger.info("No tasks found")
             console.print("No tasks found.")
@@ -106,15 +102,15 @@ def list(status: Optional[str] = None):
         table.add_column("ID", style="cyan")
         table.add_column("Description")
         table.add_column("Status", style="green")
-        
+
         for task in tasks:
             logger.debug(f"Adding task to table: {task.id} - {task.status}")
             table.add_row(
                 task.id,
                 task.description,
-                task.status.value.lower().replace('_', ' ')
+                task.status.value.lower().replace('_', ' '),
             )
-        
+
         console.print(table)
 
 @task.command()
@@ -134,7 +130,6 @@ def note(task_id: str, note: str):
 @log_command
 def git():
     """Git operations."""
-    pass
 
 @git.command()
 @log_command
@@ -148,7 +143,7 @@ def status():
             f"Repository status - Branch: {state['branch']}, " +
             f"Staged: {len(state['staged'])}, " +
             f"Unstaged: {len(state['unstaged'])}, " +
-            f"Untracked: {len(state['untracked'])}"
+            f"Untracked: {len(state['untracked'])}",
         )
         console.print(state)
 
@@ -179,8 +174,8 @@ def branch(name: str):
             git_manager._run_git_command(["checkout", "-b", name])
             logger.info(f"Created and switched to branch: {name}")
             console.print(f"✨ Created and switched to branch: [bold]{name}[/]")
-        except Exception as e:
-            logger.error(f"Failed to create/switch branch", exc_info=True)
+        except Exception:
+            logger.error("Failed to create/switch branch", exc_info=True)
             console.print(f"❌ Failed to create branch: {name}", style="red")
 
 # === Project Commands ===
@@ -208,7 +203,7 @@ def update(type: str, content: str):
             console.print(f"✨ Updated {type} file")
         except Exception as e:
             logger.error(f"Failed to update {type} file", exc_info=True)
-            console.print(f"❌ Failed to update {type} file: {str(e)}", style="red")
+            console.print(f"❌ Failed to update {type} file: {e!s}", style="red")
 
 @cli.command()
 @click.option('--force', is_flag=True, help='Force cleanup without confirmation')
@@ -228,7 +223,7 @@ def cleanup(force: bool):
             console.print("🧹 Cleanup complete")
         except Exception as e:
             logger.error("Failed to clean up project", exc_info=True)
-            console.print(f"❌ Cleanup failed: {str(e)}", style="red")
+            console.print(f"❌ Cleanup failed: {e!s}", style="red")
 
 @cli.command()
 @log_command
@@ -238,12 +233,12 @@ def watch():
         try:
             pwd = Path.cwd()
             logger.info(f"Starting file watcher in {pwd}")
-            
+
             # Initialize components
             factory = WatcherFactory()
-            setup_paths = SetupPaths(pwd)
+            setup_paths = SetupPaths.with_project_root(pwd)
             logger.debug(f"Found markdown files: {setup_paths.markdown_files}")
-            
+
             # Update initial context without backup
             logger.debug("Updating initial context")
             update_context({}, backup=False)
@@ -252,7 +247,7 @@ def watch():
             logger.debug("Setting up markdown watcher")
             markdown_watcher = factory.create_markdown_watcher(
                 setup_paths.markdown_files,
-                lambda key, content: update_specific_file(key, content)
+                lambda key, content: update_specific_file(key, content),
             )
             factory.create_observer(markdown_watcher, str(pwd))
             logger.info("Successfully initialized markdown watcher")
@@ -261,7 +256,7 @@ def watch():
             logger.debug("Setting up script watcher")
             script_watcher = factory.create_script_watcher(
                 setup_paths.script_files,
-                lambda _: console.print("Script updated")
+                lambda _: console.print("Script updated"),
             )
             factory.create_observer(script_watcher, str(pwd))
             logger.info("Successfully initialized script watcher")
@@ -282,7 +277,7 @@ def watch():
                 logger.info("All watchers stopped")
         except Exception as e:
             logger.error("Failed to initialize watchers", exc_info=True)
-            console.print(f"❌ Failed to start watchers: {str(e)}", style="red")
-    
+            console.print(f"❌ Failed to start watchers: {e!s}", style="red")
+
 if __name__ == '__main__':
     cli()

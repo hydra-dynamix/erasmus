@@ -1,11 +1,13 @@
 """Test module for cursor IDE integration."""
 
-import json
 import asyncio
-from pathlib import Path
+import json
+
 import pytest
 import pytest_asyncio
+
 from erasmus.ide.cursor_integration import CursorContextManager
+
 
 @pytest_asyncio.fixture
 async def cursor_manager(tmp_path):
@@ -13,18 +15,18 @@ async def cursor_manager(tmp_path):
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     manager = CursorContextManager(workspace)
-    
+
     # Start the manager
     await manager.start()
-    
+
     # Wait for initialization
     await asyncio.sleep(0.2)
-    
+
     yield manager
-    
+
     # Stop the manager
     await manager.stop()
-    
+
     # Wait for cleanup
     await asyncio.sleep(0.2)
 
@@ -32,7 +34,7 @@ async def cursor_manager(tmp_path):
 async def test_initialization(cursor_manager, tmp_path):
     """Test initialization of CursorContextManager."""
     await cursor_manager.start()
-    
+
     rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
     assert rules_file.exists()
     assert rules_file.read_text() == "{}"
@@ -43,10 +45,10 @@ async def test_queue_and_process_updates(cursor_manager, tmp_path):
     # Queue some updates
     await cursor_manager.queue_update("architecture", "Test architecture")
     await asyncio.sleep(0.1)  # Wait for first update
-    
+
     await cursor_manager.queue_update("progress", "Test progress")
     await asyncio.sleep(0.1)  # Wait for second update
-    
+
     await cursor_manager.queue_update("tasks", {"1": {"description": "Test Task"}})
     await asyncio.sleep(0.1)  # Wait for third update
 
@@ -81,7 +83,7 @@ async def test_external_file_changes(cursor_manager, tmp_path):
     rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
     external_content = {
         "architecture": "External architecture",
-        "progress": "External progress"
+        "progress": "External progress",
     }
     rules_file.write_text(json.dumps(external_content))
 
@@ -149,4 +151,4 @@ async def test_metadata_handling(cursor_manager, tmp_path):
     rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
     rules = json.loads(rules_file.read_text())
 
-    assert rules["test"] == "value" 
+    assert rules["test"] == "value"

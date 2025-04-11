@@ -5,12 +5,11 @@ This module provides functionality for applying rules to code and managing rule 
 It works in conjunction with the RulesParser to validate code against defined rules.
 """
 
-from typing import List, Dict, Optional
 from erasmus.core.rules_parser import Rule, ValidationError
+
 
 class RuleApplicationError(Exception):
     """Exception raised when rule application fails."""
-    pass
 
 class RuleChain:
     """
@@ -22,8 +21,8 @@ class RuleChain:
     Attributes:
         rules (List[Rule]): Ordered list of rules in the chain
     """
-    
-    def __init__(self, rules: List[Rule] = None):
+
+    def __init__(self, rules: list[Rule] = None):
         """
         Initialize a rule chain.
         
@@ -31,7 +30,7 @@ class RuleChain:
             rules (List[Rule], optional): Initial list of rules. Defaults to None.
         """
         self.rules = rules or []
-    
+
     def add_rule(self, rule: Rule) -> None:
         """
         Add a rule to the chain.
@@ -40,7 +39,7 @@ class RuleChain:
             rule (Rule): Rule to add to the chain
         """
         self.rules.append(rule)
-    
+
     def remove_rule(self, rule_name: str) -> None:
         """
         Remove a rule from the chain by name.
@@ -68,8 +67,8 @@ class RuleApplicator:
         rules (List[Rule]): Available rules for application
         _rule_map (Dict[str, Rule]): Mapping of rule names to Rule objects
     """
-    
-    def __init__(self, rules: List[Rule]):
+
+    def __init__(self, rules: list[Rule]):
         """
         Initialize the rule applicator.
         
@@ -79,7 +78,7 @@ class RuleApplicator:
         # Sort rules by priority (higher numbers first)
         self.rules = sorted(rules, key=lambda x: -x.priority)
         self._rule_map = {rule.name: rule for rule in rules}
-    
+
     def get_rule(self, rule_name: str) -> Rule:
         """
         Get a rule by name.
@@ -97,8 +96,8 @@ class RuleApplicator:
         if not rule:
             raise RuleApplicationError(f"Rule '{rule_name}' not found")
         return rule
-    
-    def create_chain(self, rule_names: List[str]) -> RuleChain:
+
+    def create_chain(self, rule_names: list[str]) -> RuleChain:
         """
         Create a new rule chain from a list of rule names.
         
@@ -116,10 +115,10 @@ class RuleApplicator:
             try:
                 chain.add_rule(self.get_rule(name))
             except RuleApplicationError as e:
-                raise RuleApplicationError(f"Failed to create chain: {str(e)}")
+                raise RuleApplicationError(f"Failed to create chain: {e!s}")
         return chain
-    
-    def apply_chain(self, chain: RuleChain, code: str) -> List[ValidationError]:
+
+    def apply_chain(self, chain: RuleChain, code: str) -> list[ValidationError]:
         """
         Apply a chain of rules to code.
         
@@ -134,7 +133,7 @@ class RuleApplicator:
             List[ValidationError]: List of validation errors found
         """
         errors = []
-        
+
         for rule in chain.rules:
             try:
                 # Apply each rule individually and collect errors
@@ -144,13 +143,13 @@ class RuleApplicator:
                 # If a rule fails to apply, add it as a validation error
                 errors.append(ValidationError(
                     rule=rule,
-                    message=f"Failed to apply rule: {str(e)}",
-                    severity="error"
+                    message=f"Failed to apply rule: {e!s}",
+                    severity="error",
                 ))
-        
+
         return errors
-    
-    def _apply_rule(self, rule: Rule, code: str) -> List[ValidationError]:
+
+    def _apply_rule(self, rule: Rule, code: str) -> list[ValidationError]:
         """
         Apply a single rule to code.
         
@@ -163,11 +162,11 @@ class RuleApplicator:
         """
         import re
         errors = []
-        
+
         try:
             pattern = re.compile(rule.pattern)
             matches = list(pattern.finditer(code))
-            
+
             if rule.type.value == "code_style":
                 # For code style rules, we want to ensure the pattern is NOT found
                 # (except for require_* rules)
@@ -175,14 +174,14 @@ class RuleApplicator:
                     errors.append(ValidationError(
                         rule=rule,
                         message=f"Code violates rule: {rule.description}",
-                        severity=rule.severity
+                        severity=rule.severity,
                     ))
                 # For require_* rules, we want to ensure the pattern IS found
                 elif not matches and rule.name.startswith("require_"):
                     errors.append(ValidationError(
                         rule=rule,
                         message=f"Code does not match rule pattern: {rule.description}",
-                        severity=rule.severity
+                        severity=rule.severity,
                     ))
             elif rule.type.value == "documentation":
                 # For documentation rules, we want to ensure the pattern IS found
@@ -190,13 +189,13 @@ class RuleApplicator:
                     errors.append(ValidationError(
                         rule=rule,
                         message=f"Code does not match rule pattern: {rule.description}",
-                        severity=rule.severity
+                        severity=rule.severity,
                     ))
         except re.error as e:
             errors.append(ValidationError(
                 rule=rule,
-                message=f"Invalid rule pattern: {str(e)}",
-                severity="error"
+                message=f"Invalid rule pattern: {e!s}",
+                severity="error",
             ))
-        
-        return errors 
+
+        return errors

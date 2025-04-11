@@ -12,7 +12,7 @@ Classes:
 """
 
 import time
-from typing import Dict, List, Optional
+
 
 class TaskStatus:
     """
@@ -59,7 +59,7 @@ class Task:
         self.updated_at = time.time()
         self.completion_time = None
         self.notes = []
-        
+
     def to_dict(self) -> dict:
         """
         Convert task to dictionary representation for serialization.
@@ -74,9 +74,9 @@ class Task:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "completion_time": self.completion_time,
-            "notes": self.notes
+            "notes": self.notes,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> 'Task':
         """
@@ -107,7 +107,7 @@ class TaskManager:
     Attributes:
         tasks (Dict[str, Task]): Dictionary mapping task IDs to Task objects
     """
-    def __init__(self, tasks: Optional[Dict[str, dict]] = None):
+    def __init__(self, tasks: dict[str, dict] | None = None):
         """
         Initialize a new TaskManager with optional initial tasks.
         
@@ -115,13 +115,13 @@ class TaskManager:
             tasks (Optional[Dict[str, dict]]): Dictionary of tasks to initialize with. Can be
                                    either Task objects or dictionaries to deserialize.
         """
-        self.tasks: Dict[str, Task] = {}
+        self.tasks: dict[str, Task] = {}
         if tasks:
             self.tasks = {
                 task_id: Task.from_dict(task_data) if isinstance(task_data, dict) else task_data
                 for task_id, task_data in tasks.items()
             }
-        
+
     def add_task(self, description: str) -> Task:
         """
         Add a new task with the given description.
@@ -139,8 +139,8 @@ class TaskManager:
         task = Task(task_id, description)
         self.tasks[task_id] = task
         return task
-    
-    def get_task(self, task_id: str) -> Optional[Task]:
+
+    def get_task(self, task_id: str) -> Task | None:
         """
         Retrieve a task by its ID.
         
@@ -151,8 +151,8 @@ class TaskManager:
             Optional[Task]: The Task if found, None otherwise
         """
         return self.tasks.get(task_id)
-    
-    def list_tasks(self, status: Optional[str] = None) -> List[Task]:
+
+    def list_tasks(self, status: str | None = None) -> list[Task]:
         """
         List all tasks, optionally filtered by status.
         
@@ -167,7 +167,7 @@ class TaskManager:
         if status:
             tasks = [t for t in tasks if t.status == status]
         return tasks
-    
+
     def update_task_status(self, task_id: str, status: str) -> None:
         """
         Update a task's status.
@@ -181,7 +181,7 @@ class TaskManager:
             task.updated_at = time.time()
             if status == TaskStatus.COMPLETED:
                 task.completion_time = time.time()
-    
+
     def add_note_to_task(self, task_id: str, note: str) -> None:
         """
         Add a note to a task.
@@ -193,9 +193,9 @@ class TaskManager:
         if task := self.get_task(task_id):
             task.notes.append(note)
             task.updated_at = time.time()
-    
+
     @classmethod
-    def from_dict(cls, data: Dict[str, dict]) -> 'TaskManager':
+    def from_dict(cls, data: dict[str, dict]) -> 'TaskManager':
         """
         Create a TaskManager from a dictionary representation.
         

@@ -5,27 +5,28 @@ This combines the functionality of embed_erasmus.py and main.py to create
 both the shell installer and Windows batch installer in a single command.
 """
 
+import base64
+import hashlib
+import json
 import os
 import sys
-import base64
-import json
-import hashlib
 from pathlib import Path
+
 
 def embed_erasmus():
     """Embed watcher.py into the installer script as erasmus.py."""
     # Get project root directory
     project_root = Path.cwd()
-    
+
     # Define paths
     watcher_path = project_root / 'watcher.py'
     install_path = project_root / 'scripts' / 'install.sh'
     version_path = project_root / 'version.json'
     release_dir = project_root / 'release'
-    
+
     # Create release directory if it doesn't exist
     release_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Check if required files exist
     if not watcher_path.exists():
         print(f"Error: {watcher_path} not found")
@@ -33,14 +34,14 @@ def embed_erasmus():
         print("1. Create your main Python script as 'watcher.py' in the project root")
         print("2. Then run this script again to build the installer")
         return 1
-    
+
     if not install_path.exists():
         print(f"Error: {install_path} not found")
         print("\nTo fix this error:")
         print("1. Make sure you're running this script from the project root directory")
         print("2. Ensure the scripts directory contains install.sh")
         return 1
-    
+
     if not version_path.exists():
         print(f"Error: {version_path} not found")
         print("\nTo fix this error:")
@@ -48,69 +49,69 @@ def embed_erasmus():
         print("2. Create a version.json file with a 'version' field")
         print("   Example: {\"version\": \"0.1.0\"}")
         return 1
-    
+
     # Get version from version.json
-    with open(version_path, 'r') as f:
+    with open(version_path) as f:
         version_data = json.load(f)
         version = version_data.get('version', '0.0.0')
-    
+
     print(f"Building installer for version {version}")
-    
+
     # Create version-specific directory
     version_dir = release_dir / f'v{version}'
     version_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Read the installer script
-    with open(install_path, 'r') as f:
+    with open(install_path) as f:
         installer_content = f.read()
-    
+
     # Read the watcher.py file and encode it as base64
     with open(watcher_path, 'rb') as f:
         watcher_content = f.read()
         # Calculate SHA-256 hash for verification
         watcher_hash = hashlib.sha256(watcher_content).hexdigest()
         encoded_content = base64.b64encode(watcher_content).decode('utf-8')
-    
+
     print(f"Generated SHA-256 hash: {watcher_hash}")
-    
+
     # Save the hash to a file in the version directory
     hash_file_path = version_dir / f'erasmus_v{version}.sha256'
     with open(hash_file_path, 'w') as hash_file:
         hash_file.write(f"{watcher_hash}  erasmus_v{version}.sh\n")
     print(f"Saved hash to: {hash_file_path}")
-    
+
     # Create the combined installer
     output_path = version_dir / f'erasmus_v{version}.sh'
-    
+
     with open(output_path, 'w') as f:
         # Write the installer script
         f.write(installer_content)
-        
+
         # Add the marker line and hash information
         f.write("\n\n# __ERASMUS_EMBEDDED_BELOW__\n")
         f.write("# The content below this line is the base64-encoded watcher.py file\n")
         f.write("# It will be extracted during installation as erasmus.py\n")
         f.write(f"# SHA256_HASH={watcher_hash}\n")
-        
+
         # Add exit command to prevent the shell from trying to execute the base64 content
         f.write("exit 0\n\n")
-        
+
         # Add the base64-encoded content with a comment character to prevent execution
         f.write("# BEGIN_BASE64_CONTENT\n")
-        
+
         # Split the encoded content into lines to ensure each line starts with a comment character
         encoded_lines = [encoded_content[i:i+76] for i in range(0, len(encoded_content), 76)]
         for line in encoded_lines:
             f.write(f"# {line}\n")
-            
+
         f.write("# END_BASE64_CONTENT")
-    
+
     # Make the installer executable
     os.chmod(output_path, 0o755)
-    
+
     print(f"Successfully created installer: {output_path}")
-    print(f"This installer will extract watcher.py as erasmus.py during installation")
-    
+    print("This installer will extract watcher.py as erasmus.py during installation")
+
     return version, version_dir
 
 def convert_to_batch(version, version_dir):
@@ -118,14 +119,14 @@ def convert_to_batch(version, version_dir):
     # Define paths
     batch_path = version_dir / f'erasmus_v{version}.bat'
     shell_path = version_dir / f'erasmus_v{version}.sh'
-    
+
     print(f"Creating Windows batch installer: {batch_path}")
-    
+
     # Create batch file
     with open(batch_path, 'w') as f:
         f.write("@echo off\n")
         f.write("setlocal enabledelayedexpansion\n\n")
-        
+
         f.write(":detect_os\n")
         f.write('set "OS=Unknown"\n')
         f.write('for /f "tokens=* usebackq" %%i in (`ver`) do set "VER_OUT=%%i"\n')
@@ -142,7 +143,7 @@ def convert_to_batch(version, version_dir):
         f.write('    goto :eof\n')
         f.write(')\n')
         f.write('goto :eof\n\n')
-        
+
         f.write(":check_python\n")
         f.write('set "PYTHON_CMD="\n')
         f.write('where python.exe >nul 2>&1 && set "PYTHON_CMD=python.exe"\n')
@@ -166,7 +167,7 @@ def convert_to_batch(version, version_dir):
         f.write('    )\n')
         f.write(')\n')
         f.write('goto :eof\n\n')
-        
+
         f.write(":check_prerequisites\n")
         f.write('call :detect_os\n')
         f.write('if "!OS!"=="Windows" (\n')
@@ -203,7 +204,7 @@ def convert_to_batch(version, version_dir):
         f.write('    )\n')
         f.write(')\n')
         f.write('goto :eof\n\n')
-        
+
         f.write(":install_uv\n")
         f.write('echo Installing uv package manager...\n')
         f.write('if "!OS!"=="Windows" (\n')
@@ -223,7 +224,7 @@ def convert_to_batch(version, version_dir):
         f.write('echo Installation complete!\n')
         f.write('echo You can now run: uv run erasmus.py\n')
         f.write('goto :eof\n\n')
-        
+
         f.write(":setup_env\n")
         f.write('echo Creating environment files...\n\n')
         f.write(':: Create .env.example\n')
@@ -243,7 +244,7 @@ def convert_to_batch(version, version_dir):
         f.write(') > .env\n\n')
         f.write('echo Environment files created successfully\n')
         f.write('goto :eof\n\n')
-        
+
         f.write(":init_watcher\n")
         f.write('echo Initializing erasmus...\n\n')
         f.write(':: Extract erasmus.py from the embedded content\n')
@@ -264,7 +265,7 @@ def convert_to_batch(version, version_dir):
         f.write('echo To run Erasmus:\n')
         f.write('echo     uv run erasmus.py\n')
         f.write('goto :eof\n\n')
-        
+
         f.write(":main\n")
         f.write('call :detect_os\n')
         f.write('call :check_python\n')
@@ -275,18 +276,18 @@ def convert_to_batch(version, version_dir):
         f.write('echo Installation complete!\n')
         f.write('echo Erasmus has been initialized with your IDE environment: !IDE_ENV!\n')
         f.write('exit /b %ERRORLEVEL%\n\n')
-        
+
         f.write(":start\n")
         f.write('call :main\n')
         f.write('exit /b %ERRORLEVEL%\n')
-    
+
     print(f"Successfully created Windows batch installer: {batch_path}")
     return 0
 
 def main():
     """Main function to build the complete release package."""
     print("Building complete release package...")
-    
+
     # Step 1: Embed watcher.py into the installer
     result = embed_erasmus()
     if isinstance(result, tuple):
@@ -294,19 +295,19 @@ def main():
     else:
         print("Failed to embed watcher.py into the installer")
         return 1
-    
+
     # Step 2: Convert to batch file
     result = convert_to_batch(version, version_dir)
     if result != 0:
         print("Failed to create Windows batch installer")
         return 1
-    
+
     print("\nRelease package built successfully!")
     print(f"Shell installer: release/v{version}/erasmus_v{version}.sh")
     print(f"Windows installer: release/v{version}/erasmus_v{version}.bat")
     print(f"SHA256 hash file: release/v{version}/erasmus_v{version}.sha256")
-    
+
     return 0
 
 if __name__ == "__main__":
-    sys.exit(main()) 
+    sys.exit(main())

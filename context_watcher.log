@@ -151,3 +151,7 @@
 2025-04-10 19:19:27,504 - context_watcher - INFO - Shutting down...
 2025-04-10 19:19:42,417 - context_watcher - INFO - Initializing OpenAI client with base URL: http://localhost:11434/v1 and model: llama3.2
 2025-04-10 19:19:42,443 - context_watcher - INFO - File written successfully: /home/bakobi/repos/erasmus/.windsurfrules
+2025-04-10 19:19:43,325 - context_watcher - INFO - Committed changes: Update logger to include new entry from April 10th commit
+2025-04-10 19:19:43,326 - context_watcher - INFO - Watching files: ['architecture', 'progress', 'tasks']
+2025-04-10 19:19:43,327 - context_watcher - INFO - Watching files: ['Script File']
+2025-04-10 19:19:43,330 - context_watcher - INFO - Watching project files and script for changes. Press Ctrl+C to stop...

@@ -8,49 +8,50 @@ This module provides a consistent logging setup across the application with:
 - Debug logging with rich formatting
 """
 
-import os
-import sys
-import time
 import logging
 import logging.handlers
-from pathlib import Path
+import sys
+import time
+from collections.abc import Callable
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Union
-from rich.logging import RichHandler
+from pathlib import Path
+from typing import Any
+
 from rich.console import Console
+from rich.logging import RichHandler
 
 # Configure console for rich output
 console = Console()
 
 class LogContext:
     """Context manager for tracking operation timing and context."""
-    
+
     def __init__(self, logger: logging.Logger, operation: str):
         self.logger = logger
         self.operation = operation
         self.start_time = None
-        
+
     def __enter__(self):
         self.start_time = time.time()
         self.logger.debug(f"Starting {self.operation}")
         return self
-        
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration = time.time() - self.start_time
         if exc_type:
             self.logger.error(
                 f"{self.operation} failed after {duration:.2f}s",
-                exc_info=(exc_type, exc_val, exc_tb)
+                exc_info=(exc_type, exc_val, exc_tb),
             )
         else:
             self.logger.debug(f"Completed {self.operation} in {duration:.2f}s")
 
 def get_logger(
     name: str,
-    level: Union[str, int] = "INFO",
-    log_file: Optional[Path] = None,
+    level: str | int = "INFO",
+    log_file: Path | None = None,
     max_bytes: int = 10 * 1024 * 1024,  # 10MB
-    backup_count: int = 5
+    backup_count: int = 5,
 ) -> logging.Logger:
     """Get a configured logger instance.
     
@@ -65,42 +66,42 @@ def get_logger(
         Configured logger instance
     """
     logger = logging.getLogger(name)
-    
+
     # Convert string level to int if needed
     if isinstance(level, str):
         level = getattr(logging, level.upper())
     logger.setLevel(level)
-    
+
     # Remove existing handlers
     logger.handlers.clear()
-    
+
     # Create formatters
     file_formatter = logging.Formatter(
-        '%(asctime)s [%(process)d:%(thread)d] %(name)s - %(levelname)s - %(message)s'
+        '%(asctime)s [%(process)d:%(thread)d] %(name)s - %(levelname)s - %(message)s',
     )
     console_formatter = logging.Formatter(
-        '%(message)s'  # Rich handler adds its own formatting
+        '%(message)s',  # Rich handler adds its own formatting
     )
-    
+
     # Add console handler with rich formatting
     console_handler = RichHandler(
         rich_tracebacks=True,
         show_time=True,
-        show_path=True
+        show_path=True,
     )
     console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
-    
+
     # Add file handler if specified
     if log_file:
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=max_bytes,
-            backupCount=backup_count
+            backupCount=backup_count,
         )
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
-    
+
     return logger
 
 def log_execution(level: str = "DEBUG") -> Callable:
@@ -117,29 +118,29 @@ def log_execution(level: str = "DEBUG") -> Callable:
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             logger = logging.getLogger(func.__module__)
             log_level = getattr(logging, level.upper())
-            
+
             start_time = time.time()
             try:
                 result = func(*args, **kwargs)
                 duration = time.time() - start_time
                 logger.log(
                     log_level,
-                    f"{func.__name__} completed in {duration:.2f}s"
+                    f"{func.__name__} completed in {duration:.2f}s",
                 )
                 return result
             except Exception as e:
                 duration = time.time() - start_time
                 logger.error(
-                    f"{func.__name__} failed after {duration:.2f}s: {str(e)}",
-                    exc_info=True
+                    f"{func.__name__} failed after {duration:.2f}s: {e!s}",
+                    exc_info=True,
                 )
                 raise
         return wrapper
     return decorator
 
 def init_logging(
-    level: Union[str, int] = "INFO",
-    log_dir: Optional[Path] = None
+    level: str | int = "INFO",
+    log_dir: Path | None = None,
 ) -> None:
     """Initialize global logging configuration.
     
@@ -152,14 +153,14 @@ def init_logging(
         log_file = log_dir / "erasmus.log"
     else:
         log_file = None
-    
+
     # Configure root logger
     root_logger = get_logger(
         "erasmus",
         level=level,
-        log_file=log_file
+        log_file=log_file,
     )
-    
+
     # Log startup information
     root_logger.info("Initializing Erasmus logging system")
     root_logger.debug(f"Python version: {sys.version}")

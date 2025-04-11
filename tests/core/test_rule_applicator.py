@@ -4,14 +4,15 @@ Tests for the RuleApplicator class.
 This module contains tests for applying rules to code and managing rule chains.
 """
 
+
 import pytest
-from pathlib import Path
-from typing import List, Dict
-from erasmus.core.rules_parser import Rule, RuleType, ValidationError
-from erasmus.core.rule_applicator import RuleApplicator, RuleChain, RuleApplicationError
+
+from erasmus.core.rule_applicator import RuleApplicationError, RuleApplicator
+from erasmus.core.rules_parser import Rule, RuleType
+
 
 @pytest.fixture
-def sample_rules() -> List[Rule]:
+def sample_rules() -> list[Rule]:
     """Return a list of sample rules for testing."""
     return [
         Rule(
@@ -20,7 +21,7 @@ def sample_rules() -> List[Rule]:
             type=RuleType.CODE_STYLE,
             pattern=r"def\s+\w+\s*\([^)]*\)\s*->\s*[^:]+:",
             severity="error",
-            priority=1
+            priority=1,
         ),
         Rule(
             name="require_docstrings",
@@ -28,7 +29,7 @@ def sample_rules() -> List[Rule]:
             type=RuleType.DOCUMENTATION,
             pattern=r'def\s+\w+[^\n]*\n\s*["\']["\']["\'](.|\n)*?["\']["\']["\'](\s|\n)',
             severity="warning",
-            priority=0
+            priority=0,
         ),
         Rule(
             name="no_print_statements",
@@ -36,12 +37,12 @@ def sample_rules() -> List[Rule]:
             type=RuleType.CODE_STYLE,
             pattern=r"print\s*\(",
             severity="error",
-            priority=2
-        )
+            priority=2,
+        ),
     ]
 
 @pytest.fixture
-def rule_applicator(sample_rules: List[Rule]) -> RuleApplicator:
+def rule_applicator(sample_rules: list[Rule]) -> RuleApplicator:
     """Create a RuleApplicator instance with sample rules."""
     return RuleApplicator(sample_rules)
 
@@ -68,7 +69,7 @@ def test_rule_chain_application(rule_applicator: RuleApplicator):
     """Test applying a chain of rules to code."""
     # Create a chain with type hints and docstring rules
     chain = rule_applicator.create_chain(["require_type_hints", "require_docstrings"])
-    
+
     # Test valid code
     valid_code = '''
     def example_function(x: int, y: str) -> bool:
@@ -94,9 +95,9 @@ def test_rule_chain_order(rule_applicator: RuleApplicator):
     chain = rule_applicator.create_chain([
         "require_type_hints",
         "require_docstrings",
-        "no_print_statements"
+        "no_print_statements",
     ])
-    
+
     # Test code that violates all rules
     invalid_code = '''
     def example_function(x, y):
@@ -114,7 +115,7 @@ def test_rule_chain_subset(rule_applicator: RuleApplicator):
     """Test applying a subset of rules."""
     # Create a chain with only the docstring rule
     chain = rule_applicator.create_chain(["require_docstrings"])
-    
+
     # Test code that violates type hints but has docstring
     code = '''
     def example_function(x, y):
@@ -135,12 +136,12 @@ def test_rule_chain_modification(rule_applicator: RuleApplicator):
     """Test modifying a rule chain."""
     chain = rule_applicator.create_chain(["require_type_hints"])
     assert len(chain.rules) == 1
-    
+
     # Add a rule
     chain.add_rule(rule_applicator.get_rule("require_docstrings"))
     assert len(chain.rules) == 2
-    
+
     # Remove a rule
     chain.remove_rule("require_type_hints")
     assert len(chain.rules) == 1
-    assert chain.rules[0].name == "require_docstrings" 
+    assert chain.rules[0].name == "require_docstrings"

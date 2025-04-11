@@ -1,9 +1,10 @@
 import os
 from pathlib import Path
-from typing import Optional
+
+from dotenv import load_dotenv
 from openai import OpenAI
 from script_converter import ScriptConverter
-from dotenv import load_dotenv
+
 from .get_openai_creds import prompt_openai_credentials
 
 load_dotenv()
@@ -18,13 +19,13 @@ class BatchScriptGenerator:
     bat_output_path: Path
 
     def __init__(
-        self, 
-        api_key: Optional[str] = None, 
-        base_url: Optional[str] = None, 
-        model: Optional[str] = None, 
-        version: Optional[str] = None,
-        shell_script_path: Optional[str] = None, 
-        release_path: Optional[str] = None
+        self,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        version: str | None = None,
+        shell_script_path: str | None = None,
+        release_path: str | None = None,
     ):
         """Initialize the batch script generator with optional API key."""
         self.client = self.openai_client(api_key, base_url)
@@ -33,23 +34,23 @@ class BatchScriptGenerator:
         self.pwd = Path.cwd()
         self.configure_paths(shell_script_path, release_path)
 
-    def openai_client(self, api_key: Optional[str] = None, base_url: Optional[str] = None) -> OpenAI:
+    def openai_client(self, api_key: str | None = None, base_url: str | None = None) -> OpenAI:
         key = api_key or os.getenv('OPENAI_API_KEY')
         base = base_url or os.getenv('OPENAI_BASE_URL')
-        
+
         print(f"Initializing OpenAI client with base URL: {base}")
-        
+
         if not key:
             print("API key not found. Prompting for credentials...")
             prompt_openai_credentials()
             key = os.getenv('OPENAI_API_KEY')
-        
+
         if not key:
             raise ValueError("No OpenAI API key found even after prompting")
-        
+
         return OpenAI(api_key=key, base_url=base)
 
-    def configure_paths(self, shell_script_path: Optional[str | Path] = None, release_path: Optional[str | Path] = None):
+    def configure_paths(self, shell_script_path: str | Path | None = None, release_path: str | Path | None = None):
         """Configure input and output paths for script generation.
         
         Args:
@@ -74,7 +75,7 @@ class BatchScriptGenerator:
         try:
             return path.read_text(encoding='utf-8')
         except Exception as e:
-            raise Exception(f"Failed to read shell script {path}: {str(e)}")
+            raise Exception(f"Failed to read shell script {path}: {e!s}")
 
     def generate_batch_script(self, shell_script_content: str) -> str:
         """Convert shell script to batch script using our custom converter."""
@@ -84,9 +85,9 @@ class BatchScriptGenerator:
 
     def convert(
         self,
-        shell_script_path: Optional[str | Path] = None, 
-        bat_output_path: Optional[str | Path] = None, 
-        sh_output_path: Optional[str | Path] = None
+        shell_script_path: str | Path | None = None,
+        bat_output_path: str | Path | None = None,
+        sh_output_path: str | Path | None = None,
     ) -> tuple[Path, Path]:
         """Convert shell script to batch script and save both scripts.
 
@@ -124,7 +125,7 @@ class BatchScriptGenerator:
             print(f"Successfully saved {len(content)} characters to {output_path}")
             return True
         except Exception as e:
-            print(f"Failed to save script to {output_path}: {str(e)}")
+            print(f"Failed to save script to {output_path}: {e!s}")
             return False
 
 def main():
@@ -134,11 +135,11 @@ def main():
         generator = BatchScriptGenerator()
         print("\nConverting shell script to batch...")
         bat_path, sh_path = generator.convert()
-        print(f"\nGeneration complete!")
+        print("\nGeneration complete!")
         print(f"Batch script path: {bat_path}")
         print(f"Shell script path: {sh_path}")
     except Exception as e:
-        print(f"\nError generating script: {str(e)}")
+        print(f"\nError generating script: {e!s}")
         return 1
     return 0
 

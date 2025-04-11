@@ -1,10 +1,11 @@
 """Tests for GitManager class functionality."""
 import subprocess
-from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from erasmus.git.manager import GitManager
+
 
 @pytest.fixture
 def mock_subprocess():
@@ -14,7 +15,7 @@ def mock_subprocess():
         mock.run.return_value = MagicMock(
             stdout="test output",
             stderr="",
-            returncode=0
+            returncode=0,
         )
         yield mock
 
@@ -32,10 +33,10 @@ def test_init_new_repo(git_manager, mock_subprocess):
         MagicMock(returncode=0),  # git config user.name succeeds
         MagicMock(returncode=0),  # git config user.email succeeds
     ]
-    
+
     # Create new instance to trigger initialization
     GitManager(git_manager.repo_path)
-    
+
     # Verify git init was called
     init_call = mock_subprocess.run.call_args_list[1]
     assert init_call[0][0] == ["git", "init"]
@@ -44,10 +45,10 @@ def test_init_existing_repo(git_manager, mock_subprocess):
     """Test initializing with existing git repository."""
     # Mock that it's already a git repo
     mock_subprocess.run.return_value = MagicMock(returncode=0)
-    
+
     # Create new instance
     GitManager(git_manager.repo_path)
-    
+
     # Verify only the check was made, no init
     assert mock_subprocess.run.call_count == 1
     check_call = mock_subprocess.run.call_args
@@ -56,7 +57,7 @@ def test_init_existing_repo(git_manager, mock_subprocess):
 def test_stage_all_changes(git_manager, mock_subprocess):
     """Test staging all changes."""
     assert git_manager.stage_all_changes()
-    
+
     # Verify git add was called
     add_call = mock_subprocess.run.call_args
     assert add_call[0][0] == ["git", "add", "-A"]
@@ -70,7 +71,7 @@ def test_commit_changes(git_manager, mock_subprocess):
     """Test committing changes."""
     message = "test commit"
     assert git_manager.commit_changes(message)
-    
+
     # Verify git commit was called with message
     commit_call = mock_subprocess.run.call_args
     assert commit_call[0][0] == ["git", "commit", "-m", message]
@@ -93,10 +94,10 @@ def test_get_repository_state(git_manager, mock_subprocess):
                 "?? untracked.py\n"
             ),
             stderr="",
-            returncode=0
-        )
+            returncode=0,
+        ),
     ]
-    
+
     state = git_manager.get_repository_state()
     assert state["branch"] == "main"
     assert state["staged"] == ["modified.py"]
@@ -106,7 +107,7 @@ def test_get_repository_state(git_manager, mock_subprocess):
 def test_get_repository_state_failure(git_manager, mock_subprocess):
     """Test repository state with failure."""
     mock_subprocess.run.side_effect = subprocess.CalledProcessError(1, "git status")
-    
+
     state = git_manager.get_repository_state()
     assert state["branch"] == "unknown"
     assert not any([state["staged"], state["unstaged"], state["untracked"]])
@@ -125,7 +126,7 @@ def test_run_git_command(git_manager, mock_subprocess):
     """Test running arbitrary git command."""
     command = ["status", "--porcelain"]
     stdout, stderr = git_manager._run_git_command(command)
-    
+
     # Verify command was called correctly
     run_call = mock_subprocess.run.call_args
     assert run_call[0][0] == ["git"] + command
@@ -135,8 +136,8 @@ def test_run_git_command(git_manager, mock_subprocess):
 def test_run_git_command_failure(git_manager, mock_subprocess):
     """Test git command with failure."""
     mock_subprocess.run.side_effect = subprocess.CalledProcessError(
-        1, "git status", stderr="error message"
+        1, "git status", stderr="error message",
     )
     stdout, stderr = git_manager._run_git_command(["status"])
     assert stdout == ""
-    assert stderr == "error message" 
+    assert stderr == "error message"

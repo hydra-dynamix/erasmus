@@ -1,7 +1,8 @@
-from dotenv import load_dotenv
+import re
 from getpass import getpass
 from pathlib import Path
-import re
+
+from dotenv import load_dotenv
 
 load_dotenv()
 

@@ -1,13 +1,13 @@
 """Tests for the main script functionality."""
-import os
 import json
-import shutil
-from pathlib import Path
-import pytest
-from unittest.mock import patch, MagicMock
-from erasmus.version_manager import VersionManager
+import os
 import sys
 from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+from erasmus.version_manager import VersionManager
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent
@@ -15,36 +15,37 @@ sys.path.insert(0, str(project_root))
 
 import main
 
+
 @pytest.fixture
 def test_env(tmp_path):
     """Set up test environment with necessary files."""
     # Create test directories
     release_dir = tmp_path / "release"
     release_dir.mkdir(exist_ok=True)
-    
+
     # Create mock install.sh
     install_sh = tmp_path / "install.sh"
     install_sh.write_text("#!/bin/bash\necho 'Test script'")
-    
+
     # Create mock version.json
     version_json = tmp_path / "version.json"
     version_data = {
         "version": "0.0.1",
         "last_updated": "2025-04-06T00:00:00Z",
-        "changes": []
+        "changes": [],
     }
     version_json.write_text(json.dumps(version_data))
-    
+
     # Store original paths
     old_cwd = os.getcwd()
     old_version_file = VersionManager.VERSION_FILE
-    
+
     # Set up test paths
     os.chdir(tmp_path)
     VersionManager.VERSION_FILE = version_json
-    
+
     yield tmp_path
-    
+
     # Cleanup
     os.chdir(old_cwd)
     VersionManager.VERSION_FILE = old_version_file
@@ -53,7 +54,7 @@ def test_convert_scripts(test_env):
     """Test script conversion creates versioned files."""
     version = "1.0.0"
     result = main.convert_scripts(version)
-    
+
     assert result == 0
     assert (test_env / "release" / f"erasmus_v{version}.bat").exists()
     assert (test_env / "release" / f"erasmus_v{version}.sh").exists()
@@ -73,17 +74,17 @@ def test_convert_scripts_missing_shell(test_env):
 def test_version_commands(test_env, command, args, expected_version):
     """Test version management commands."""
     test_args = command if args is None else command + args
-    
+
     with patch("sys.argv", ["main.py"] + test_args):
         with patch("builtins.print") as mock_print:
             main.main()
-            
+
             # Check if version was printed
             if command[1] == "get":
                 mock_print.assert_called_with(f"Current version: {expected_version}")
             else:
                 mock_print.assert_called_with(f"Updated to version: {expected_version}")
-            
+
             # Check version file was updated
             with open(VersionManager.VERSION_FILE) as f:
                 version_data = json.load(f)
@@ -94,7 +95,7 @@ def test_version_increment_with_message(test_env):
     message = "Test version update"
     with patch("sys.argv", ["main.py", "version", "patch", "-m", message]):
         main.main()
-        
+
         with open(VersionManager.VERSION_FILE) as f:
             version_data = json.load(f)
             assert len(version_data["changes"]) == 1
@@ -106,7 +107,7 @@ def test_convert_command(test_env):
     with patch("sys.argv", ["main.py", "convert"]):
         result = main.main()
         assert result == 0
-        
+
         version = VersionManager().get_current_version()
         assert (test_env / "release" / f"erasmus_v{version}.bat").exists()
         assert (test_env / "release" / f"erasmus_v{version}.sh").exists()

@@ -6,13 +6,12 @@ This module provides functionality for handling dynamic updates to the context
 management system, including change tracking, validation, and rollback support.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
-from pathlib import Path
 import json
-import time
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-import logging
+from pathlib import Path
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ class ChangeRecord:
     previous_value: Any
     new_value: Any
     source: str
-    metadata: Dict[str, Any]
+    metadata: dict[str, Any]
 
 class DynamicUpdateManager:
     """
@@ -36,7 +35,7 @@ class DynamicUpdateManager:
     - Change history tracking
     - Update notifications
     """
-    
+
     def __init__(self, context_dir: Path):
         """
         Initialize the dynamic update manager.
@@ -48,7 +47,7 @@ class DynamicUpdateManager:
         self.changes_file = self.context_dir / "changes.json"
         self.changes_file.touch(exist_ok=True)
         self._load_changes()
-    
+
     def _load_changes(self) -> None:
         """Load the change history from disk."""
         try:
@@ -62,7 +61,7 @@ class DynamicUpdateManager:
                         previous_value=c["previous_value"],
                         new_value=c["new_value"],
                         source=c["source"],
-                        metadata=c["metadata"]
+                        metadata=c["metadata"],
                     )
                     for c in raw_changes
                 ]
@@ -71,7 +70,7 @@ class DynamicUpdateManager:
         except Exception as e:
             logger.error(f"Failed to load changes: {e}")
             self.changes = []
-    
+
     def _save_changes(self) -> None:
         """Save the change history to disk."""
         try:
@@ -82,15 +81,15 @@ class DynamicUpdateManager:
                     "previous_value": c.previous_value,
                     "new_value": c.new_value,
                     "source": c.source,
-                    "metadata": c.metadata
+                    "metadata": c.metadata,
                 }
                 for c in self.changes
             ]
             self.changes_file.write_text(json.dumps(changes_data, indent=2))
         except Exception as e:
             logger.error(f"Failed to save changes: {e}")
-    
-    def detect_changes(self, component: str, new_value: Any) -> Tuple[bool, Optional[Dict[str, Any]]]:
+
+    def detect_changes(self, component: str, new_value: Any) -> tuple[bool, dict[str, Any] | None]:
         """
         Detect if there are meaningful changes to a component.
 
@@ -108,10 +107,10 @@ class DynamicUpdateManager:
                 if change.component == component:
                     current_value = change.new_value
                     break
-            
+
             if current_value is None:
                 return True, {"type": "initial", "component": component}
-            
+
             # Compare values based on type
             if isinstance(new_value, (str, int, float, bool)):
                 has_changed = new_value != current_value
@@ -122,14 +121,14 @@ class DynamicUpdateManager:
             else:
                 has_changed = new_value != current_value
                 diff = {"type": "unknown_change", "component": component} if has_changed else None
-            
+
             return has_changed, diff
-            
+
         except Exception as e:
             logger.error(f"Error detecting changes: {e}")
             return False, None
-    
-    def validate_update(self, component: str, new_value: Any) -> Tuple[bool, Optional[str]]:
+
+    def validate_update(self, component: str, new_value: Any) -> tuple[bool, str | None]:
         """
         Validate a proposed update before applying it.
 
@@ -144,20 +143,20 @@ class DynamicUpdateManager:
             # Basic validation
             if component.strip() == "":
                 return False, "Component name cannot be empty"
-            
+
             if new_value is None:
                 return False, "New value cannot be None"
-            
+
             # Ensure serializable
             try:
                 json.dumps(new_value)
             except (TypeError, ValueError):
                 return False, "New value must be JSON serializable"
-            
+
             # Type-specific validation
             if not isinstance(new_value, (str, int, float, bool, list, dict)):
                 return False, "New value must be a basic type (str, int, float, bool) or a container (list, dict)"
-            
+
             # Component-specific validation
             if component == "tasks":
                 if not isinstance(new_value, dict):
@@ -167,14 +166,14 @@ class DynamicUpdateManager:
                         return False, f"Task {task_id} data must be a dictionary"
                     if "description" not in task_data:
                         return False, f"Task {task_id} missing description"
-            
+
             return True, None
-            
+
         except Exception as e:
             logger.error(f"Error validating update: {e}")
             return False, str(e)
-    
-    def apply_update(self, component: str, new_value: Any, source: str, metadata: Dict[str, Any] = None) -> bool:
+
+    def apply_update(self, component: str, new_value: Any, source: str, metadata: dict[str, Any] = None) -> bool:
         """
         Apply an update to a component with rollback support.
 
@@ -199,14 +198,14 @@ class DynamicUpdateManager:
             if not has_changes:
                 logger.info(f"No changes detected for {component}")
                 return True
-            
+
             # Get current value for rollback
             current_value = None
             for change in reversed(self.changes):
                 if change.component == component:
                     current_value = change.new_value
                     break
-            
+
             # Create change record
             change = ChangeRecord(
                 timestamp=datetime.now(),
@@ -214,20 +213,20 @@ class DynamicUpdateManager:
                 previous_value=current_value,
                 new_value=new_value,
                 source=source,
-                metadata=metadata or {}
+                metadata=metadata or {},
             )
-            
+
             # Apply the change
             self.changes.append(change)
             self._save_changes()
-            
+
             logger.info(f"Successfully updated {component}")
             return True
 
         except Exception as e:
             logger.error(f"Error applying update: {e}")
             return False
-    
+
     def rollback_last_change(self, component: str) -> bool:
         """
         Rollback the last change for a component.
@@ -242,7 +241,7 @@ class DynamicUpdateManager:
             # Find the last two changes for this component
             last_change = None
             previous_change = None
-            
+
             for change in reversed(self.changes):
                 if change.component == component:
                     if last_change is None:
@@ -250,28 +249,28 @@ class DynamicUpdateManager:
                     else:
                         previous_change = change
                         break
-            
+
             if last_change is None:
                 logger.error(f"No changes found for {component}")
                 return False
-            
+
             # Remove the last change
             self.changes.remove(last_change)
-            
+
             # If there was a previous change, that becomes the current state
             if previous_change is not None:
                 logger.info(f"Rolled back {component} to previous state")
             else:
                 logger.info(f"Rolled back {component} to initial state")
-            
+
             self._save_changes()
             return True
-            
+
         except Exception as e:
             logger.error(f"Error rolling back change: {e}")
             return False
 
-    def get_change_history(self, component: Optional[str] = None, limit: int = 10) -> List[ChangeRecord]:
+    def get_change_history(self, component: str | None = None, limit: int = 10) -> list[ChangeRecord]:
         """
         Get the change history for a component.
 
@@ -286,5 +285,5 @@ class DynamicUpdateManager:
             filtered_changes = [c for c in self.changes if c.component == component]
         else:
             filtered_changes = self.changes
-        
-        return filtered_changes[-limit:] 
+
+        return filtered_changes[-limit:]

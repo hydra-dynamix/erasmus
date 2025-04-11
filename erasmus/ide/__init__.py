@@ -8,4 +8,4 @@ synchronization and IDE-specific requirements.
 
 from .cursor_integration import CursorContextManager
 
-__all__ = ['CursorContextManager'] 
+__all__ = ['CursorContextManager']

@@ -1,10 +1,11 @@
 """Tests for the dynamic update system."""
 
 import json
-from datetime import datetime
-from pathlib import Path
+
 import pytest
-from erasmus.core.dynamic_updates import DynamicUpdateManager, ChangeRecord
+
+from erasmus.core.dynamic_updates import DynamicUpdateManager
+
 
 @pytest.fixture
 def temp_context_dir(tmp_path):
@@ -153,7 +154,7 @@ def test_change_history(update_manager):
     history = update_manager.get_change_history("test1")
     assert len(history) == 2
     assert all(change.component == "test1" for change in history)
-    
+
     # Test history limit
     history = update_manager.get_change_history(limit=2)
     assert len(history) == 2
@@ -175,4 +176,4 @@ def test_persistence(temp_context_dir):
     changes_file = temp_context_dir / "changes.json"
     content = json.loads(changes_file.read_text())
     assert len(content) == 2
-    assert content[-1]["new_value"] == "value2" 
+    assert content[-1]["new_value"] == "value2"

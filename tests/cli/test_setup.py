@@ -1,12 +1,12 @@
 """Tests for the setup command."""
-import os
 from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner
 
-from erasmus.cli.setup import setup, validate_ide_env, validate_base_url
+from erasmus.cli.setup import setup, validate_base_url, validate_ide_env
+
 
 @pytest.fixture
 def env_example_content():
@@ -29,7 +29,7 @@ def test_validate_ide_env():
     assert validate_ide_env("C") == "cursor"
     assert validate_ide_env("windsurf") == "windsurf"
     assert validate_ide_env("W") == "windsurf"
-    
+
     # Test invalid inputs
     with pytest.raises(ValueError):
         validate_ide_env("invalid")
@@ -43,7 +43,7 @@ def test_validate_base_url():
     assert validate_base_url("http://localhost") == "http://localhost"
     assert validate_base_url("http://localhost:8000") == "http://localhost:8000"
     assert validate_base_url("http://localhost:8000/api") == "http://localhost:8000/api"
-    
+
     # Test invalid URLs
     with pytest.raises(ValueError):
         validate_base_url("not-a-url")
@@ -57,31 +57,31 @@ def test_setup_command(runner, env_example_content, env_exists, tmp_path):
         # Create .env.example
         with open(".env.example", "w") as f:
             f.write(env_example_content)
-        
+
         # Create .env if testing existing case
         if env_exists:
             with open(".env", "w") as f:
                 f.write(env_example_content)
-        
+
         # Mock user input
         input_values = []
         if env_exists:
             input_values.append("y")  # Overwrite confirmation
-            
+
         input_values.extend([
             "c",  # IDE_ENV
             "my-token",  # GIT_TOKEN
             "sk-mykey",  # OPENAI_API_KEY
             "http://localhost:8000",  # OPENAI_BASE_URL
-            "gpt-4"  # OPENAI_MODEL
+            "gpt-4",  # OPENAI_MODEL
         ])
-        
+
         with patch("rich.prompt.Prompt.ask", side_effect=input_values):
             result = runner.invoke(setup)
-            
+
         assert result.exit_code == 0
         assert Path(".env").exists()
-        
+
         # Verify .env contents
         with open(".env") as f:
             env_contents = f.read()
@@ -97,7 +97,7 @@ def test_setup_invalid_inputs(runner, env_example_content, tmp_path):
         # Create .env.example
         with open(".env.example", "w") as f:
             f.write(env_example_content)
-        
+
         # Mock user input sequence: invalid then valid for IDE_ENV and BASE_URL
         input_values = [
             "x",  # Invalid IDE_ENV
@@ -106,15 +106,15 @@ def test_setup_invalid_inputs(runner, env_example_content, tmp_path):
             "sk-mykey",  # OPENAI_API_KEY
             "invalid-url",  # Invalid BASE_URL
             "http://localhost:8000",  # Valid BASE_URL
-            "gpt-4"  # OPENAI_MODEL
+            "gpt-4",  # OPENAI_MODEL
         ]
-        
+
         with patch("rich.prompt.Prompt.ask", side_effect=input_values):
             result = runner.invoke(setup)
-            
+
         assert result.exit_code == 0
         assert Path(".env").exists()
-        
+
         # Verify .env contents
         with open(".env") as f:
             env_contents = f.read()
@@ -127,12 +127,12 @@ def test_setup_missing_env_example(runner, env_example_content, tmp_path):
         # Mock user choosing to create default .env.example
         with patch("click.confirm", return_value=True):
             result = runner.invoke(setup)
-            
+
         assert result.exit_code == 0
         assert Path(".env.example").exists()
-        
+
         # Verify .env.example contents
         with open(".env.example") as f:
             contents = f.read()
             assert "IDE_ENV=cursor" in contents
-            assert "OPENAI_BASE_URL=https://api.openai.com/v1" in contents 
+            assert "OPENAI_BASE_URL=https://api.openai.com/v1" in contents

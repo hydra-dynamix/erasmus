@@ -5,13 +5,15 @@ This module provides functionality for parsing and validating rules in the conte
 It includes classes for representing rules and their types, as well as a parser for reading rules from files.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Dict, Any
-import logging
+from typing import Any
+
 from ..utils.file_ops import safe_read_file
+
 
 class RuleType(Enum):
     """Enumeration of rule types."""
@@ -56,7 +58,6 @@ class Rule:
 
 class RuleValidationError(Exception):
     """Exception raised when rule validation fails."""
-    pass
 
 @dataclass
 class ValidationError:
@@ -71,7 +72,7 @@ class ValidationError:
     """
     rule: Rule
     message: str
-    line_number: Optional[int] = None
+    line_number: int | None = None
     severity: str = "error"
 
 class RulesParser:
@@ -86,7 +87,7 @@ class RulesParser:
         rules (List[Rule]): List of parsed rules
         _cached_rules (Optional[List[Rule]]): Cached rules for performance
     """
-    
+
     def __init__(self, rules_file: Path):
         """
         Initialize the RulesParser with a rules file.
@@ -98,10 +99,10 @@ class RulesParser:
             RuleValidationError: If the rules file is invalid
         """
         self.rules_file = Path(rules_file)
-        self._cached_rules: Optional[List[Rule]] = None
+        self._cached_rules: list[Rule] | None = None
         self.rules = self._parse_rules()
-    
-    def _parse_rules(self) -> List[Rule]:
+
+    def _parse_rules(self) -> list[Rule]:
         """
         Parse rules from the rules file.
         
@@ -113,21 +114,21 @@ class RulesParser:
         """
         if not self.rules_file.exists():
             raise RuleValidationError(f"Rules file not found: {self.rules_file}")
-        
+
         try:
             content = self.rules_file.read_text()
             if not content.strip():
                 return []
-            
+
             rules = []
-            current_rule: Dict[str, Any] = {}
+            current_rule: dict[str, Any] = {}
             order = 0
-            
+
             for line in content.splitlines():
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                
+
                 if line.startswith("rule:"):
                     if current_rule:
                         current_rule["order"] = order
@@ -138,24 +139,24 @@ class RulesParser:
                 elif ":" in line:
                     key, value = line.split(":", 1)
                     current_rule[key.strip()] = value.strip()
-            
+
             if current_rule:
                 current_rule["order"] = order
                 rules.append(self._create_rule(current_rule))
-            
+
             if not rules:
                 raise RuleValidationError("No valid rules found in file")
-            
+
             # Sort rules by priority (higher priority first), then by original order
             rules.sort(key=lambda x: (-x.priority, x.order))
             return rules
-            
+
         except (ValueError, KeyError) as e:
-            raise RuleValidationError(f"Error parsing rules file: {str(e)}")
+            raise RuleValidationError(f"Error parsing rules file: {e!s}")
         except Exception as e:
-            raise RuleValidationError(f"Unexpected error parsing rules file: {str(e)}")
-    
-    def _create_rule(self, rule_data: Dict[str, Any]) -> Rule:
+            raise RuleValidationError(f"Unexpected error parsing rules file: {e!s}")
+
+    def _create_rule(self, rule_data: dict[str, Any]) -> Rule:
         """
         Create a Rule object from parsed data.
         
@@ -170,20 +171,20 @@ class RulesParser:
         """
         required_fields = ["name", "description", "type", "pattern", "severity"]
         missing_fields = [field for field in required_fields if field not in rule_data]
-        
+
         if missing_fields:
             raise RuleValidationError(f"Missing required fields: {', '.join(missing_fields)}")
-        
+
         try:
             rule_type = RuleType(rule_data["type"])
         except ValueError:
             raise RuleValidationError(f"Invalid rule type: {rule_data['type']}")
-        
+
         try:
             priority = int(rule_data.get("priority", 0))
         except ValueError:
             raise RuleValidationError("Priority must be an integer")
-        
+
         return Rule(
             name=rule_data["name"],
             description=rule_data["description"],
@@ -191,10 +192,10 @@ class RulesParser:
             pattern=rule_data["pattern"],
             severity=rule_data["severity"],
             priority=priority,
-            order=rule_data.get("order", 0)
+            order=rule_data.get("order", 0),
         )
-    
-    def validate_code(self, code: str) -> List[ValidationError]:
+
+    def validate_code(self, code: str) -> list[ValidationError]:
         """
         Validate code against all rules.
         
@@ -205,26 +206,26 @@ class RulesParser:
             List[ValidationError]: List of validation errors found
         """
         errors = []
-        
+
         for rule in self.rules:
             try:
                 pattern = re.compile(rule.pattern)
                 matches = list(pattern.finditer(code))
-                
+
                 if rule.type == RuleType.CODE_STYLE:
                     # For code style rules, we want to ensure the pattern is NOT found
                     if matches and rule.name == "no_print_statements":
                         errors.append(ValidationError(
                             rule=rule,
                             message=f"Code violates rule: {rule.description}",
-                            severity=rule.severity
+                            severity=rule.severity,
                         ))
                     # For other code style rules, we want to ensure the pattern IS found
                     elif not matches and rule.name != "no_print_statements":
                         errors.append(ValidationError(
                             rule=rule,
                             message=f"Code does not match rule pattern: {rule.description}",
-                            severity=rule.severity
+                            severity=rule.severity,
                         ))
                 elif rule.type == RuleType.DOCUMENTATION:
                     # For documentation rules, we want to ensure the pattern IS found
@@ -232,23 +233,23 @@ class RulesParser:
                         errors.append(ValidationError(
                             rule=rule,
                             message=f"Code does not match rule pattern: {rule.description}",
-                            severity=rule.severity
+                            severity=rule.severity,
                         ))
             except re.error as e:
                 errors.append(ValidationError(
                     rule=rule,
-                    message=f"Invalid rule pattern: {str(e)}",
-                    severity="error"
+                    message=f"Invalid rule pattern: {e!s}",
+                    severity="error",
                 ))
-        
+
         return errors
-    
+
     def reload_rules(self) -> None:
         """Force reload of rules from file."""
         self._cached_rules = None
         self.rules = self._parse_rules()
 
-    def parse_rules_file(self, file_path: Path) -> List[Rule]:
+    def parse_rules_file(self, file_path: Path) -> list[Rule]:
         """Parse rules from a markdown file.
         
         Args:
@@ -265,8 +266,8 @@ class RulesParser:
             content = safe_read_file(file_path)
             return self.parse_rules_content(content)
         except FileNotFoundError:
-            logging.error(f"Rules file not found: {file_path}")
+            logging.exception(f"Rules file not found: {file_path}")
             raise
         except Exception as e:
-            logging.error(f"Error parsing rules from {file_path}: {e}")
-            raise RuleParsingError(f"Failed to parse rules from {file_path}: {e}") 
+            logging.exception(f"Error parsing rules from {file_path}: {e}")
+            raise RuleParsingError(f"Failed to parse rules from {file_path}: {e}")

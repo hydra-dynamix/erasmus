@@ -1,4 +1,4 @@
-#!/usr/bin/uv run -S 
+#!/usr/bin/uv run -S
 # /// script
 # requires-python = ">=3.10"
 # dependencies = [
@@ -65,24 +65,24 @@ License: MIT
 Version: 0.0.1
 """
 
-import os
-import json
-import time
 import argparse
-import subprocess
+import json
+import logging
+import os
 import re
+import subprocess
 import sys
+import time
+from getpass import getpass
 from pathlib import Path
+from threading import Thread
+
+from dotenv import load_dotenv
+from openai import OpenAI
 from rich import console
 from rich.logging import RichHandler
-from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from threading import Thread
-from openai import OpenAI
-from dotenv import load_dotenv
-from getpass import getpass
-import logging
-from typing import Optional, List, Dict, Tuple
+from watchdog.observers import Observer
 
 GIT_COMMITS = True
 
@@ -132,7 +132,7 @@ class Task:
         self.updated_at = time.time()
         self.completion_time = None
         self.notes = []
-        
+
     def to_dict(self) -> dict:
         """
         Convert task to dictionary representation for serialization.
@@ -147,9 +147,9 @@ class Task:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "completion_time": self.completion_time,
-            "notes": self.notes
+            "notes": self.notes,
         }
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> 'Task':
         """
@@ -194,7 +194,7 @@ class TaskManager:
                 task_id: Task.from_dict(task_data) if isinstance(task_data, dict) else task_data
                 for task_id, task_data in tasks.items()
             }
-        
+
     def add_task(self, description: str) -> Task:
         """
         Add a new task with the given description.
@@ -212,8 +212,8 @@ class TaskManager:
         task = Task(task_id, description)
         self.tasks[task_id] = task
         return task
-    
-    def get_task(self, task_id: str) -> Optional[Task]:
+
+    def get_task(self, task_id: str) -> Task | None:
         """
         Retrieve a task by its ID.
         
@@ -224,8 +224,8 @@ class TaskManager:
             Optional[Task]: The Task if found, None otherwise
         """
         return self.tasks.get(task_id)
-    
-    def list_tasks(self, status: Optional[TaskStatus] = None) -> List[Task]:
+
+    def list_tasks(self, status: TaskStatus | None = None) -> list[Task]:
         """
         List all tasks, optionally filtered by status.
         
@@ -240,7 +240,7 @@ class TaskManager:
         if status:
             tasks = [t for t in tasks if t.status == status]
         return tasks
-    
+
     def update_task_status(self, task_id: str, status: TaskStatus) -> None:
         """
         Update a task's status.
@@ -254,7 +254,7 @@ class TaskManager:
             task.updated_at = time.time()
             if status == TaskStatus.COMPLETED:
                 task.completion_time = time.time()
-    
+
     def add_note_to_task(self, task_id: str, note: str) -> None:
         """
         Add a note to a task.
@@ -266,7 +266,7 @@ class TaskManager:
         if task := self.get_task(task_id):
             task.notes.append(note)
             task.updated_at = time.time()
-    
+
     @classmethod
     def from_dict(cls, data):
         """
@@ -314,25 +314,25 @@ def is_valid_url(url: str) -> bool:
     """
     if not url:
         return False
-    
+
     # Log the URL being validated for debugging
     logger.debug(f"Validating URL: {url}")
-    
+
     # Check for localhost or 127.0.0.1
     localhost_pattern = re.match(r'^https?://(?:localhost|127\.0\.0\.1)(?::\d+)?(?:/.*)?$', url)
     if localhost_pattern:
         logger.debug(f"URL {url} matched localhost pattern")
         return True
-        
+
     # Check for standard http/https URLs
     standard_pattern = re.match(r'^https?://[\w\.-]+(?::\d+)?(?:/.*)?$', url)
     result = bool(standard_pattern)
-    
+
     if result:
         logger.debug(f"URL {url} matched standard pattern")
     else:
         logger.warning(f"URL validation failed for: {url}")
-        
+
     return result
 
 def detect_ide_environment() -> str:
@@ -366,32 +366,32 @@ def detect_ide_environment() -> str:
         ide_env = input("Enter your IDE environment (windsurf, cursor): ").strip()
     if ide_env:
         return 'windsurf' if ide_env.startswith('W') else 'cursor'
-    
+
     # Try to detect based on current working directory or known IDE paths
     cwd = Path.cwd()
-    
+
     # windsurf-specific detection
     windsurf_markers = [
         Path.home() / '.codeium' / 'windsurf',
-        cwd / '.windsurfrules'
+        cwd / '.windsurfrules',
     ]
-    
+
     # cursor-specific detection
     cursor_markers = [
         cwd / '.cursorrules',
-        Path.home() / '.cursor'
+        Path.home() / '.cursor',
     ]
-    
+
     # Check windsurf markers
     for marker in windsurf_markers:
         if marker.exists():
             return 'windsurf'
-    
+
     # Check cursor markers
     for marker in cursor_markers:
         if marker.exists():
             return 'cursor'
-    
+
     # Default fallback
     return 'windsurf'
 
@@ -399,7 +399,7 @@ def detect_ide_environment() -> str:
 def prompt_openai_credentials(env_path=".env"):
     """Prompt user for OpenAI credentials and save to .env"""
     global GIT_COMMITS
-    
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         print("If you are running local inference and do not have an api key configured just use sk-1234")
@@ -423,10 +423,10 @@ def prompt_openai_credentials(env_path=".env"):
         model = input("Enter your OPENAI_MODEL (default: gpt-4o): ").strip()
         if not model:
             model = "gpt-4o"
-        
+
     # Detect IDE environment and save it to the .env file
     ide_env = detect_ide_environment()
-    
+
     env_content = (
         "\n"
         f"OPENAI_API_KEY={api_key}\n"
@@ -454,7 +454,7 @@ logging_handler = RichHandler(
     show_time=True,
     show_path=False,
     rich_tracebacks=True,
-    tracebacks_show_locals=True
+    tracebacks_show_locals=True,
 )
 
 # Set up logging configuration
@@ -462,7 +462,7 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
     format="%(message)s",
     datefmt="[%X]",
-    handlers=[logging_handler]
+    handlers=[logging_handler],
 )
 
 # Create logger instance
@@ -481,7 +481,7 @@ except Exception as e:
 def get_openai_credentials():
     """Get OpenAI credentials from environment variables"""
     global GIT_COMMITS
-    
+
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         GIT_COMMITS = False
@@ -494,7 +494,7 @@ def init_openai_client():
     """Initialize and return OpenAI client configuration"""
     try:
         api_key, base_url, model = get_openai_credentials()
-        
+
         # Check if any credentials are missing
         missing_creds = []
         if not api_key:
@@ -504,12 +504,12 @@ def init_openai_client():
         if not model:
             missing_creds.append("model")
 
-            
+
         if missing_creds:
             logger.warning(f"Missing OpenAI credentials: {', '.join(missing_creds)}. Prompting for input...")
             prompt_openai_credentials()
             api_key, base_url, model = get_openai_credentials()
-            
+
             # Check again after prompting
             if not api_key:
                 logger.error("Failed to initialize OpenAI client: missing API key")
@@ -518,7 +518,7 @@ def init_openai_client():
             if not model:
                 logger.error("Failed to initialize OpenAI client: missing model name")
                 return None, None
-        
+
         # Ensure base_url has a valid format
         if not base_url:
             base_url = "https://api.openai.com/v1"
@@ -526,7 +526,7 @@ def init_openai_client():
         elif not is_valid_url(base_url):
             logger.warning(f"Invalid base URL format: {base_url}. Using default.")
             base_url = "https://api.openai.com/v1"
-        
+
         logger.info(f"Initializing OpenAI client with base URL: {base_url} and model: {model}")
         client = OpenAI(api_key=api_key, base_url=base_url)
         return client, model
@@ -544,23 +544,23 @@ PWD = Path(__file__).parent
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Update script for project")
     parser.add_argument("--watch", action="store_true", help="Enable file watching")
-    parser.add_argument("--update", choices=["architecture", "progress", "tasks", "context"], 
+    parser.add_argument("--update", choices=["architecture", "progress", "tasks", "context"],
                       help="File to update")
     parser.add_argument("--update-value", help="New value to write to the specified file")
     parser.add_argument("--setup", help="Setup project", action="store_true")
     parser.add_argument("--type", choices=["cursor", "windsurf", "cursor", "windsurf"], help="Project type", default="cursor")
-    
+
     # Task management arguments
     task_group = parser.add_argument_group("Task Management")
     task_group.add_argument("--task-action", choices=["add", "update", "note", "list", "get"],
                            help="Task management action")
     task_group.add_argument("--task-id", help="Task ID for update/note/get actions")
     task_group.add_argument("--task-description", help="Task description for add action")
-    task_group.add_argument("--task-status", choices=[TaskStatus.PENDING, TaskStatus.IN_progress, 
+    task_group.add_argument("--task-status", choices=[TaskStatus.PENDING, TaskStatus.IN_progress,
                                                      TaskStatus.COMPLETED, TaskStatus.BLOCKED],
                            help="Task status for update action")
     task_group.add_argument("--task-note", help="Note content for note action")
-    
+
     # Git management arguments
     git_group = parser.add_argument_group("Git Management")
     git_group.add_argument("--git-repo", help="Path to git repository")
@@ -568,7 +568,7 @@ def parse_arguments():
                           help="Git action to perform")
     git_group.add_argument("--commit-message", help="Commit message for git commit action")
     git_group.add_argument("--branch-name", help="Branch name for git branch action")
-    
+
     return parser.parse_args()
 
 # Global rules content for project setup
@@ -765,14 +765,14 @@ Use your context to track your folder location. Chaining commands is causing an 
 
 
 ARGS = parse_arguments()
-if ARGS.setup: 
-    IDE_ENV = detect_ide_environment()    
+if ARGS.setup:
+    IDE_ENV = detect_ide_environment()
     KEY_NAME = "windsurf" if IDE_ENV.startswith("W")  else "cursor"
 
 # === File Paths Configuration ===
 
 
-def get_rules_file_path(context_type='global') -> Tuple[Path, Path]:
+def get_rules_file_path(context_type='global') -> tuple[Path, Path]:
     """
     Determine the appropriate rules file paths based on IDE environment.
     
@@ -784,32 +784,32 @@ def get_rules_file_path(context_type='global') -> Tuple[Path, Path]:
     """
     # Detect IDE environment
     ide_env = detect_ide_environment()
-    
+
     # Mapping for rules file paths using Path for robust resolution
     rules_paths = {
         'windsurf': {
             'global': Path.home() / '.codeium' / 'windsurf' / 'memories' / 'global_rules.md',
-            'context': Path.cwd() / '.windsurfrules'
+            'context': Path.cwd() / '.windsurfrules',
         },
         'cursor': {
             'global': Path.cwd() / 'global_rules.md',  # User must manually set in cursor settings
-            'context': Path.cwd() / '.cursorrules'
-        }
+            'context': Path.cwd() / '.cursorrules',
+        },
     }
-    
+
     # Get the appropriate paths and resolve them
     context_path = rules_paths[ide_env].get('context')
     global_path = rules_paths[ide_env].get('global')
-    
+
     # Ensure the directories exist and create files if they don't
     if context_path and not context_path.exists():
         context_path.parent.mkdir(parents=True, exist_ok=True)
         context_path.touch()  # Create the file if it doesn't exist
-        
+
     if global_path and not global_path.exists():
         global_path.parent.mkdir(parents=True, exist_ok=True)
         global_path.touch()  # Create the file if it doesn't exist
-    
+
     # Return the fully resolved absolute paths
     return context_path.resolve(), global_path.resolve()
 
@@ -821,7 +821,7 @@ def save_global_rules(rules_content):
         rules_content (str): Content of the global rules
     """
     _, global_rules_path = get_rules_file_path()
-    
+
     # First, write the file regardless of IDE environment
     try:
         with open(global_rules_path, 'w') as f:
@@ -829,12 +829,12 @@ def save_global_rules(rules_content):
         logger.info(f"Global rules saved to {global_rules_path}")
     except Exception as e:
         logger.error(f"Failed to save global rules: {e}")
-    
+
     # If cursor, show the warning but don't return early
     if detect_ide_environment() == 'cursor':
         logger.warning(
             "For cursor, please also manually copy global rules to settings. "
-            "The file has been saved to global_rules.md, but you need to add this content to cursor settings."
+            "The file has been saved to global_rules.md, but you need to add this content to cursor settings.",
         )
         print(rules_content)
 
@@ -846,7 +846,7 @@ def save_context_rules(context_content):
         context_content (str): Content of the context rules
     """
     context_rules_path, _ = get_rules_file_path()
-    
+
     try:
         with open(context_rules_path, 'w') as f:
             f.write(context_content)
@@ -860,16 +860,16 @@ CONTEXT_RULES_PATH, GLOBAL_RULES_PATH = get_rules_file_path()
 # === Project Setup ===
 def setup_project():
     """Setup the project with necessary files"""
-    
+
     # Create all required files
     for file in [GLOBAL_RULES_PATH, CONTEXT_RULES_PATH]:
         ensure_file_exists(file)
-    
-    # Always write global rules to global_rules.md 
+
+    # Always write global rules to global_rules.md
     save_global_rules(GLOBAL_RULES)
     logger.info(f"Created global rules at {GLOBAL_RULES_PATH}")
     logger.info("Please add the contents of global_rules.md to your IDE's global rules section")
-    
+
     # Initialize cursor rules file if empty
     if not safe_read_file(CONTEXT_RULES_PATH):
         # Initialize with current architecture, progress and tasks
@@ -879,7 +879,7 @@ def setup_project():
             "tasks": safe_read_file(tasks_PATH),
         }
         update_context(context)
-    
+
     # Ensure IDE_ENV is set in .env file
     env_path = Path(".env")
     if env_path.exists():
@@ -897,38 +897,35 @@ def setup_project():
 def update_context(context):
     """Update the cursor rules file with current context"""
     content = {}
-    
+
     # Add architecture if available
     if context.get("architecture"):
         content["architecture"] = context["architecture"]
+    elif architecture_PATH.exists():
+        content["architecture"] = safe_read_file(architecture_PATH)
     else:
-        if architecture_PATH.exists():
-            content["architecture"] = safe_read_file(architecture_PATH)
-        else:
-            content["architecture"] = ""
-    
+        content["architecture"] = ""
+
     # Add progress if available
     if context.get("progress"):
         content["progress"] = context["progress"]
+    elif progress_PATH.exists():
+        content["progress"] = safe_read_file(progress_PATH)
     else:
-        if progress_PATH.exists():
-            content["progress"] = safe_read_file(progress_PATH)
-        else:
-            content["progress"] = ""
-    
+        content["progress"] = ""
+
     # Add tasks section
     if context.get("tasks"):
         content["tasks"] = context["tasks"]
+    elif tasks_PATH.exists():
+        content["tasks"] = safe_read_file(tasks_PATH)
     else:
-        if tasks_PATH.exists():
-            content["tasks"] = safe_read_file(tasks_PATH)
-        else:
-            content["tasks"] = ""
-            
+        content["tasks"] = ""
+
     # Write to context file
     safe_write_file(CONTEXT_RULES_PATH, json.dumps(content, indent=2))
     make_atomic_commit()
-    
+
     return content
 
 
@@ -961,7 +958,7 @@ def update_specific_file(file_type, content):
         lowercase before processing.
     """
     file_type = file_type.lower()
-    
+
     if file_type == "CONTEXT":
         # Special case to update entire context
         update_context({})
@@ -990,7 +987,7 @@ class GitManager:
     Attributes:
         repo_path (Path): Path to the Git repository
     """
-    
+
     def __init__(self, repo_path: str | Path):
         """
         Initialize GitManager with a repository path.
@@ -1005,7 +1002,7 @@ class GitManager:
         self.repo_path = Path(repo_path).resolve()
         if not self._is_git_repo():
             self._init_git_repo()
-            
+
     def _is_git_repo(self) -> bool:
         """
         Check if the path is a git repository.
@@ -1023,12 +1020,12 @@ class GitManager:
                 cwd=self.repo_path,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=True
+                check=True,
             )
             return True
         except subprocess.CalledProcessError:
             return False
-    
+
     def _init_git_repo(self):
         """
         Initialize a new git repository if one doesn't exist.
@@ -1044,23 +1041,23 @@ class GitManager:
             subprocess.run(
                 ["git", "init"],
                 cwd=self.repo_path,
-                check=True
+                check=True,
             )
             # Configure default user
             subprocess.run(
                 ["git", "config", "user.name", "Context Watcher"],
                 cwd=self.repo_path,
-                check=True
+                check=True,
             )
             subprocess.run(
                 ["git", "config", "user.email", "context.watcher@local"],
                 cwd=self.repo_path,
-                check=True
+                check=True,
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"Failed to initialize git repository: {e}")
-            
-    def _run_git_command(self, command: List[str]) -> Tuple[str, str]:
+
+    def _run_git_command(self, command: list[str]) -> tuple[str, str]:
         """
         Run a git command and return stdout and stderr.
         
@@ -1083,13 +1080,13 @@ class GitManager:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                check=True
+                check=True,
             )
             return result.stdout.strip(), result.stderr.strip()
         except subprocess.CalledProcessError as e:
             logger.error(f"Git command failed: {e}")
             return "", e.stderr.strip()
-    
+
     def stage_all_changes(self) -> bool:
         """
         Stage all changes in the repository.
@@ -1109,7 +1106,7 @@ class GitManager:
         except Exception as e:
             logger.error(f"Unexpected error while staging changes: {e}")
             return False
-    
+
     def commit_changes(self, message: str) -> bool:
         """
         Commit staged changes with a given message.
@@ -1133,8 +1130,8 @@ class GitManager:
         except Exception as e:
             logger.error(f"Unexpected error while committing changes: {e}")
             return False
-        
-    def validate_commit_message(self, message: str) -> Tuple[bool, str]:
+
+    def validate_commit_message(self, message: str) -> tuple[bool, str]:
         """
         Validate a commit message against conventions.
         
@@ -1157,22 +1154,22 @@ class GitManager:
         """
         if not message:
             return False, "Commit message cannot be empty"
-        
+
         # Check length
         if len(message) > 72:
             return False, "Commit message is too long (max 72 characters)"
-        
+
         # Check format (conventional commits)
         conventional_types = {"feat", "fix", "docs", "style", "refactor", "test", "chore"}
         first_line = message.split("\n")[0]
-        
+
         if ":" in first_line:
             type_ = first_line.split(":")[0]
             if type_ not in conventional_types:
                 return False, f"Invalid commit type. Must be one of: {', '.join(conventional_types)}"
-        
+
         return True, "Commit message is valid"
-        
+
     def get_repository_state(self) -> dict:
         """
         Get the current state of the repository.
@@ -1193,34 +1190,34 @@ class GitManager:
         try:
             # Get current branch
             branch = self.get_current_branch()
-            
+
             # Get status
             status_output, _ = self._run_git_command(["status", "--porcelain"])
             status_lines = status_output.split("\n") if status_output else []
-            
+
             # Parse status
             staged = []
             unstaged = []
             untracked = []
-            
+
             for line in status_lines:
                 if not line:
                     continue
                 status = line[:2]
                 path = line[3:].strip()
-                
+
                 if status.startswith("??"):
                     untracked.append(path)
                 elif status[0] != " ":
                     staged.append(path)
                 elif status[1] != " ":
                     unstaged.append(path)
-            
+
             return {
                 "branch": branch,
                 "staged": staged,
                 "unstaged": unstaged,
-                "untracked": untracked
+                "untracked": untracked,
             }
         except Exception as e:
             logger.error(f"Failed to get repository state: {e}")
@@ -1228,9 +1225,9 @@ class GitManager:
                 "branch": "unknown",
                 "staged": [],
                 "unstaged": [],
-                "untracked": []
+                "untracked": [],
             }
-    
+
     def get_current_branch(self) -> str:
         """
         Get the name of the current branch.
@@ -1283,27 +1280,27 @@ def determine_commit_type(diff_output: str) -> str:
     """
     # Convert diff to lowercase for case-insensitive matching
     diff_lower = diff_output.lower()
-    
+
     # Prioritize specific patterns
     if 'test' in diff_lower or 'pytest' in diff_lower or '_test.py' in diff_lower:
         return 'test'
-    
+
     if 'fix' in diff_lower or 'bug' in diff_lower or 'error' in diff_lower:
         return 'fix'
-    
+
     if 'docs' in diff_lower or 'readme' in diff_lower or 'documentation' in diff_lower:
         return 'docs'
-    
+
     if 'style' in diff_lower or 'format' in diff_lower or 'lint' in diff_lower:
         return 'style'
-    
+
     if 'refactor' in diff_lower or 'restructure' in diff_lower:
         return 'refactor'
-    
+
     # Check for new feature indicators
     if 'def ' in diff_lower or 'class ' in diff_lower or 'new ' in diff_lower:
         return 'feat'
-    
+
     # Default to chore for miscellaneous changes
     return 'chore'
 
@@ -1322,35 +1319,35 @@ def make_atomic_commit():
         return False
     # Initialize GitManager with current directory
     git_manager = GitManager(PWD)
-    
+
     # Stage all changes
     if not git_manager.stage_all_changes():
         logger.warning("No changes to commit or staging failed.")
         return False
-    
+
     # Generate commit message using OpenAI
     try:
         # Use universal newlines and explicit encoding to handle cross-platform diffs
         diff_output = subprocess.check_output(
-            ["git", "diff", "--staged"], 
-            cwd=PWD, 
+            ["git", "diff", "--staged"],
+            cwd=PWD,
             text=True,
             universal_newlines=True,
             encoding='utf-8',
-            errors='replace'  # Replace undecodable bytes
+            errors='replace',  # Replace undecodable bytes
         )
-        
+
         # Truncate diff if it's too long
         max_diff_length = 4000
         if len(diff_output) > max_diff_length:
             diff_output = diff_output[:max_diff_length] + "... (diff truncated)"
-        
+
         # Sanitize diff output to remove potentially problematic characters
         diff_output = ''.join(char for char in diff_output if ord(char) < 128)
-        
+
         # Determine commit type programmatically
         commit_type = determine_commit_type(diff_output)
-        
+
         prompt = f"""Generate a concise, descriptive commit message for the following git diff.
 The commit type has been determined to be '{commit_type}'.
 
@@ -1362,41 +1359,40 @@ Guidelines:
 - Keep message under 72 characters
 - Be specific about the changes
 - Prefer imperative mood"""
-        
+
         response = CLIENT.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": "You are a git commit message generator."},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ],
-            max_tokens=100
+            max_tokens=100,
         )
-        
+
         # Sanitize commit message
         raw_message = response.choices[0].message.content
         commit_message = ''.join(char for char in raw_message if ord(char) < 128)
-        
+
         # Ensure commit message starts with the determined type
         if not commit_message.startswith(f"{commit_type}:"):
             commit_message = f"{commit_type}: {commit_message}"
-        
+
         commit_message = extract_commit_message(commit_message)
-        
+
         # Validate commit message
         is_valid, validation_message = git_manager.validate_commit_message(commit_message)
-        
+
         if not is_valid:
             logger.warning(f"Generated commit message invalid: {validation_message}")
             commit_message = f"{commit_type}: Update project files ({time.strftime('%Y-%m-%d')})"
-        
+
         # Commit changes
         if git_manager.commit_changes(commit_message):
             logger.info(f"Committed changes: {commit_message}")
             return True
-        else:
-            logger.error("Commit failed")
-            return False
-    
+        logger.error("Commit failed")
+        return False
+
     except Exception as e:
         logger.error(f"Error in atomic commit: {e}")
         return False
@@ -1413,26 +1409,26 @@ def extract_commit_message(response: str) -> str:
     """
     # Remove leading/trailing whitespace
     response = response.strip()
-    
+
     # Extract from markdown code block
     code_block_match = re.search(r'```(?:markdown|commit)?(.+?)```', response, re.DOTALL)
     if code_block_match:
         response = code_block_match.group(1).strip()
-    
+
     # Extract from markdown inline code
     inline_code_match = re.search(r'`(.+?)`', response)
     if inline_code_match:
         response = inline_code_match.group(1).strip()
-    
+
     # Remove any leading type if already present
     type_match = re.match(r'^(feat|fix|docs|style|refactor|test|chore):\s*', response, re.IGNORECASE)
     if type_match:
         response = response[type_match.end():]
-    
+
     # Trim to 72 characters, respecting word boundaries
     if len(response) > 72:
         response = response[:72].rsplit(' ', 1)[0] + '...'
-    
+
     return response.strip()
 
 def restart_program():
@@ -1440,7 +1436,7 @@ def restart_program():
     logger.info("Restarting the program...")
     python = sys.executable
     os.execv(python, [python] + sys.argv)
-    
+
 class BaseWatcher(FileSystemEventHandler):
     """
     Base file system event handler for monitoring file changes.
@@ -1620,7 +1616,7 @@ def run_observer(observer: Observer):
     """
     observer.start()
     observer.join()
-    
+
 def main():
     """Main function to handle arguments and execute appropriate actions"""
     try:
@@ -1631,12 +1627,12 @@ def main():
             logger.info("Setting up project...")
             setup_project()
             return 0
-            
+
         if ARGS.update and ARGS.update_value:
             update_specific_file(ARGS.update, ARGS.update_value)
             if not ARGS.watch:
                 return 0
-                
+
         # Handle task management actions
         if ARGS.task_action:
             kwargs = {}
@@ -1648,7 +1644,7 @@ def main():
                 kwargs["status"] = ARGS.task_status
             if ARGS.task_note:
                 kwargs["note"] = ARGS.task_note
-                
+
             result = manage_task(ARGS.task_action, **kwargs)
             if result:
                 if isinstance(result, list):
@@ -1658,12 +1654,12 @@ def main():
                     logger.info(json.dumps(result.to_dict(), indent=2))
             if not ARGS.watch:
                 return 0
-                
+
         # Handle git management actions
         if ARGS.git_action:
             context = read_context_file()
             git_manager = context.get("git_manager")
-            
+
             if not git_manager and ARGS.git_repo:
                 try:
                     git_manager = GitManager(ARGS.git_repo)
@@ -1673,11 +1669,11 @@ def main():
                 except Exception as e:
                     logger.error(f"Failed to initialize git manager: {e}")
                     return 1
-            
+
             if not git_manager:
                 logger.error("No git repository configured. Use --git-repo to specify one.")
                 return 1
-            
+
             try:
                 if ARGS.git_action == "status":
                     state = git_manager.get_repository_state()
@@ -1711,7 +1707,7 @@ def main():
             except Exception as e:
                 logger.error(f"Git action failed: {e}")
                 return 1
-                
+
             if not ARGS.watch:
                 return 0
 
@@ -1809,7 +1805,7 @@ def manage_task(action: str, **kwargs):
     if "tasks" not in context:
         context["tasks"] = {}
     task_manager = TaskManager(context["tasks"])
-    
+
     result = None
     if action == "add":
         result = task_manager.add_task(kwargs["description"])
@@ -1831,7 +1827,7 @@ def manage_task(action: str, **kwargs):
             if line.strip() == "# tasks":
                 tasks_section_idx = i
                 break
-        
+
         if tasks_section_idx >= 0:
             # Find where to insert the new task (after the last task or after the tasks header)
             insert_idx = tasks_section_idx + 1
@@ -1842,11 +1838,11 @@ def manage_task(action: str, **kwargs):
                     while i + 1 < len(lines) and (lines[i + 1].startswith("Status:") or lines[i + 1].startswith("Note:")):
                         i += 1
                         insert_idx = i + 1
-            
+
             # Insert task at the correct position
             task_content = [
                 f"\n### Task {result.id}: {result.description}",
-                f"Status: {result.status}"
+                f"Status: {result.status}",
             ]
             lines[insert_idx:insert_idx] = task_content
             rules_content = "\n".join(lines)
@@ -1854,11 +1850,11 @@ def manage_task(action: str, **kwargs):
             # Append to the end
             rules_content += f"\n\n### Task {result.id}: {result.description}\n"
             rules_content += f"Status: {result.status}\n"
-        
+
         save_rules(rules_content)
         sys.stderr.write("\nTask added to .cursorrules file\n")
         sys.stderr.flush()
-        
+
         # If git manager exists, create a branch for the task
         if context.get("git_manager"):
             try:
@@ -1934,7 +1930,7 @@ def manage_task(action: str, **kwargs):
         result = task_manager.list_tasks(status)
     elif action == "get":
         result = task_manager.get_task(kwargs["task_id"])
-    
+
     # Update context file
     write_context_file(context)
     return result
@@ -1943,7 +1939,7 @@ def read_context_file() -> dict:
     """Read the context file"""
     try:
         if os.path.exists(CONTEXT_RULES_PATH):
-            with open(CONTEXT_RULES_PATH, "r") as f:
+            with open(CONTEXT_RULES_PATH) as f:
                 context = json.load(f)
                 if "tasks" not in context:
                     context["tasks"] = {}
@@ -1953,7 +1949,7 @@ def read_context_file() -> dict:
     return {
         "tasks": {},
         "repo_path": str(Path.cwd()),
-        "git_manager": None
+        "git_manager": None,
     }
 
 def write_context_file(context: dict) -> None:
@@ -1988,7 +1984,7 @@ def extract_project_name(content):
     """Extract project name from architecture content"""
     if not content:
         return ""
-    
+
     for line in content.split('\n'):
         if line.startswith("# "):
             return line[2:].strip()
@@ -2013,7 +2009,7 @@ def safe_read_file(file_path):
     }
     msg = ""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
         if file_path in error_message:

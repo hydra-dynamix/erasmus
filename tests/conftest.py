@@ -5,12 +5,12 @@ Test Configuration and Fixtures
 This module provides pytest fixtures and utilities for testing the Erasmus project.
 """
 
-import os
-import tempfile
-from pathlib import Path
-import pytest
-from typing import Generator, Dict
 import sys
+import tempfile
+from collections.abc import Generator
+from pathlib import Path
+
+import pytest
 
 # Add the src directory to the Python path
 src_path = str(Path(__file__).parent.parent / "src")
@@ -32,7 +32,7 @@ def temp_dir() -> Generator[Path, None, None]:
         yield Path(temp_dir)
 
 @pytest.fixture
-def setup_files(temp_dir: Path) -> Dict[str, Path]:
+def setup_files(temp_dir: Path) -> dict[str, Path]:
     """
     Create a dictionary of test setup files.
     
@@ -47,11 +47,11 @@ def setup_files(temp_dir: Path) -> Dict[str, Path]:
         "progress": temp_dir / "progress.md",
         "tasks": temp_dir / "tasks.md",
     }
-    
+
     # Create empty files
     for path in files.values():
         path.touch()
-        
+
     return files
 
 @pytest.fixture

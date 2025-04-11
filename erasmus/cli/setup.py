@@ -1,13 +1,13 @@
 """Setup command for environment configuration."""
-import os
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Dict, Optional, Callable
 
 import click
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
-from dotenv import load_dotenv
+
 from ..utils.context import setup_project
 
 load_dotenv()
@@ -18,14 +18,13 @@ def validate_ide_env(value: str) -> str:
     """Validate and transform IDE_ENV value."""
     # Convert to lowercase for consistency
     value = value.lower()
-    
+
     # Check first letter and standardize
     if value.startswith('c'):
         return 'cursor'
-    elif value.startswith('w'):
+    if value.startswith('w'):
         return 'windsurf'
-    else:
-        raise ValueError("IDE_ENV must start with 'C' for cursor or 'W' for windsurf")
+    raise ValueError("IDE_ENV must start with 'C' for cursor or 'W' for windsurf")
 
 def validate_base_url(value: str) -> str:
     """Validate OPENAI_BASE_URL value."""
@@ -33,41 +32,41 @@ def validate_base_url(value: str) -> str:
     localhost_pattern = r'^https?://localhost(?::\d+)?(?:/.*)?$'
     # Standard URL pattern
     url_pattern = r'^https?://[a-zA-Z0-9.-]+(?::\d+)?(?:/.*)?$'
-    
+
     if re.match(localhost_pattern, value) or re.match(url_pattern, value):
         return value
     raise ValueError("Invalid URL format. Must be a valid HTTP/HTTPS URL or localhost")
 
 # Validation rules for specific fields
-FIELD_VALIDATORS: Dict[str, Callable[[str], str]] = {
+FIELD_VALIDATORS: dict[str, Callable[[str], str]] = {
     'IDE_ENV': validate_ide_env,
     'OPENAI_BASE_URL': validate_base_url,
 }
 
-def read_env_example() -> Dict[str, str]:
+def read_env_example() -> dict[str, str]:
     """Read default values from .env.example file."""
     defaults = {}
     example_path = Path(".env.example")
-    
+
     if not example_path.exists():
         raise FileNotFoundError(".env.example not found. Please ensure it exists in the project root.")
-        
+
     with example_path.open() as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith('#'):
                 key, value = line.split('=', 1)
                 defaults[key.strip()] = value.strip()
-                
+
     return defaults
 
-def write_env_file(values: Dict[str, str]) -> None:
+def write_env_file(values: dict[str, str]) -> None:
     """Write values to .env file."""
     env_path = Path(".env")
-    
+
     # Ensure parent directory exists
     env_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with env_path.open('w') as f:
         for key, value in values.items():
             f.write(f"{key}={value}\n")
@@ -81,9 +80,9 @@ def create_default_env_example() -> None:
         f.write("OPENAI_BASE_URL=https://api.openai.com/v1\n")
         f.write("OPENAI_MODEL=gpt-4\n")
 
-def prompt_for_values(default_prompts: Dict[str, str], defaults: Dict[str, str]) -> Dict[str, str]:
+def prompt_for_values(default_prompts: dict[str, str], defaults: dict[str, str]) -> dict[str, str]:
     """Prompt user for each environment variable, showing defaults."""
-    
+
     console.print("\n[bold blue]Environment Configuration[/bold blue]")
     console.print("Press Enter to accept the default value or input a new value.\n")
     values = {}
@@ -93,82 +92,82 @@ def prompt_for_values(default_prompts: Dict[str, str], defaults: Dict[str, str])
                 # Show default and get user input
                 value = Prompt.ask(
                     prompt,
-                    default=defaults[key]
+                    default=defaults[key],
                 )
-                
+
                 # Apply validation if exists for this field
                 if key in FIELD_VALIDATORS:
                     value = FIELD_VALIDATORS[key](value)
-                    
+
                 values[key] = value
                 break  # Break the loop if validation passes
-                
+
             except ValueError as e:
-                console.print(f"[red]Error: {str(e)}[/red]")
+                console.print(f"[red]Error: {e!s}[/red]")
                 console.print("Please try again.")
-        
+
     return values
 
-def get_default_prompts(defaults: Dict[str, str]) -> Dict[str, str]:
+def get_default_prompts(defaults: dict[str, str]) -> dict[str, str]:
     """Get default prompts for each environment variable."""
     return {
         "IDE_ENV": f"Please enter your IDE environment windsurf/cursor[default: {defaults['IDE_ENV']}]",
         "OPENAI_API_KEY": f"Please enter your openai api key[default: {defaults['OPENAI_API_KEY']}]",
         "OPENAI_BASE_URL": f"Please enter your openai base url[default: {defaults['OPENAI_BASE_URL']}]",
         "OPENAI_MODEL": f"Please enter your openai model[default: {defaults['OPENAI_MODEL']}]",
-        "GIT_TOKEN": f"Please enter your git token[default: {defaults['GIT_TOKEN']}]"
+        "GIT_TOKEN": f"Please enter your git token[default: {defaults['GIT_TOKEN']}]",
     }
 
 def setup():
     """Set up environment configuration with interactive prompts."""
     setup_project()
     defaults = {}
-    
+
     try:
         load_dotenv()
         defaults = read_env_example()
     except FileNotFoundError as e:
-        console.print(f"\n[red]Error: {str(e)}[/red]")
+        console.print(f"\n[red]Error: {e!s}[/red]")
         if click.confirm("Would you like to create a default .env.example?", default=False):
             create_default_env_example()
             console.print("[green].env.example created with default values.[/green]")
             defaults = read_env_example()
         else:
             console.print("[red]Setup cancelled. Please create .env.example and try again.[/red]")
-            return
-    
+            return None
+
     # Validate defaults
     for key, value in defaults.items():
         if key in FIELD_VALIDATORS:
             try:
                 defaults[key] = FIELD_VALIDATORS[key](value)
             except ValueError as e:
-                console.print(f"[red]Warning: Default value for {key} is invalid: {str(e)}[/red]")
+                console.print(f"[red]Warning: Default value for {key} is invalid: {e!s}[/red]")
 
     # Check if .env already exists
     if Path(".env").exists():
         overwrite = Prompt.ask(
             "\n[yellow].env file already exists. Do you want to reconfigure?[/yellow]",
             choices=["y", "n"],
-            default="n"
+            default="n",
         )
         if overwrite.lower() != "y":
             console.print("[red]Setup cancelled.[/red]")
-            return
+            return None
     try:
         default_prompts = get_default_prompts(defaults)
         # Prompt for values
         values = prompt_for_values(default_prompts, defaults)
-        
+
         # Write to .env file
         write_env_file(values)
-        
+
         console.print("\n[green]Environment configuration completed successfully![/green]")
         console.print("The .env file has been created with your settings.")
-        
+
     except Exception as e:
-        console.print(f"\n[red]Error during setup: {str(e)}[/red]")
-        return 1  # Return error code instead of raising 
+        console.print(f"\n[red]Error during setup: {e!s}[/red]")
+        return 1  # Return error code instead of raising
 
 if __name__ == "__main__":
     setup()
