@@ -19,6 +19,11 @@ logger = get_logger(__name__)
 PWD = Path(__file__).parent
 CLIENT = None
 OPENAI_MODEL = None
+PROJECT_MARKER = f"""
+{"="*40}
+## Current Project:
+{"="*40}
+"""
 
 def get_openai_credentials():
     """Get OpenAI credentials from environment variables."""
@@ -68,6 +73,17 @@ console = console.Console()
 
 # Define ASCII character limit constant
 ASCII_CHAR_LIMIT = 128
+
+def scrub_non_ascii(text: str) -> str:
+    """Remove non-standard ASCII characters from text.
+
+    Args:
+        text: The text to scrub
+
+    Returns:
+        str: The text with only standard ASCII characters
+    """
+    return ''.join(char for char in text if ord(char) < ASCII_CHAR_LIMIT)
 
 
 class ProcessError(Exception):
@@ -127,7 +143,7 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
     """Update the context with current file contents."""
     setup_paths = SetupPaths.with_project_root(Path.cwd())
     rules_path = setup_paths.rules_file
-    global_rules_path = Path("global_rules.md")
+    global_rules_path = setup_paths.global_rules_file
 
     # Add architecture if available
     arch_path = setup_paths.markdown_files.architecture
@@ -144,10 +160,16 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
     if tasks_path.exists():
         context["tasks"] = read_file(tasks_path)
 
+    # Scrub non-ASCII characters only when writing to rules files
+    scrubbed_context = {
+        key: scrub_non_ascii(value) if isinstance(value, str) else value
+        for key, value in context.items()
+    }
+
     # Write updated context
-    write_file(rules_path, json.dumps(context, indent=2), backup=backup)
+    write_file(rules_path, json.dumps(scrubbed_context, indent=2), backup=backup)
     if global_rules_path.exists():
-        write_file(global_rules_path, json.dumps(context, indent=2), backup=backup)
+        write_file(global_rules_path, json.dumps(scrubbed_context, indent=2), backup=backup)
     return context
 
 def setup_project() -> None:
@@ -266,11 +288,13 @@ def cleanup_project() -> None:
     with LogContext(logger, "cleanup_project"):
         setup_paths = SetupPaths.with_project_root(Path.cwd())
         rules_path = setup_paths.rules_file
+
         files_to_remove = [
-            str(rules_path),
-            "global_rules.md",
+            rules_path,
         ]
-        logger.debug(f"Files to clean up: {files_to_remove}")
+        files_to_rm_string = [str(path) for path in files_to_remove]
+        files_to_rm_string.append(".env")
+        logger.debug(f"Files to clean up: {files_to_rm_string}")
 
         # First, create backups of all files
         for filename in files_to_remove:
@@ -502,10 +526,10 @@ def store_context(setup_paths: SetupPaths) -> bool:
         if not arch_context_dir.exists():
             arch_context_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy files to context directory
-        shutil.copy2(architecture_file, arch_context_dir / "architecture.md")
-        shutil.copy2(progress_file, arch_context_dir / "progress.md")
-        shutil.copy2(tasks_file, arch_context_dir / "tasks.md")
+        # Copy files to context directory preserving original content
+        write_file(arch_context_dir / "architecture.md", architecture_file.read_text())
+        write_file(arch_context_dir / "progress.md", progress_file.read_text())
+        write_file(arch_context_dir / "tasks.md", tasks_file.read_text())
 
         # Clear original files if needed
         architecture_file.write_text("")
@@ -517,6 +541,17 @@ def store_context(setup_paths: SetupPaths) -> bool:
     except Exception:
         logger.exception("Failed to store context")
         return False
+
+def handle_agent_context(setup_paths: SetupPaths, context: str) -> bool:
+    """Handles agent context"""
+    if not context.lower().strip("# ").startswith("agent"):
+        return context
+    current_architecture = setup_paths.markdown_files.architecture.read_text()
+    if current_architecture.strip("# ").startswith("project"):
+        context += PROJECT_MARKER
+        context += current_architecture
+        
+    return context
 
 def restore_context(setup_paths: SetupPaths, arch_context_dir: Path) -> bool:
     """Restore the context from the context directory.
@@ -534,6 +569,7 @@ def restore_context(setup_paths: SetupPaths, arch_context_dir: Path) -> bool:
         if not arch_context_dir.exists():
             logger.error("Context directory does not exist: %s", arch_context_dir)
             return False
+        
 
         architecture_file = arch_context_dir / "architecture.md"
         progress_file = arch_context_dir / "progress.md"

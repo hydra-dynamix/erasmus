@@ -8,14 +8,7 @@ __pycache__/
 *.pyz
 *.pywz
 .venv
-.windsurfrules
-.cursorrules
-architecture.md
-progress.md
-tasks.md
-global_rules.md
 uv.lock
 .coverage
 *.log
-.cursor
 gamesync_demo
