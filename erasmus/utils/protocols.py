@@ -15,11 +15,18 @@ class Protocol(BaseModel):
     description: str
     persona: str
 
-DEFAULT_PROTOCOL = Protocol(
-    name="default",
-    description="Default protocol",
-    persona="default"
-)
+PROTOCOL_PROJECT_OWNER = Protocol(
+    name="project_owner",
+    description="Project owner agent responsible for overseeing the core tracking documentation",
+    protocol="""
+
+""")
+
+PROTOCOL_DEVELOPER = Protocol(
+    name="developer",
+    description="Developer agent responsible for generating code",
+    protocol="""
+""")
 
 class ProtocolManager(BaseModel):
     current_protocol: Protocol

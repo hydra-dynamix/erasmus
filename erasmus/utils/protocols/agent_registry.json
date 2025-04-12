@@ -1,0 +1,209 @@
+{
+  "agents": [
+    {
+      "name": "Orchestration Agent",
+      "file_path": "erasmus/utils/protocols/orchestration.md",
+      "role": "workflow_coordination",
+      "triggers": ["project_start", "performance_verified"],
+      "produces": ["workflow_status", "agent_assignments"],
+      "consumes": ["all_agent_outputs"]
+    },
+    {
+      "name": "Product Owner Agent",
+      "file_path": "erasmus/utils/protocols/product_owner.md",
+      "role": "project_planning",
+      "triggers": ["project_initiation"],
+      "produces": ["architecture.md", "progress.md"],
+      "consumes": ["user_request.md"]
+    },
+    {
+      "name": "Developer Agent",
+      "file_path": "erasmus/utils/protocols/developer.md",
+      "role": "code_implementation",
+      "triggers": [
+        "architecture_complete", 
+        "code_review_issues", 
+        "test_failures", 
+        "style_issues", 
+        "security_issues", 
+        "performance_issues"
+      ],
+      "produces": ["implementation_code", "tasks.md"],
+      "consumes": ["architecture.md", "progress.md", "debug_reports", "style_reports"]
+    },
+    {
+      "name": "Testing Agent",
+      "file_path": "erasmus/utils/protocols/testing.md",
+      "role": "test_development",
+      "triggers": ["code_implementation", "code_changes"],
+      "produces": ["test_files", "test_results"],
+      "consumes": ["implementation_code", "tasks.md", "architecture.md"]
+    },
+    {
+      "name": "Style Agent",
+      "file_path": "erasmus/utils/protocols/style.md",
+      "role": "code_style_verification",
+      "triggers": ["code_implementation", "code_changes"],
+      "produces": ["style_reports", "linting_fixes"],
+      "consumes": ["implementation_code"]
+    },
+    {
+      "name": "Code Review Agent",
+      "file_path": "erasmus/utils/protocols/code_review.md",
+      "role": "code_quality_assessment",
+      "triggers": ["tests_passing", "style_verified"],
+      "produces": ["review_comments", "approval"],
+      "consumes": ["implementation_code", "test_files", "style_reports"]
+    },
+    {
+      "name": "Security Agent",
+      "file_path": "erasmus/utils/protocols/security.md",
+      "role": "security_verification",
+      "triggers": ["code_review_passed"],
+      "produces": ["security_reports", "vulnerability_fixes"],
+      "consumes": ["implementation_code"]
+    },
+    {
+      "name": "Documentation Agent",
+      "file_path": "erasmus/utils/protocols/documentation.md",
+      "role": "documentation_management",
+      "triggers": ["code_review_passed"],
+      "produces": ["readme", "api_docs", "inline_comments"],
+      "consumes": ["implementation_code", "architecture.md", "test_files"]
+    },
+    {
+      "name": "CI/CD Agent",
+      "file_path": "erasmus/utils/protocols/cidc.md",
+      "role": "continuous_integration",
+      "triggers": ["security_verified", "docs_updated"],
+      "produces": ["build_artifacts", "deployment_configs"],
+      "consumes": ["implementation_code", "security_reports"]
+    },
+    {
+      "name": "Performance Agent",
+      "file_path": "erasmus/utils/protocols/performance.md",
+      "role": "performance_optimization",
+      "triggers": ["deployment_ready"],
+      "produces": ["performance_reports", "optimization_recommendations"],
+      "consumes": ["implementation_code", "build_artifacts"]
+    },
+    {
+      "name": "Debug Agent",
+      "file_path": "erasmus/utils/protocols/debugging.md",
+      "role": "issue_diagnosis",
+      "triggers": ["test_failures"],
+      "produces": ["debug_reports", "fix_recommendations"],
+      "consumes": ["implementation_code", "test_results"]
+    }
+  ],
+  "workflow_transitions": [
+    {
+      "from_agent": "Orchestration Agent",
+      "to_agent": "Product Owner Agent",
+      "trigger": "project_start",
+      "artifact": "project_initiation"
+    },
+    {
+      "from_agent": "Product Owner Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "architecture_complete",
+      "artifact": "architecture.md"
+    },
+    {
+      "from_agent": "Developer Agent",
+      "to_agent": "Testing Agent",
+      "trigger": "code_implementation",
+      "artifact": "implementation_code"
+    },
+    {
+      "from_agent": "Developer Agent",
+      "to_agent": "Style Agent",
+      "trigger": "code_implementation",
+      "artifact": "implementation_code"
+    },
+    {
+      "from_agent": "Testing Agent",
+      "to_agent": "Code Review Agent",
+      "trigger": "tests_passing",
+      "artifact": "test_results"
+    },
+    {
+      "from_agent": "Testing Agent",
+      "to_agent": "Debug Agent",
+      "trigger": "test_failures",
+      "artifact": "test_results"
+    },
+    {
+      "from_agent": "Style Agent",
+      "to_agent": "Code Review Agent",
+      "trigger": "style_verified",
+      "artifact": "style_reports"
+    },
+    {
+      "from_agent": "Style Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "style_issues",
+      "artifact": "style_reports"
+    },
+    {
+      "from_agent": "Debug Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "issues_identified",
+      "artifact": "debug_reports"
+    },
+    {
+      "from_agent": "Code Review Agent",
+      "to_agent": "Documentation Agent",
+      "trigger": "code_review_passed",
+      "artifact": "approval"
+    },
+    {
+      "from_agent": "Code Review Agent",
+      "to_agent": "Security Agent",
+      "trigger": "code_review_passed",
+      "artifact": "approval"
+    },
+    {
+      "from_agent": "Code Review Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "code_review_issues",
+      "artifact": "review_comments"
+    },
+    {
+      "from_agent": "Security Agent",
+      "to_agent": "CI/CD Agent",
+      "trigger": "security_verified",
+      "artifact": "security_reports"
+    },
+    {
+      "from_agent": "Security Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "security_issues",
+      "artifact": "security_reports"
+    },
+    {
+      "from_agent": "Documentation Agent",
+      "to_agent": "CI/CD Agent",
+      "trigger": "docs_updated",
+      "artifact": "readme"
+    },
+    {
+      "from_agent": "CI/CD Agent",
+      "to_agent": "Performance Agent",
+      "trigger": "deployment_ready",
+      "artifact": "build_artifacts"
+    },
+    {
+      "from_agent": "Performance Agent",
+      "to_agent": "Orchestration Agent",
+      "trigger": "performance_verified",
+      "artifact": "performance_reports"
+    },
+    {
+      "from_agent": "Performance Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "performance_issues",
+      "artifact": "performance_reports"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Product Owner Agent",
+  "file_path": "erasmus/utils/protocols/product_owner.md",
+  "role": "project_planning",
+  "triggers": [
+    "project_initiation"
+  ],
+  "produces": [
+    "architecture.md",
+    "progress.md"
+  ],
+  "consumes": [
+    "user_request.md"
+  ]
+}

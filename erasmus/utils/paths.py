@@ -1,4 +1,5 @@
 """Path management for Erasmus project files."""
+
 import os
 from pathlib import Path
 
@@ -6,7 +7,6 @@ from pydantic import BaseModel, Field
 
 
 class FilePaths(BaseModel):
-
     @classmethod
     def set_attribute(cls, name, value):
         if hasattr(cls, name):
@@ -74,8 +74,10 @@ class RulesPaths(FilePaths):
         default=Path.home() / ".codeium" / "windsurf" / "memories" / "global_rules.md",
         description="Windsurf global rules file",
     )
+
     def get_rule_file(self) -> Path:
         from dotenv import load_dotenv
+
         load_dotenv()
         ide_env = os.getenv("IDE_ENV", "").lower()
         if ide_env.startswith("w"):
@@ -86,6 +88,7 @@ class RulesPaths(FilePaths):
 
     def get_global_rules_file(self) -> Path:
         from dotenv import load_dotenv
+
         load_dotenv()
         ide_env = os.getenv("IDE_ENV", "").lower()
         if ide_env.startswith("w"):
@@ -104,6 +107,7 @@ class RulesPaths(FilePaths):
             "windsurf_global": self.windsurf_global,
         }
 
+
 class ScriptPaths(FilePaths):
     script: Path = Field(
         default=Path().cwd() / "erasmus.py",
@@ -117,11 +121,29 @@ class ScriptPaths(FilePaths):
             "script": self.script,
         }
 
+
 class SetupPaths(FilePaths):
-    """Manages paths for project files and watchers."""
+    """Paths for project setup and configuration."""
+
     project_root: Path = Field(
         default=Path.cwd(),
-        description="Root of the project directory",
+        description="Root directory of the project",
+    )
+    config_dir: Path = Field(
+        default=Path.cwd() / ".erasmus",
+        description="Configuration directory",
+    )
+    cache_dir: Path = Field(
+        default=Path.cwd() / ".erasmus" / "cache",
+        description="Cache directory",
+    )
+    logs_dir: Path = Field(
+        default=Path.cwd() / ".erasmus" / "logs",
+        description="Logs directory",
+    )
+    protocols_dir: Path = Field(
+        default=Path.cwd() / "erasmus" / "utils" / "protocols",
+        description="Protocols directory",
     )
     env_file: Path = Field(
         default=Path.cwd() / ".env",
@@ -144,7 +166,7 @@ class SetupPaths(FilePaths):
     _global_rules_file: Path | None = None
 
     @classmethod
-    def with_project_root(cls, project_root: Path | str) -> 'SetupPaths':
+    def with_project_root(cls, project_root: Path | str) -> "SetupPaths":
         """Create a SetupPaths instance with a specific project root.
 
         Args:

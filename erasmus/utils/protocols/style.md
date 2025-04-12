@@ -1,4 +1,13 @@
-# Agent-Code Linting and Style
+# Style Agent
+
+<!-- 
+AGENT_METADATA
+role: code_style_verification
+triggers: code_implementation, code_changes
+produces: style_reports, linting_fixes
+consumes: implementation_code
+-->
+
 
 ## Overview
 

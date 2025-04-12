@@ -1,227 +1,99 @@
-#  Project-Python Script Packager with Cross-Platform `uv` Bootstrap
+# Project-Erasmus: Automated Context Manager
 
-##  Overview
+## Overview
+A single-file context watcher for cursor and windsurf, designed to streamline project initialization, development tracking, and version management.
 
-This tool is a **Python script bundler** that packages a project into a **single, standalone executable script**. It recursively gathers `.py` files, merges them into one file, collects all `import` statements, and **bootstraps runtime dependencies using [uv](https://github.com/astral-sh/uv)**.
+## Key Components
+- `watcher.py`: Main application orchestrating project setup and management
+- `src/git_manager.py`: Atomic commit git management system
+- `.cursorrules` and `.windsurfrules`: Context injection files for respective IDEs
 
-The final output is a **platform-aware, cross-compatible script** that:
-- Works on **Linux, macOS, and Windows**
-- **Installs `uv` automatically** if missing
-- Infers and installs required packages using `uv add`
-- Runs itself using `uv run`
-- Requires **no virtual environments, no `requirements.txt`, and no pip**
+## Technology Stack
 
----
+### Prerequisites
+- **Windows**
+  - winget (Microsoft App Installer)
+  - Python 3.8+
+- **macOS**
+  - Homebrew
+  - Python 3.8+
+- **Linux**
+  - curl
+  - Python 3.8+
 
-##  Goals
+### Package Management
+- **Python: `uv` package manager**
+  - Windows: Installed via winget
+  - macOS: Installed via Homebrew
+  - Linux: Installed via curl script
+  - Dependency management directly in `watcher.py`
+  - Single-script dependency tracking
 
--  Convert a Python project into a single executable script
--  Automatically infer external dependencies from imports
--  Use `uv` to install and run dependencies in a temporary env
--  Support both Unix (bash) and Windows (batch) execution
--  Guarantee zero setup beyond Python and basic tools (`curl`, `winget`)
+- **Development Tools**
+  - Logging: Rich logging with clear terminal output
+  - File Watching: `watchdog` for monitoring context files
+  - AI Integration: Local OpenAI client for commit message generation
 
----
+## Workflow Stages
 
-##  Features
+### 1. Project Initialization
+- Create essential project files and directories:
+  - `ARCHITECTURE.md`: Project architecture documentation
+  - `progress.md`: Development progress tracking
+  - `tasks.md`: Granular task management
+  - `.IDErules`: Bundled context for IDE integration
+  - `global_rules.md`: Global development guidelines
+  - `context_watcher.log`: Comprehensive project logs
 
-| Feature                            | Description |
-|------------------------------------|-------------|
-|  Static import parsing            | Detects and de-duplicates imports using `ast` |
-|  Dependency inference             | Resolves which packages are required from imports |
-|  Standard lib filtering           | Excludes stdlib modules from `uv add` |
-|  No extra files                   | No `venv`, no `requirements.txt`, no pip needed |
-|  Clean CLI                        | Use `python -m packager` to bundle |
-|  Cross-platform bootstrapping     | Works with Bash (Linux/macOS) and Batch (Windows) |
-|  Single script output             | One file with shell header, dependency install, and Python code |
+### 2. Environment Setup
+- Virtual Environment Configuration
+  - Python:
+    - `uv` as package manager
+    - `pytest` for comprehensive testing
+  - Node:
+    - `pnpm` as package manager
+    - `jest` for testing
+    - `puppeteer` for E2E testing
+  - Rust:
+    - `cargo` as package manager
+    - Native Rust testing framework
+    - `mockito` for mocking
 
----
+- Environment Variable Management
+  - Generate `.env.example`
+  - Create `.env` with placeholder values
 
-##  Architecture
+### 3. Development Workflow
+- Automated Development Cycle:
+  1. Generate tests for current task
+  2. Implement task code
+  3. Run and validate tests
+  4. Iterative error correction
+  5. Update task and progress status
+  6. Proceed to next component
 
-```
-packager/
- __main__.py         # CLI interface
- collector.py        # Recursively finds Python files
- parser.py           # Parses imports using AST
- builder.py          # Merges stripped code bodies and imports
- uv_wrapper.py       # Adds OS-aware shell and batch bootstrap
- mapping.py          # Optional import-to-PyPI mapping
- stdlib.py           # Contains stdlib detection for filtering
-```
+### 4. Packaging and Distribution
+- Single File Installer Requirements
+  - All dependencies recorded via `uv`
+  - Initialization via `uv run watcher.py --setup IDE_ENVIRONMENT`
+  - Cross-platform installation scripts
+    - `.sh` for Unix-like systems
+    - `.bat` for Windows
 
----
+### 5. Version Control and Validation
+- Repository: https://github.com/bakobiibizo/erasmus
+- Versioning system with cryptographic hash validation
+- Separate build and release directories
 
-##  Detailed Component Design
+## IDE Compatibility
+- cursor: `.cursorrules` context injection
+- windsurf: `.windsurfrules` context injection
+- Global rules configurable in respective IDE settings
 
-### `collector.py`
-```python
-def collect_py_files(base_path: str) -> List[str]:
-    # Recursively yield all .py files
-```
+## Project Goal
+Consolidate git management into a single, portable `watcher.py` that simplifies project setup and management across different development environments.
 
----
-
-### `parser.py`
-```python
-def extract_imports(source: str) -> Set[str]:
-    # Uses ast to extract 'import x' and 'from x import y'
-
-def strip_imports(source: str) -> str:
-    # Removes import lines, returns only the executable code
-```
-
----
-
-### `mapping.py` (Optional)
-```python
-# Maps import names to PyPI packages
-PYPI_MAP = {
-    "cv2": "opencv-python",
-    "PIL": "pillow",
-}
-```
-
----
-
-### `stdlib.py`
-```python
-# Uses sys.stdlib_module_names or external stdlib-list
-def is_stdlib_module(name: str) -> bool:
-    return name in stdlib_modules
-```
-
----
-
-### `builder.py`
-```python
-def build_script(files: List[str]) -> Tuple[Set[str], str]:
-    # Combines:
-    # 1. Unique import names (stripped of stdlib)
-    # 2. Combined code body with imports removed
-```
-
----
-
-### `uv_wrapper.py`
-```python
-def generate_script(imports: Set[str], code: str) -> str:
-    # Returns final script string with:
-    # - Shebang
-    # - OS check (bash or batch)
-    # - uv install logic (curl or winget)
-    # - uv add <packages>
-    # - uv run path-to-script
-    # - Embedded Python code
-```
-
----
-
-### `__main__.py`
-```python
-# CLI wrapper
-# Usage: python -m packager --input src/ --output packed.sh
-```
-
----
-
-##  Output Script Structure
-
-```bash
-#!/bin/bash
-# Cross-platform uv bootstrap
-OS=$(uname -s)
-
-if [[ "$OS" == "Linux" || "$OS" == "Darwin" ]]; then
-  if ! command -v uv >/dev/null; then
-    echo "Installing uv..."
-    if ! command -v curl >/dev/null; then
-      echo "Missing 'curl'. Please install it."
-      exit 1
-    fi
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.cargo/bin:$PATH"
-  fi
-
-  uv add rich typer requests
-  uv run "$0" "$@"
-  exit $?
-fi
-
-REM Windows fallback
-@echo off
-where uv >nul 2>nul
-if %errorlevel% neq 0 (
-  echo Installing uv using winget...
-  winget install --id=astral-sh.uv -e
-)
-
-uv add rich typer requests
-uv run "%~f0" %*
-exit /b
-```
-
-_Followed by Python code:_
-
-```python
-#!/usr/bin/env python
-import typer
-import requests
-
-def main():
-    print("Hello from bundled script!")
-
-if __name__ == "__main__":
-    main()
-```
-
----
-
-##  Testing Strategy
-test
-Test Cases:
-
-| Scenario                    | Linux | macOS | Windows |
-|----------------------------|-------|-------|---------|
-| No `uv` installed          |     |     |       |
-| No `curl`                  |     |     | N/A     |
-| No `winget`                | N/A   | N/A   |       |
-| Missing dependency         |     |     |       |
-| Nested import structure    |     |     |       |
-| Works with entrypoint code |     |     |       |
-
----
-
-##  Requirements
-
-| Tool     | Use                |
-|----------|--------------------|
-| `ast`    | Static parsing     |
-| `uv`     | Runtime environment |
-| `curl`   | Unix installer     |
-| `winget` | Windows installer  |
-| Python 3.8+ | Runtime & toolchain |
-
----
-
-##  Future Improvements
-
-- Package metadata injection (name/version/help)
-- GUI/UX wrapper for non-devs
-- Compression/minification support
-- Add support for `.env` or config files
-- Optional `pyproject.toml` parser for metadata
-
----
-
-##  Summary
-
-This Python packager is a **fully cross-platform script bundler** that requires:
-- No setup
-- No environments
-- No external files
-
-It outputs a **single script** that:
-- Bootstraps its dependencies using `uv`
-- Installs `uv` if necessary
-- Runs itself cleanly on any modern system
+## Future Considerations
+- Expand IDE compatibility
+- Enhance AI-driven development workflows
+- Improve cross-platform support
