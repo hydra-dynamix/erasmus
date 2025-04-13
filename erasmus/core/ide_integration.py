@@ -1,15 +1,19 @@
+"""IDE integration module."""
+
 import json
 import logging
 from pathlib import Path
 
-from erasmus.cli.setup import validate_ide_env
+from erasmus.utils.paths import SetupPaths
 from erasmus.utils.file_ops import safe_read_file, safe_write_file
 
+logger = logging.getLogger(__name__)
 
-def start(self) -> None:
-    """Start the cursor IDE integration."""
-    ide_env = validate_ide_env()
-    rules_file = Path(f".{ide_env.lower()}rules")
+
+def start() -> None:
+    """Start the IDE integration."""
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+    rules_file = setup_paths.rules_file
 
     try:
         # Try to read existing rules

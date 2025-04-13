@@ -1,16 +1,21 @@
 """Context management utilities for Erasmus."""
+
 import json
 import shutil
 import subprocess
 import time
+import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 from rich import console
 
 from erasmus.git.manager import GitManager
 from erasmus.utils.logging import LogContext, get_logger, log_execution
 from erasmus.utils.paths import SetupPaths
+from erasmus.utils.protocols.manager import ProtocolManager
+from erasmus.utils.protocols import Protocol
+from erasmus.utils.protocols.context import Context
 
 # Configure logging
 logger = get_logger(__name__)
@@ -20,26 +25,29 @@ PWD = Path(__file__).parent
 CLIENT = None
 OPENAI_MODEL = None
 PROJECT_MARKER = f"""
-{"="*40}
+{"=" * 40}
 ## Current Project:
-{"="*40}
+{"=" * 40}
 """
+
 
 def get_openai_credentials():
     """Get OpenAI credentials from environment variables."""
     import os
+
     api_key = os.environ.get("OPENAI_API_KEY")
     base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
     model = os.environ.get("OPENAI_MODEL")
     return api_key, base_url, model
 
+
 def extract_commit_message(message: str) -> str:
     """Extract the first line of a commit message and ensure it's properly formatted."""
     # Get the first line
-    first_line = message.split('\n')[0].strip()
+    first_line = message.split("\n")[0].strip()
 
     # Remove any quotes that might have been added
-    first_line = first_line.strip('"\'')
+    first_line = first_line.strip("\"'")
 
     # Truncate if too long
     if len(first_line) > 72:
@@ -47,18 +55,19 @@ def extract_commit_message(message: str) -> str:
 
     return first_line
 
+
 def determine_commit_type(diff_output: str) -> str:
     """Determine the commit type based on the diff content."""
     diff_lower = diff_output.lower()
 
     # Define patterns for different commit types
     patterns = {
-        'test': ['test', 'spec', '_test.py', 'pytest'],
-        'fix': ['fix', 'bug', 'error', 'issue', 'crash', 'problem'],
-        'docs': ['docs', 'documentation', 'readme', 'comment'],
-        'style': ['style', 'format', 'lint', 'pretty', 'whitespace'],
-        'refactor': ['refactor', 'restructure', 'cleanup', 'clean up', 'simplify'],
-        'feat': ['feat', 'feature', 'add', 'new', 'implement'],
+        "test": ["test", "spec", "_test.py", "pytest"],
+        "fix": ["fix", "bug", "error", "issue", "crash", "problem"],
+        "docs": ["docs", "documentation", "readme", "comment"],
+        "style": ["style", "format", "lint", "pretty", "whitespace"],
+        "refactor": ["refactor", "restructure", "cleanup", "clean up", "simplify"],
+        "feat": ["feat", "feature", "add", "new", "implement"],
     }
 
     # Check each pattern
@@ -67,12 +76,14 @@ def determine_commit_type(diff_output: str) -> str:
             return commit_type
 
     # Default to chore
-    return 'chore'
+    return "chore"
+
 
 console = console.Console()
 
 # Define ASCII character limit constant
 ASCII_CHAR_LIMIT = 128
+
 
 def scrub_non_ascii(text: str) -> str:
     """Remove non-standard ASCII characters from text.
@@ -83,11 +94,12 @@ def scrub_non_ascii(text: str) -> str:
     Returns:
         str: The text with only standard ASCII characters
     """
-    return ''.join(char for char in text if ord(char) < ASCII_CHAR_LIMIT)
+    return "".join(char for char in text if ord(char) < ASCII_CHAR_LIMIT)
 
 
 class ProcessError(Exception):
     """Exception raised when a process fails."""
+
 
 def read_file(path: Path) -> str:
     """Read a file and return its contents."""
@@ -97,12 +109,14 @@ def read_file(path: Path) -> str:
         console.print(f"Error reading {path}: {e}", style="red")
         return ""
 
+
 def backup_rules_file(file_path: Path) -> None:
     """Create a backup of a rules file if it exists."""
     if file_path.exists():
         backup_path = file_path.parent / f"{file_path.name}.old"
         shutil.copy2(file_path, backup_path)
         console.print(f"Created backup at {backup_path}")
+
 
 def write_file(path: Path, content: str, backup: bool = False) -> bool:
     """Write content to a file, optionally creating a backup."""
@@ -119,11 +133,14 @@ def write_file(path: Path, content: str, backup: bool = False) -> bool:
         console.print(f"Error writing to {path}: {e}", style="red")
         return False
 
+
 def get_rules_path() -> Path:
     """Get the appropriate rules file path based on IDE_ENV."""
     from pathlib import Path
+
     setup_paths = SetupPaths.with_project_root(Path.cwd())
     return setup_paths.rules_file
+
 
 def restore_rules_backup() -> bool:
     """Restore rules from backup if available."""
@@ -139,26 +156,31 @@ def restore_rules_backup() -> bool:
             console.print(f"Error restoring backup: {e}", style="red")
     return False
 
+
 def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, Any]:
     """Update the context with current file contents."""
     setup_paths = SetupPaths.with_project_root(Path.cwd())
-    rules_path = setup_paths.rules_file
-    global_rules_path = setup_paths.global_rules_file
 
     # Add architecture if available
-    arch_path = setup_paths.markdown_files.architecture
-    if arch_path.exists():
-        context["architecture"] = read_file(arch_path)
+    architecture_path = setup_paths.markdown_files["architecture"]
+    if architecture_path.exists():
+        context["architecture"] = read_file(architecture_path)
 
     # Add progress if available
-    progress_path = setup_paths.markdown_files.progress
+    progress_path = setup_paths.markdown_files["progress"]
     if progress_path.exists():
         context["progress"] = read_file(progress_path)
 
     # Add tasks if available
-    tasks_path = setup_paths.markdown_files.tasks
+    tasks_path = setup_paths.markdown_files["tasks"]
     if tasks_path.exists():
         context["tasks"] = read_file(tasks_path)
+
+    # Handle protocol context if a protocol is active
+    if "current_protocol" in context:
+        success = handle_protocol_context(setup_paths, context["current_protocol"])
+        if not success:
+            logger.warning(f"Failed to update protocol context for {context['current_protocol']}")
 
     # Scrub non-ASCII characters only when writing to rules files
     scrubbed_context = {
@@ -166,24 +188,30 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
         for key, value in context.items()
     }
 
+    # Get the correct rules file path based on IDE environment
+    rules_context_path = setup_paths.rules_file
+
     # Write updated context
-    write_file(rules_path, json.dumps(scrubbed_context, indent=2), backup=backup)
-    if global_rules_path.exists():
-        write_file(global_rules_path, json.dumps(scrubbed_context, indent=2), backup=backup)
+    if rules_context_path.exists():
+        write_file(rules_context_path, json.dumps(scrubbed_context, indent=2), backup=backup)
     return context
+
 
 def setup_project() -> None:
     """Set up a new project with necessary files."""
     # Import logging here to avoid circular imports
     from erasmus.utils.logging import get_logger
+
     logger = get_logger(__name__)
 
     # Make sure .env is loaded
     from dotenv import load_dotenv
+
     load_dotenv()
 
     # Check IDE environment before creating SetupPaths
     import os
+
     ide_env = os.getenv("IDE_ENV", "").lower()
     logger.info(f"Setup project detected IDE environment: '{ide_env}'")
 
@@ -191,12 +219,31 @@ def setup_project() -> None:
 
     # Create required files
     files = {
-        str(setup_paths.markdown_files.architecture): "# Project architecture\n\nDescribe your project architecture here.",
-        str(setup_paths.markdown_files.progress): "# Development progress\n\nTrack your development progress here.",
-        str(setup_paths.markdown_files.tasks): "# Project tasks\n\nList your project tasks here.",
+        str(
+            setup_paths.markdown_files["architecture"]
+        ): "# Project architecture\n\nDescribe your project architecture here.",
+        str(
+            setup_paths.markdown_files["progress"]
+        ): "# Development progress\n\nTrack your development progress here.",
+        str(
+            setup_paths.markdown_files["tasks"]
+        ): "# Project tasks\n\nList your project tasks here.",
         ".env.example": "IDE_ENV=\nOPENAI_API_KEY=\nOPENAI_BASE_URL=\nOPENAI_MODEL=",
         ".gitignore": ".env\n__pycache__/\n*.pyc\n.pytest_cache/\n",
     }
+
+    # Add script files
+    for script_name, script_path in setup_paths.script_files.items():
+        files[str(script_path)] = f"""#!/usr/bin/env python3
+# {script_name} script
+
+def main():
+    # Add your {script_name} commands here
+    print(f"Running {script_name} script...")
+
+if __name__ == "__main__":
+    main()
+"""
 
     # Try to restore from backup first
     if not restore_rules_backup():
@@ -207,6 +254,10 @@ def setup_project() -> None:
                 write_file(path, content)
                 console.print(f"Created {filename}")
 
+                # Make script files executable
+                if filename in [str(p) for p in setup_paths.script_files.values()]:
+                    path.chmod(0o755)
+
         # Initialize context with file contents
         context = {}
 
@@ -215,9 +266,9 @@ def setup_project() -> None:
 
         # Read content from files
         markdown_files = {
-            "architecture": setup_paths.markdown_files.architecture,
-            "progress": setup_paths.markdown_files.progress,
-            "tasks": setup_paths.markdown_files.tasks,
+            "architecture": setup_paths.markdown_files["architecture"],
+            "progress": setup_paths.markdown_files["progress"],
+            "tasks": setup_paths.markdown_files["tasks"],
         }
 
         for file_key, file_path in markdown_files.items():
@@ -228,6 +279,7 @@ def setup_project() -> None:
         write_file(rules_path, json.dumps(context, indent=2), backup=True)
 
     console.print("Project setup complete!")
+
 
 @log_execution()
 def update_specific_file(file_type: str, content: str | None = None) -> None:
@@ -245,7 +297,7 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
             return
 
         # Access the path attribute directly based on the file_type
-        path = getattr(file_map, file_type)
+        path = file_map[file_type]
         logger.debug(f"Updating file: {path}")
 
         # If no content provided, read from file
@@ -268,7 +320,9 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
                         if rules_path.exists():
                             try:
                                 current_context = json.loads(read_file(rules_path))
-                                logger.debug(f"Read existing context: {list(current_context.keys())}")
+                                logger.debug(
+                                    f"Read existing context: {list(current_context.keys())}"
+                                )
                             except json.JSONDecodeError as e:
                                 # If context file is invalid JSON, start fresh
                                 logger.warning(f"Failed to parse context file, starting fresh: {e}")
@@ -281,6 +335,7 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
             except Exception as e:
                 logger.error(f"Failed to update {path}: {e}", exc_info=True)
                 raise
+
 
 @log_execution()
 def cleanup_project() -> None:
@@ -340,6 +395,7 @@ def cleanup_project() -> None:
                 logger.error(f"Failed to remove cache {path}: {e}", exc_info=True)
                 raise
 
+
 @log_execution()
 def check_creds() -> bool:
     """Check if OpenAI credentials are valid for API calls."""
@@ -354,6 +410,7 @@ def check_creds() -> bool:
 
         logger.info("OpenAI credentials validated")
         return True
+
 
 @log_execution()
 def make_atomic_commit() -> bool:
@@ -376,8 +433,8 @@ def make_atomic_commit() -> bool:
                 cwd=PWD,
                 text=True,
                 universal_newlines=True,
-                encoding='utf-8',
-                errors='replace',  # Replace undecodable bytes
+                encoding="utf-8",
+                errors="replace",  # Replace undecodable bytes
             )
 
             # Truncate diff if it's too long
@@ -388,7 +445,7 @@ def make_atomic_commit() -> bool:
                 logger.debug("Truncated diff from %s to %s chars", original_length, max_diff_length)
 
             # Sanitize diff output
-            diff_output = ''.join(char for char in diff_output if ord(char) < ASCII_CHAR_LIMIT)
+            diff_output = "".join(char for char in diff_output if ord(char) < ASCII_CHAR_LIMIT)
             logger.debug("Sanitized diff output, final length: %s", len(diff_output))
 
         except Exception as e:
@@ -427,7 +484,9 @@ Guidelines:
 
                 # Sanitize commit message
                 raw_message = response.choices[0].message.content
-                commit_message = ''.join(char for char in raw_message if ord(char) < ASCII_CHAR_LIMIT)
+                commit_message = "".join(
+                    char for char in raw_message if ord(char) < ASCII_CHAR_LIMIT
+                )
                 logger.debug("Raw commit message: %s", raw_message)
 
                 # Ensure commit message starts with the determined type
@@ -448,11 +507,11 @@ Guidelines:
         if not commit_message:
             logger.debug("Generating commit message from diff")
             # Get the first line of the diff that shows a file change
-            diff_lines = diff_output.split('\n')
-            file_change = next((line for line in diff_lines if line.startswith('diff --git')), '')
+            diff_lines = diff_output.split("\n")
+            file_change = next((line for line in diff_lines if line.startswith("diff --git")), "")
             if file_change:
                 # Extract the file name from the diff line
-                file_name = file_change.split(' b/')[-1]
+                file_name = file_change.split(" b/")[-1]
                 logger.debug("Found changed file: %s", file_name)
             else:
                 file_name = "project files"
@@ -478,6 +537,7 @@ Guidelines:
         logger.error("Failed to commit changes")
         return False
 
+
 def store_context(setup_paths: SetupPaths) -> bool:
     """Store the current context in the context directory.
 
@@ -494,9 +554,10 @@ def store_context(setup_paths: SetupPaths) -> bool:
         if not context_dir.exists():
             context_dir.mkdir(parents=True, exist_ok=True)
 
-        progress_file = setup_paths.markdown_files.progress
-        tasks_file = setup_paths.markdown_files.tasks
-        architecture_file = setup_paths.markdown_files.architecture
+        # Get the markdown files from the root directory
+        progress_file = setup_paths.markdown_files["progress"]
+        tasks_file = setup_paths.markdown_files["tasks"]
+        architecture_file = setup_paths.markdown_files["architecture"]
 
         # Ensure architecture file exists and has content
         if not architecture_file.exists() or not architecture_file.read_text().strip():
@@ -505,60 +566,62 @@ def store_context(setup_paths: SetupPaths) -> bool:
 
         architecture_content = architecture_file.read_text().splitlines()
         # Get the first line and sanitize it for use as a directory name
-        raw_title = architecture_content[0].strip('#').strip()
-        
+        raw_title = architecture_content[0].strip("#").strip()
+
         # Replace illegal characters for file paths
         # Windows disallows: < > : " / \ | ? *
         # Unix systems disallow: /
         # Also replace spaces with underscores for better readability
-        illegal_chars = ['<', '>', ':', '"', '/', '\\', '|', '?', '*', ' ']
+        illegal_chars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*", " "]
         architecture_title = raw_title
         for char in illegal_chars:
-            architecture_title = architecture_title.replace(char, '_')
-            
+            architecture_title = architecture_title.replace(char, "_")
+
         # Remove any leading/trailing underscores or dots
-        architecture_title = architecture_title.strip('_.')
-        
+        architecture_title = architecture_title.strip("_.")
+
         if not architecture_title:
             architecture_title = "unnamed_project"
 
-        arch_context_dir = context_dir / architecture_title
-        if not arch_context_dir.exists():
-            arch_context_dir.mkdir(parents=True, exist_ok=True)
+        architecture_context_dir = context_dir / architecture_title
+        if not architecture_context_dir.exists():
+            architecture_context_dir.mkdir(parents=True, exist_ok=True)
 
         # Copy files to context directory preserving original content
-        write_file(arch_context_dir / "architecture.md", architecture_file.read_text())
-        write_file(arch_context_dir / "progress.md", progress_file.read_text())
-        write_file(arch_context_dir / "tasks.md", tasks_file.read_text())
+        write_file(architecture_context_dir / "architecture.md", architecture_file.read_text())
+        write_file(architecture_context_dir / "progress.md", progress_file.read_text())
+        write_file(architecture_context_dir / "tasks.md", tasks_file.read_text())
 
         # Clear original files if needed
         architecture_file.write_text("")
         progress_file.write_text("")
         tasks_file.write_text("")
 
-        logger.info("Context stored successfully in %s", arch_context_dir)
+        logger.info("Context stored successfully in %s", architecture_context_dir)
         return True
     except Exception:
         logger.exception("Failed to store context")
         return False
 
+
 def handle_agent_context(setup_paths: SetupPaths, context: str) -> bool:
     """Handles agent context"""
     if not context.lower().strip("# ").startswith("agent"):
         return context
-    current_architecture = setup_paths.markdown_files.architecture.read_text()
+    current_architecture = setup_paths.markdown_files["architecture"].read_text()
     if current_architecture.strip("# ").startswith("project"):
         context += PROJECT_MARKER
         context += current_architecture
-        
+
     return context
 
-def restore_context(setup_paths: SetupPaths, arch_context_dir: Path) -> bool:
+
+def restore_context(setup_paths: SetupPaths, architecture_context_dir: Path) -> bool:
     """Restore the context from the context directory.
 
     Args:
         setup_paths: The setup paths object containing file paths
-        arch_context_dir: The context directory to restore from
+        architecture_context_dir: The context directory to restore from
 
     Returns:
         bool: True if context was restored successfully, False otherwise
@@ -566,14 +629,13 @@ def restore_context(setup_paths: SetupPaths, arch_context_dir: Path) -> bool:
     import shutil
 
     try:
-        if not arch_context_dir.exists():
-            logger.error("Context directory does not exist: %s", arch_context_dir)
+        if not architecture_context_dir.exists():
+            logger.error("Context directory does not exist: %s", architecture_context_dir)
             return False
-        
 
-        architecture_file = arch_context_dir / "architecture.md"
-        progress_file = arch_context_dir / "progress.md"
-        tasks_file = arch_context_dir / "tasks.md"
+        architecture_file = architecture_context_dir / "architecture.md"
+        progress_file = architecture_context_dir / "progress.md"
+        tasks_file = architecture_context_dir / "tasks.md"
 
         # Check if all required files exist
         missing_files = []
@@ -589,15 +651,32 @@ def restore_context(setup_paths: SetupPaths, arch_context_dir: Path) -> bool:
             return False
 
         # Copy files to project directory
-        shutil.copy2(architecture_file, setup_paths.markdown_files.architecture)
-        shutil.copy2(progress_file, setup_paths.markdown_files.progress)
-        shutil.copy2(tasks_file, setup_paths.markdown_files.tasks)
+        shutil.copy2(architecture_file, setup_paths.markdown_files["architecture"])
+        shutil.copy2(progress_file, setup_paths.markdown_files["progress"])
+        shutil.copy2(tasks_file, setup_paths.markdown_files["tasks"])
 
-        logger.info("Context restored successfully from %s", arch_context_dir)
+        # Update the rules file with the new content
+        context = {
+            "architecture": read_file(setup_paths.markdown_files["architecture"]),
+            "progress": read_file(setup_paths.markdown_files["progress"]),
+            "tasks": read_file(setup_paths.markdown_files["tasks"]),
+        }
+
+        # Scrub non-ASCII characters only when writing to rules files
+        scrubbed_context = {
+            key: scrub_non_ascii(value) if isinstance(value, str) else value
+            for key, value in context.items()
+        }
+
+        # Write updated context to rules file
+        write_file(setup_paths.rules_file, json.dumps(scrubbed_context, indent=2))
+
+        logger.info("Context restored successfully from %s", architecture_context_dir)
         return True
     except Exception:
         logger.exception("Failed to restore context")
         return False
+
 
 def list_context_dirs(setup_paths: SetupPaths) -> list[str]:
     """List all context directories.
@@ -631,6 +710,7 @@ def list_context_dirs(setup_paths: SetupPaths) -> list[str]:
         logger.exception("Error listing context directories")
         return []
 
+
 def print_context_dirs(setup_paths: SetupPaths) -> None:
     """Print all context directories.
 
@@ -647,17 +727,18 @@ def print_context_dirs(setup_paths: SetupPaths) -> None:
         # Try to extract a more readable name from the path
         dir_name = Path(context_dir).name
         # Get the first line of architecture.md as title if possible
-        arch_file = Path(context_dir) / "architecture.md"
-        if arch_file.exists():
+        architecture_file = Path(context_dir) / "architecture.md"
+        if architecture_file.exists():
             try:
-                with arch_file.open() as f:
-                    first_line = f.readline().strip('#').strip()
+                with architecture_file.open() as f:
+                    first_line = f.readline().strip("#").strip()
                     if first_line:
                         dir_name = f"{dir_name} - {first_line}"
             except Exception:
                 pass  # Just use the directory name if we can't read the file
 
         console.print(f"{i}. {dir_name}")
+
 
 def select_context_dir(setup_paths: SetupPaths) -> Path | None:
     """Select a context directory.
@@ -680,14 +761,14 @@ def select_context_dir(setup_paths: SetupPaths) -> Path | None:
             prompt = "Enter the number of the context directory to restore (or 'q' to quit): "
             selection_input = console.input(prompt)
 
-            if selection_input.lower() in ('q', 'quit', 'exit'):
+            if selection_input.lower() in ("q", "quit", "exit"):
                 return None
 
             try:
                 selection = int(selection_input)
                 if 1 <= selection <= len(context_dirs):
                     return Path(context_dirs[selection - 1])
-                
+
                 msg = f"Invalid selection. Enter a number between 1 and {len(context_dirs)}."
                 console.print(msg)
             except ValueError:
@@ -695,3 +776,167 @@ def select_context_dir(setup_paths: SetupPaths) -> Path | None:
         except KeyboardInterrupt:
             console.print("\nSelection cancelled")
             return None
+
+
+def handle_protocol_context(setup_paths: SetupPaths, protocol_name: str) -> bool:
+    """Handle protocol context updates automatically.
+
+    This function acts as an event handler for protocol state changes,
+    automatically updating the context when protocols change state.
+
+    Args:
+        setup_paths: The setup paths object containing file paths
+        protocol_name: Name of the protocol being activated
+
+    Returns:
+        bool: True if context was updated successfully
+    """
+    try:
+        # Get the rules file path
+        rules_path = setup_paths.rules_file
+        if not rules_path.exists():
+            logger.warning("Rules file does not exist, creating new context")
+            rules_context = {}
+        else:
+            with open(rules_path) as f:
+                rules_context = json.loads(f.read())
+
+        # Update protocol state in context
+        rules_context["current_protocol"] = protocol_name
+
+        # Let the ProtocolManager handle the protocol state
+        async def update_protocol_state():
+            manager = await ProtocolManager.create()
+            protocol = manager.get_protocol(protocol_name)
+
+            if protocol:
+                # Update protocol metadata
+                rules_context.update(
+                    {
+                        "protocol_role": protocol.role,
+                        "protocol_triggers": protocol.triggers,
+                        "protocol_produces": protocol.produces,
+                        "protocol_consumes": protocol.consumes,
+                    }
+                )
+
+                # Load protocol markdown
+                protocol_md_path = setup_paths.protocols_dir / "stored" / protocol.file_path.name
+                if protocol_md_path.exists():
+                    rules_context["protocol_markdown"] = read_file(protocol_md_path)
+
+                # Update available protocols
+                rules_context["protocols"] = manager.list_protocols()
+
+                return True
+            return False
+
+        success = asyncio.run(update_protocol_state())
+        if not success:
+            logger.error(f"Failed to update protocol state for {protocol_name}")
+            return False
+
+        # Write updated context
+        write_file(rules_path, json.dumps(rules_context, indent=2))
+        logger.info(f"Successfully updated context for protocol: {protocol_name}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error handling protocol context: {e}")
+        return False
+
+
+class ContextManager:
+    """Manages the global context for the application."""
+
+    def __init__(self):
+        """Initialize the context manager."""
+        self.context = Context()
+        self.protocol_manager = None
+        self._setup_protocol_handlers()
+
+    def _setup_protocol_handlers(self) -> None:
+        """Set up handlers for protocol events."""
+        if self.protocol_manager:
+            self.protocol_manager.register_event_handler(
+                "protocol_activated", self._handle_protocol_activated
+            )
+            self.protocol_manager.register_event_handler(
+                "protocol_completed", self._handle_protocol_completed
+            )
+            self.protocol_manager.register_event_handler(
+                "transition_triggered", self._handle_transition
+            )
+            self.protocol_manager.register_event_handler("artifact_produced", self._handle_artifact)
+
+    async def initialize(self) -> None:
+        """Initialize the context manager."""
+        self.protocol_manager = await ProtocolManager.create()
+        self._setup_protocol_handlers()
+
+    def _handle_protocol_activated(self, protocol: Protocol) -> None:
+        """Handle protocol activation event."""
+        self.context.active_protocol = protocol.name
+        self.context.protocol_state = protocol.initial_state
+        logger.info(f"Activated protocol: {protocol.name}")
+
+    def _handle_protocol_completed(self, protocol: Protocol, artifacts: Dict[str, Any]) -> None:
+        """Handle protocol completion event."""
+        self.context.protocol_artifacts.update(artifacts)
+        logger.info(f"Completed protocol: {protocol.name}")
+
+    def _handle_transition(
+        self, from_protocol: Protocol, to_protocol: Protocol, trigger: str, artifact: str
+    ) -> None:
+        """Handle protocol transition event."""
+        logger.info(f"Transitioning from {from_protocol.name} to {to_protocol.name}")
+        logger.info(f"Trigger: {trigger}, Artifact: {artifact}")
+
+        # Update context for new protocol
+        self.context.active_protocol = to_protocol.name
+        self.context.protocol_state = to_protocol.initial_state
+
+    def _handle_artifact(self, protocol: Protocol, artifact_name: str, artifact_value: Any) -> None:
+        """Handle artifact production event."""
+        self.context.protocol_artifacts[artifact_name] = artifact_value
+        logger.info(f"Produced artifact {artifact_name} in protocol {protocol.name}")
+
+    async def update_context(self, updates: Dict[str, Any]) -> None:
+        """Update the context with new values.
+
+        Args:
+            updates: Dictionary of context updates
+        """
+        # Update context values
+        for key, value in updates.items():
+            if hasattr(self.context, key):
+                setattr(self.context, key, value)
+            else:
+                logger.warning(f"Unknown context key: {key}")
+
+        # If we have an active protocol, check for completion
+        if self.context.active_protocol and self.protocol_manager:
+            protocol = self.protocol_manager.get_protocol(self.context.active_protocol)
+            if protocol and protocol.is_complete(self.context.protocol_state):
+                await self.protocol_manager.complete_protocol(
+                    protocol.name, self.context.protocol_artifacts
+                )
+
+    def get_context(self) -> Context:
+        """Get the current context."""
+        return self.context
+
+    async def select_protocol(self, protocol_name: str) -> bool:
+        """Select and activate a protocol.
+
+        Args:
+            protocol_name: Name of the protocol to activate
+
+        Returns:
+            bool: True if protocol was activated successfully
+        """
+        if not self.protocol_manager:
+            logger.error("Protocol manager not initialized")
+            return False
+
+        return await self.protocol_manager.activate_protocol(protocol_name)

@@ -344,14 +344,14 @@ def store():
 @log_command
 @click.argument("context_dir", required=False)
 @click.option(
-    "--arch_context_dir",
+    "--architecture_context_dir",
     type=str,
     help="Context directory to restore (deprecated, use positional argument instead)",
 )
-def restore(context_dir: str = None, arch_context_dir: str = None):
+def restore(context_dir: str = None, architecture_context_dir: str = None):
     """Restore the context from the specified context directory."""
-    # Use context_dir if provided, otherwise fall back to arch_context_dir
-    directory_path = context_dir or arch_context_dir
+    # Use context_dir if provided, otherwise fall back to architecture_context_dir
+    directory_path = context_dir or architecture_context_dir
 
     if not directory_path:
         console.print(
@@ -398,18 +398,18 @@ def list_context():
 def select():
     """Select a context directory to restore."""
     setup_paths = SetupPaths.with_project_root(Path.cwd())
-    arch_context_dir = select_context_dir(setup_paths)
+    architecture_context_dir = select_context_dir(setup_paths)
 
-    if not arch_context_dir:
+    if not architecture_context_dir:
         console.print("No context directory selected", style="yellow")
         return
 
-    console.print(f"Selected context directory: {arch_context_dir}")
+    console.print(f"Selected context directory: {architecture_context_dir}")
 
     # Confirm before restoring
     prompt = "Do you want to restore this context? This will overwrite current files."
     if click.confirm(prompt):
-        success = restore_context(setup_paths, arch_context_dir)
+        success = restore_context(setup_paths, architecture_context_dir)
         if success:
             console.print("✨ Context restored successfully")
         else:

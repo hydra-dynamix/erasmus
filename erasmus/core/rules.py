@@ -1,65 +1,29 @@
-"""
-Rules Management System
-=====================
+"""Rules management module."""
 
-This module provides classes and utilities for managing project rules.
-Rules are stored in markdown files and can be global or project-specific.
-"""
-
-import ast
+import json
 import logging
-import re
-from dataclasses import dataclass
+import ast
 from pathlib import Path
+from typing import Set, Dict, Any
+
+from erasmus.utils.paths import SetupPaths
 
 logger = logging.getLogger(__name__)
 
+
 class RuleValidationError(Exception):
-    """Raised when a rule validation fails."""
+    """Exception raised for rule validation errors."""
 
-@dataclass
+    pass
+
+
 class Rule:
-    """Represents a single rule with its metadata."""
-    description: str
-    category: str
-    subcategory: str | None = None
-    is_global: bool = False
+    """Represents a single rule."""
 
-    def __post_init__(self):
-        """Validate rule attributes after initialization."""
-        if not self.description or not self.description.strip():
-            raise RuleValidationError("Rule description cannot be empty")
-        if not self.category or not self.category.strip():
-            raise RuleValidationError("Rule category cannot be empty")
+    def __init__(self, category: str, description: str):
+        self.category = category
+        self.description = description
 
-        # Split category into main category and subcategory if present
-        if "/" in self.category:
-            self.category, self.subcategory = self.category.split("/", 1)
-
-        self.description = self.description.strip()
-        self.category = self.category.strip()
-        if self.subcategory:
-            self.subcategory = self.subcategory.strip()
-
-    def __eq__(self, other):
-        """Compare rules based on their description and category."""
-        if not isinstance(other, Rule):
-            return False
-        return (self.description.lower() == other.description.lower() and
-                self.category.lower() == other.category.lower() and
-                (self.subcategory or "").lower() == (other.subcategory or "").lower())
-
-    def __hash__(self):
-        """Hash based on description and category."""
-        return hash((self.description.lower(), self.category.lower(), (self.subcategory or "").lower()))
-
-    def get_key(self) -> tuple[str, str, str]:
-        """Get a unique key for the rule."""
-        return (
-            self.category.lower(),
-            (self.subcategory or "").lower(),
-            self.description.lower(),
-        )
 
 class RulesManager:
     """Manages project and global rules."""
@@ -71,9 +35,7 @@ class RulesManager:
             workspace_root: Path to the project workspace root
         """
         self.workspace_root = Path(workspace_root)
-        self.rules_dir = self.workspace_root / ".erasmus"
-        self.project_rules_file = self.rules_dir / "rules.md"
-        self.global_rules_file = self.rules_dir / "global_rules.md"
+        self.setup_paths = SetupPaths.with_project_root(workspace_root)
         self.active_rules: set[Rule] = set()
         self._seen_rules: set[str] = set()  # Track rules by their unique key
         self._conflicting_patterns = [
@@ -85,62 +47,93 @@ class RulesManager:
         """Generate a unique key for a rule."""
         return f"{rule.category.lower()}:{rule.description.lower()}"
 
+    def add_rule(self, rule: Rule) -> bool:
+        """Add a rule if it doesn't conflict with existing rules."""
+        key = self._rule_key(rule)
+        if key in self._seen_rules:
+            return False
+
+        # Check for conflicts
+        for pattern1, pattern2 in self._conflicting_patterns:
+            if pattern1 in rule.description.lower() and any(
+                pattern2 in r.description.lower() for r in self.active_rules
+            ):
+                return False
+            if pattern2 in rule.description.lower() and any(
+                pattern1 in r.description.lower() for r in self.active_rules
+            ):
+                return False
+
+        self.active_rules.add(rule)
+        self._seen_rules.add(key)
+        return True
+
+    def remove_rule(self, rule: Rule) -> bool:
+        """Remove a rule if it exists."""
+        key = self._rule_key(rule)
+        if key in self._seen_rules:
+            self.active_rules.remove(rule)
+            self._seen_rules.remove(key)
+            return True
+        return False
+
+    def get_rules(self) -> Set[Rule]:
+        """Get all active rules."""
+        return self.active_rules.copy()
+
+    def save_rules(self) -> None:
+        """Save rules to the appropriate files."""
+        try:
+            # Save to project rules file
+            rules_data = {
+                "rules": [
+                    {"category": r.category, "description": r.description}
+                    for r in self.active_rules
+                ]
+            }
+            with open(self.setup_paths.rules_file, "w") as f:
+                json.dump(rules_data, f, indent=2)
+            logger.info(f"Saved rules to {self.setup_paths.rules_file}")
+
+            # Save to global rules file
+            with open(self.setup_paths.global_rules_file, "w") as f:
+                json.dump(rules_data, f, indent=2)
+            logger.info(f"Saved rules to {self.setup_paths.global_rules_file}")
+
+        except Exception as e:
+            logger.exception(f"Failed to save rules: {e}")
+            raise
+
     def load_rules(self) -> None:
-        """Load both global and project rules."""
+        """Load rules from the appropriate files."""
+        try:
+            # Try to load from project rules file first
+            if self.setup_paths.rules_file.exists():
+                with open(self.setup_paths.rules_file) as f:
+                    data = json.load(f)
+                    self._load_rules_from_data(data)
+                return
+
+            # Fall back to global rules file
+            if self.setup_paths.global_rules_file.exists():
+                with open(self.setup_paths.global_rules_file) as f:
+                    data = json.load(f)
+                    self._load_rules_from_data(data)
+                return
+
+            logger.warning("No rules files found")
+        except Exception as e:
+            logger.exception(f"Failed to load rules: {e}")
+            raise
+
+    def _load_rules_from_data(self, data: Dict[str, Any]) -> None:
+        """Load rules from a data dictionary."""
         self.active_rules.clear()
         self._seen_rules.clear()
 
-        # Load global rules first
-        global_rules_path = self.workspace_root / ".erasmus" / "global_rules.md"
-        if global_rules_path.exists():
-            global_rules = self.parse_rules(global_rules_path, is_global=True)
-            for rule in global_rules:
-                key = self._rule_key(rule)
-                if key not in self._seen_rules:
-                    self.active_rules.add(rule)
-                    self._seen_rules.add(key)
-
-        # Load project rules, overriding global rules
-        project_rules_path = self.workspace_root / ".erasmus" / "rules.md"
-        if project_rules_path.exists():
-            project_rules = self.parse_rules(project_rules_path)
-            for rule in project_rules:
-                key = self._rule_key(rule)
-                # Remove any existing rule with the same key or conflicting rules
-                conflicting_rules = set()
-                for existing_rule in self.active_rules:
-                    if self._rule_key(existing_rule) == key:
-                        conflicting_rules.add(existing_rule)
-                    else:
-                        # Check for pattern-based conflicts
-                        desc1 = rule.description.lower()
-                        desc2 = existing_rule.description.lower()
-                        for pattern1, pattern2 in self._conflicting_patterns:
-                            if (re.search(pattern1, desc1) and re.search(pattern2, desc2)) or \
-                               (re.search(pattern2, desc1) and re.search(pattern1, desc2)):
-                                conflicting_rules.add(existing_rule)
-
-                # Remove conflicting rules
-                self.active_rules -= conflicting_rules
-                self.active_rules.add(rule)
-                self._seen_rules.add(key)
-
-    def _check_conflicting_rules(self, rules: list[Rule]) -> None:
-        """Check for conflicting rules within a list of rules."""
-        for rule1 in rules:
-            desc1 = rule1.description.lower()
-            for rule2 in rules:
-                if rule1 is rule2:
-                    continue
-                desc2 = rule2.description.lower()
-
-                # Check for direct conflicts using patterns
-                for pattern1, pattern2 in self._conflicting_patterns:
-                    if (re.search(pattern1, desc1) and re.search(pattern2, desc2)) or \
-                       (re.search(pattern2, desc1) and re.search(pattern1, desc2)):
-                        raise RuleValidationError(
-                            f"Conflicting rules found: '{rule1.description}' and '{rule2.description}'",
-                        )
+        for rule_data in data.get("rules", []):
+            rule = Rule(category=rule_data["category"], description=rule_data["description"])
+            self.add_rule(rule)
 
     def parse_rules(self, rules_path: Path, is_global: bool = False) -> list[Rule]:
         """Parse rules from a markdown file."""
@@ -215,7 +208,9 @@ class RulesManager:
                     # Check for type hints
                     for node in ast.walk(tree):
                         if isinstance(node, ast.FunctionDef):
-                            if not node.returns or not any(isinstance(arg.annotation, ast.Name) for arg in node.args.args):
+                            if not node.returns or not any(
+                                isinstance(arg.annotation, ast.Name) for arg in node.args.args
+                            ):
                                 errors.append(f"Missing type hints in function {node.name}")
 
             elif rule.category.lower() == "documentation":
@@ -229,7 +224,11 @@ class RulesManager:
                 if "no print statements" in rule.description.lower():
                     # Check for print statements
                     for node in ast.walk(tree):
-                        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "print":
+                        if (
+                            isinstance(node, ast.Call)
+                            and isinstance(node.func, ast.Name)
+                            and node.func.id == "print"
+                        ):
                             errors.append("Print statement found")
 
         return errors

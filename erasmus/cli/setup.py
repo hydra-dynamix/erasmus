@@ -1,47 +1,36 @@
 """Setup command for environment configuration."""
+
 import re
 from collections.abc import Callable
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.prompt import Prompt
 
-# setup_project is imported in the function to avoid circular imports
-
-load_dotenv()
+from erasmus.utils.env_manager import EnvironmentManager
 
 console = Console()
 
-def validate_ide_env(value: str) -> str:
-    """Validate and transform IDE_ENV value."""
-    # Convert to lowercase for consistency
-    value = value.lower()
-
-    # Check first letter and standardize
-    if value.startswith('c'):
-        return 'cursor'
-    if value.startswith('w'):
-        return 'windsurf'
-    raise ValueError("IDE_ENV must start with 'C' for cursor or 'W' for windsurf")
 
 def validate_base_url(value: str) -> str:
-    """Validate OPENAI_BASE_URL value."""
-    # Allow localhost with optional port
-    localhost_pattern = r'^https?://localhost(?::\d+)?(?:/.*)?$'
-    # Standard URL pattern
-    url_pattern = r'^https?://[a-zA-Z0-9.-]+(?::\d+)?(?:/.*)?$'
+    """Validate and transform OPENAI_BASE_URL value."""
+    if not value:
+        return "https://api.openai.com/v1"
 
-    if re.match(localhost_pattern, value) or re.match(url_pattern, value):
-        return value
-    raise ValueError("Invalid URL format. Must be a valid HTTP/HTTPS URL or localhost")
+    # Ensure URL starts with http:// or https://
+    if not value.startswith(("http://", "https://")):
+        value = "https://" + value
+
+    # Remove trailing slash
+    return value.rstrip("/")
+
 
 # Validation rules for specific fields
 FIELD_VALIDATORS: dict[str, Callable[[str], str]] = {
-    'IDE_ENV': validate_ide_env,
-    'OPENAI_BASE_URL': validate_base_url,
+    "OPENAI_BASE_URL": validate_base_url,
 }
+
 
 def read_env_example() -> dict[str, str]:
     """Read default values from .env.example file."""
@@ -49,125 +38,118 @@ def read_env_example() -> dict[str, str]:
     example_path = Path(".env.example")
 
     if not example_path.exists():
-        raise FileNotFoundError(".env.example not found. Please ensure it exists in the project root.")
+        raise FileNotFoundError(
+            ".env.example not found. Please ensure it exists in the project root."
+        )
 
     with example_path.open() as f:
         for line in f:
             line = line.strip()
-            if line and not line.startswith('#'):
-                key, value = line.split('=', 1)
+            if line and not line.startswith("#"):
+                key, value = line.split("=", 1)
                 defaults[key.strip()] = value.strip()
 
     return defaults
 
-def write_env_file(values: dict[str, str]) -> None:
-    """Write values to .env file."""
-    env_path = Path(".env")
 
-    # Ensure parent directory exists
-    env_path.parent.mkdir(parents=True, exist_ok=True)
+def get_default_prompts(defaults: dict[str, str]) -> dict[str, str]:
+    """Get prompts for each environment variable."""
+    return {
+        "IDE_ENV": f"Select IDE environment (C)ursor or (W)indsurf [{defaults.get('IDE_ENV', 'C')}]: ",
+        "OPENAI_API_KEY": f"Enter OpenAI API key [{defaults.get('OPENAI_API_KEY', '')}]: ",
+        "OPENAI_BASE_URL": f"Enter OpenAI base URL [{defaults.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')}]: ",
+        "OPENAI_MODEL": f"Enter OpenAI model [{defaults.get('OPENAI_MODEL', 'gpt-4')}]: ",
+    }
 
-    with env_path.open('w') as f:
-        for key, value in values.items():
-            f.write(f"{key}={value}\n")
 
-def create_default_env_example() -> None:
-    """Create a default .env.example file."""
-    with open(".env.example", "w") as f:
-        f.write("IDE_ENV=cursor\n")
-        f.write("GIT_TOKEN=\n")
-        f.write("OPENAI_API_KEY=sk-1234\n")
-        f.write("OPENAI_BASE_URL=https://api.openai.com/v1\n")
-        f.write("OPENAI_MODEL=gpt-4\n")
-
-def prompt_for_values(default_prompts: dict[str, str], defaults: dict[str, str]) -> dict[str, str]:
-    """Prompt user for each environment variable, showing defaults."""
-
-    console.print("\n[bold blue]Environment Configuration[/bold blue]")
-    console.print("Press Enter to accept the default value or input a new value.\n")
+def prompt_for_values(prompts: dict[str, str], defaults: dict[str, str]) -> dict[str, str]:
+    """Prompt for environment variable values."""
     values = {}
-    for key, prompt in default_prompts.items():
+    for key, prompt in prompts.items():
         while True:
-            try:
-                # Show default and get user input
-                value = Prompt.ask(
-                    prompt,
-                    default=defaults[key],
+            value = Prompt.ask(prompt, default=defaults.get(key, ""))
+
+            # Special handling for IDE_ENV
+            if key == "IDE_ENV":
+                value = value.lower()
+                if value.startswith(("c", "w")):
+                    values[key] = value
+                    break
+                console.print(
+                    "[red]Invalid IDE environment. Must start with 'C' for Cursor or 'W' for Windsurf[/red]"
                 )
+                continue
 
-                # Apply validation if exists for this field
-                if key in FIELD_VALIDATORS:
+            # Apply field-specific validation if available
+            if key in FIELD_VALIDATORS:
+                try:
                     value = FIELD_VALIDATORS[key](value)
+                except ValueError as e:
+                    console.print(f"[red]{str(e)}[/red]")
+                    continue
 
-                values[key] = value
-                break  # Break the loop if validation passes
-
-            except ValueError as e:
-                console.print(f"[red]Error: {e!s}[/red]")
-                console.print("Please try again.")
+            values[key] = value
+            break
 
     return values
 
-def get_default_prompts(defaults: dict[str, str]) -> dict[str, str]:
-    """Get default prompts for each environment variable."""
-    return {
-        "IDE_ENV": f"Please enter your IDE environment windsurf/cursor[default: {defaults['IDE_ENV']}]",
-        "OPENAI_API_KEY": f"Please enter your openai api key[default: {defaults['OPENAI_API_KEY']}]",
-        "OPENAI_BASE_URL": f"Please enter your openai base url[default: {defaults['OPENAI_BASE_URL']}]",
-        "OPENAI_MODEL": f"Please enter your openai model[default: {defaults['OPENAI_MODEL']}]",
-        "GIT_TOKEN": f"Please enter your git token[default: {defaults['GIT_TOKEN']}]",
-    }
 
+def write_env_file(values: dict[str, str]) -> None:
+    """Write environment variables to .env file."""
+    env_path = Path(".env")
+
+    # Read existing content if file exists
+    existing_content = ""
+    if env_path.exists():
+        existing_content = env_path.read_text()
+
+    # Prepare new content
+    new_lines = []
+    existing_vars = set()
+
+    # Process existing content
+    for line in existing_content.splitlines():
+        if line.strip() and not line.startswith("#"):
+            key = line.split("=", 1)[0].strip()
+            existing_vars.add(key)
+            if key in values:
+                new_lines.append(f"{key}={values[key]}")
+                del values[key]
+            else:
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+    # Add remaining new variables
+    for key, value in values.items():
+        if key not in existing_vars:
+            new_lines.append(f"{key}={value}")
+
+    # Write to file
+    env_path.write_text("\n".join(new_lines))
+
+
+@click.command()
 def setup():
     """Set up environment configuration with interactive prompts."""
-    # Get defaults first
-    defaults = {}
-
     try:
-        load_dotenv()
+        # Read defaults from .env.example
         defaults = read_env_example()
-    except FileNotFoundError as e:
-        console.print(f"\n[red]Error: {e!s}[/red]")
-        if click.confirm("Would you like to create a default .env.example?", default=False):
-            create_default_env_example()
-            console.print("[green].env.example created with default values.[/green]")
-            defaults = read_env_example()
-        else:
-            console.print("[red]Setup cancelled. Please create .env.example and try again.[/red]")
-            return None
 
-    # Validate defaults
-    for key, value in defaults.items():
-        if key in FIELD_VALIDATORS:
-            try:
-                defaults[key] = FIELD_VALIDATORS[key](value)
-            except ValueError as e:
-                console.print(f"[red]Warning: Default value for {key} is invalid: {e!s}[/red]")
-
-    # Check if .env already exists
-    if Path(".env").exists():
-        overwrite = Prompt.ask(
-            "\n[yellow].env file already exists. Do you want to reconfigure?[/yellow]",
-            choices=["y", "n"],
-            default="n",
-        )
-        if overwrite.lower() != "y":
-            console.print("[red]Setup cancelled.[/red]")
-            return None
-    try:
+        # Get prompts and values
         default_prompts = get_default_prompts(defaults)
-        # Prompt for values
         values = prompt_for_values(default_prompts, defaults)
 
         # Write to .env file
         write_env_file(values)
-        
-        # Set the IDE_ENV in the current process environment
-        import os
-        os.environ["IDE_ENV"] = values.get("IDE_ENV", "")
+
+        # Update environment manager
+        env_manager = EnvironmentManager()
+        env_manager.set_ide_env(values.get("IDE_ENV", ""))
 
         # Now that IDE_ENV is set, run setup_project
         from erasmus.utils.context import setup_project
+
         setup_project()
 
         console.print("\n[green]Environment configuration completed successfully![/green]")
@@ -176,6 +158,7 @@ def setup():
     except Exception as e:
         console.print(f"\n[red]Error during setup: {e!s}[/red]")
         return 1  # Return error code instead of raising
+
 
 if __name__ == "__main__":
     setup()

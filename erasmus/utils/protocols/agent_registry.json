@@ -2,7 +2,7 @@
   "agents": [
     {
       "name": "Orchestration Agent",
-      "file_path": "erasmus/utils/protocols/orchestration.md",
+      "file_path": "erasmus/utils/protocols/stored/orchestration.md",
       "role": "workflow_coordination",
       "triggers": ["project_start", "performance_verified"],
       "produces": ["workflow_status", "agent_assignments"],
@@ -10,7 +10,7 @@
     },
     {
       "name": "Product Owner Agent",
-      "file_path": "erasmus/utils/protocols/product_owner.md",
+      "file_path": "erasmus/utils/protocols/stored/product_owner.md",
       "role": "project_planning",
       "triggers": ["project_initiation"],
       "produces": ["architecture.md", "progress.md"],
@@ -18,7 +18,7 @@
     },
     {
       "name": "Developer Agent",
-      "file_path": "erasmus/utils/protocols/developer.md",
+      "file_path": "erasmus/utils/protocols/stored/developer.md",
       "role": "code_implementation",
       "triggers": [
         "architecture_complete", 
@@ -26,14 +26,15 @@
         "test_failures", 
         "style_issues", 
         "security_issues", 
-        "performance_issues"
+        "performance_issues",
+        "dependency_issues"
       ],
       "produces": ["implementation_code", "tasks.md"],
       "consumes": ["architecture.md", "progress.md", "debug_reports", "style_reports"]
     },
     {
       "name": "Testing Agent",
-      "file_path": "erasmus/utils/protocols/testing.md",
+      "file_path": "erasmus/utils/protocols/stored/testing.md",
       "role": "test_development",
       "triggers": ["code_implementation", "code_changes"],
       "produces": ["test_files", "test_results"],
@@ -41,7 +42,7 @@
     },
     {
       "name": "Style Agent",
-      "file_path": "erasmus/utils/protocols/style.md",
+      "file_path": "erasmus/utils/protocols/stored/style.md",
       "role": "code_style_verification",
       "triggers": ["code_implementation", "code_changes"],
       "produces": ["style_reports", "linting_fixes"],
@@ -49,7 +50,7 @@
     },
     {
       "name": "Code Review Agent",
-      "file_path": "erasmus/utils/protocols/code_review.md",
+      "file_path": "erasmus/utils/protocols/stored/code_review.md",
       "role": "code_quality_assessment",
       "triggers": ["tests_passing", "style_verified"],
       "produces": ["review_comments", "approval"],
@@ -57,7 +58,7 @@
     },
     {
       "name": "Security Agent",
-      "file_path": "erasmus/utils/protocols/security.md",
+      "file_path": "erasmus/utils/protocols/stored/security.md",
       "role": "security_verification",
       "triggers": ["code_review_passed"],
       "produces": ["security_reports", "vulnerability_fixes"],
@@ -65,7 +66,7 @@
     },
     {
       "name": "Documentation Agent",
-      "file_path": "erasmus/utils/protocols/documentation.md",
+      "file_path": "erasmus/utils/protocols/stored/documentation.md",
       "role": "documentation_management",
       "triggers": ["code_review_passed"],
       "produces": ["readme", "api_docs", "inline_comments"],
@@ -73,7 +74,7 @@
     },
     {
       "name": "CI/CD Agent",
-      "file_path": "erasmus/utils/protocols/cidc.md",
+      "file_path": "erasmus/utils/protocols/stored/cidc.md",
       "role": "continuous_integration",
       "triggers": ["security_verified", "docs_updated"],
       "produces": ["build_artifacts", "deployment_configs"],
@@ -81,7 +82,7 @@
     },
     {
       "name": "Performance Agent",
-      "file_path": "erasmus/utils/protocols/performance.md",
+      "file_path": "erasmus/utils/protocols/stored/performance.md",
       "role": "performance_optimization",
       "triggers": ["deployment_ready"],
       "produces": ["performance_reports", "optimization_recommendations"],
@@ -89,11 +90,19 @@
     },
     {
       "name": "Debug Agent",
-      "file_path": "erasmus/utils/protocols/debugging.md",
+      "file_path": "erasmus/utils/protocols/stored/debugging.md",
       "role": "issue_diagnosis",
       "triggers": ["test_failures"],
       "produces": ["debug_reports", "fix_recommendations"],
       "consumes": ["implementation_code", "test_results"]
+    },
+    {
+      "name": "Dependency Agent",
+      "file_path": "erasmus/utils/protocols/stored/dependency.md",
+      "role": "dependency_management",
+      "triggers": ["code_implementation", "dependency_check"],
+      "produces": ["dependency_reports", "dependency_updates"],
+      "consumes": ["implementation_code", "requirements_files"]
     }
   ],
   "workflow_transitions": [
@@ -118,6 +127,12 @@
     {
       "from_agent": "Developer Agent",
       "to_agent": "Style Agent",
+      "trigger": "code_implementation",
+      "artifact": "implementation_code"
+    },
+    {
+      "from_agent": "Developer Agent",
+      "to_agent": "Dependency Agent",
       "trigger": "code_implementation",
       "artifact": "implementation_code"
     },
@@ -204,6 +219,12 @@
       "to_agent": "Developer Agent",
       "trigger": "performance_issues",
       "artifact": "performance_reports"
+    },
+    {
+      "from_agent": "Dependency Agent",
+      "to_agent": "Developer Agent",
+      "trigger": "dependency_issues",
+      "artifact": "dependency_reports"
     }
   ]
 }

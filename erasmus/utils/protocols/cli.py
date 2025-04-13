@@ -1,16 +1,176 @@
+"""Protocol CLI commands."""
+
 import argparse
 import asyncio
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from erasmus.utils.paths import SetupPaths
+from erasmus.utils.paths import PathManager, SetupPaths
+from erasmus.utils.protocols.manager import ProtocolManager
+from erasmus.utils.protocols.server import ProtocolServer
 from erasmus.utils.logging import get_logger
 from .integration import ProtocolIntegration
-from .manager import ProtocolManager
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
+
+
+def get_path_manager(project_root: Optional[Path] = None) -> PathManager:
+    """Get a PathManager instance.
+
+    Args:
+        project_root: Optional project root path. If not provided, uses current directory.
+
+    Returns:
+        PathManager: A PathManager instance
+    """
+    return PathManager(project_root)
+
+
+def handle_protocol_commands(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle protocol-related commands.
+
+    Args:
+        args: Command arguments
+
+    Returns:
+        Dict[str, Any]: Command results
+    """
+    path_manager = get_path_manager()
+    path_manager.ensure_directories()
+
+    # Initialize protocol integration
+    protocol_manager = ProtocolManager()
+    protocol_server = ProtocolServer(setup_paths=path_manager)
+
+    # Register prompts
+    protocol_manager.register_default_prompts()
+
+    # Handle JSON context if provided
+    context = {}
+    if args.get("json_context"):
+        try:
+            context = json.loads(args["json_context"])
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON context: {e}")
+            return {"error": f"Invalid JSON context: {e}"}
+
+    command = args.get("protocol_command")
+    if not command:
+        return {"error": "No protocol command specified"}
+
+    try:
+        if command == "list":
+            # List available protocols
+            protocols = protocol_manager.list_protocols()
+            return {"protocols": protocols}
+
+        elif command == "restore":
+            # Restore protocol from backup
+            protocol_name = args.get("protocol_name")
+            if not protocol_name:
+                return {"error": "Protocol name required for restore"}
+
+            result = protocol_manager.restore_protocol(protocol_name)
+            return {"result": result}
+
+        elif command == "select":
+            # Select a protocol
+            protocol_name = args.get("protocol_name")
+            if not protocol_name:
+                return {"error": "Protocol name required for selection"}
+
+            result = update_context_with_protocol(protocol_name, context)
+            return {"result": result}
+
+        elif command == "store":
+            # Store a protocol
+            protocol_name = args.get("protocol_name")
+            if not protocol_name:
+                return {"error": "Protocol name required for storage"}
+
+            result = protocol_manager.store_protocol(protocol_name)
+            return {"result": result}
+
+        elif command == "delete":
+            # Delete a protocol
+            protocol_name = args.get("protocol_name")
+            if not protocol_name:
+                return {"error": "Protocol name required for deletion"}
+
+            result = protocol_manager.delete_protocol(protocol_name)
+            return {"result": result}
+
+        elif command == "execute":
+            # Execute a protocol
+            protocol_name = args.get("protocol_name")
+            if not protocol_name:
+                return {"error": "Protocol name required for execution"}
+
+            artifacts = protocol_server.execute_protocol(protocol_name, context)
+            return {"artifacts": [artifact.model_dump() for artifact in artifacts]}
+
+        elif command == "workflow":
+            # Get protocol workflow
+            protocol_name = args.get("protocol_name")
+            if not protocol_name:
+                return {"error": "Protocol name required for workflow"}
+
+            workflow = protocol_server.get_protocol_workflow(protocol_name)
+            return {"workflow": workflow}
+
+        else:
+            return {"error": f"Unknown protocol command: {command}"}
+
+    except Exception as e:
+        logger.error(f"Error handling protocol command {command}: {e}")
+        return {"error": str(e)}
+
+
+def update_context_with_protocol(protocol_name: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Update the context with the selected protocol.
+
+    Args:
+        protocol_name: Name of the protocol to select
+        context: Current context
+
+    Returns:
+        Dict[str, Any]: Updated context
+    """
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+
+    # Create rules file if it doesn't exist
+    if not setup_paths.rules_file.exists():
+        setup_paths.rules_file.touch()
+
+    # Read existing rules
+    try:
+        with open(setup_paths.rules_file, "r") as f:
+            rules = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        rules = {}
+
+    # Update protocols list
+    if "protocols" not in rules:
+        rules["protocols"] = []
+
+    if protocol_name not in rules["protocols"]:
+        rules["protocols"].append(protocol_name)
+
+    # Load protocol markdown if available
+    protocol_file = setup_paths.protocols_dir / "stored" / f"{protocol_name}.md"
+    if protocol_file.exists():
+        with open(protocol_file, "r") as f:
+            protocol_content = f.read()
+            context["protocol_content"] = protocol_content
+
+    # Write updated rules
+    with open(setup_paths.rules_file, "w") as f:
+        json.dump(rules, f, indent=2)
+
+    return context
 
 
 def add_protocol_commands(parser: argparse.ArgumentParser) -> None:
@@ -61,45 +221,11 @@ def add_protocol_commands(parser: argparse.ArgumentParser) -> None:
 
 def get_ide_env_rules_path() -> Path:
     """Get the path to the IDE environment rules file."""
-    # This is a placeholder - you'll need to implement the actual logic
-    # to determine the IDE environment and rules file path
-    ide_env = os.environ.get("IDE_ENV", "default")
-    return Path(f"./.{ide_env}rules")
+    from erasmus.utils.paths import SetupPaths
 
-
-def update_context_with_protocol(protocol_name: str) -> None:
-    """Update the context object in the IDE environment rules file with the protocol."""
-    rules_path = get_ide_env_rules_path()
-
-    # Create the file if it doesn't exist
-    if not rules_path.exists():
-        rules_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(rules_path, "w") as f:
-            json.dump({"protocols": [protocol_name]}, f, indent=2)
-        logger.info(f"Created new rules file at {rules_path}")
-        return
-
-    # Read the existing rules
-    try:
-        with open(rules_path, "r") as f:
-            rules = json.load(f)
-    except json.JSONDecodeError:
-        logger.error(f"Invalid JSON in rules file: {rules_path}")
-        rules = {"protocols": []}
-
-    # Update the protocols list
-    if "protocols" not in rules:
-        rules["protocols"] = []
-
-    # Add the protocol as the first entry if it's not already there
-    if protocol_name not in rules["protocols"]:
-        rules["protocols"].insert(0, protocol_name)
-
-    # Write the updated rules
-    with open(rules_path, "w") as f:
-        json.dump(rules, f, indent=2)
-
-    logger.info(f"Updated rules file with protocol: {protocol_name}")
+    # Use SetupPaths to get the correct rules file path based on IDE environment
+    setup_paths = SetupPaths.with_project_root(Path.cwd())
+    return setup_paths.rules_file
 
 
 async def handle_protocol_commands(args: argparse.Namespace) -> None:
@@ -165,7 +291,7 @@ async def handle_protocol_commands(args: argparse.Namespace) -> None:
                 protocol_data = json.load(f)
 
             # Update the context with the protocol
-            update_context_with_protocol(protocol_name)
+            update_context_with_protocol(protocol_name, context)
 
             logger.info(f"Restored protocol: {protocol_name}")
         except Exception as e:
@@ -200,7 +326,7 @@ async def handle_protocol_commands(args: argparse.Namespace) -> None:
             selected_protocol = available_protocols[selection - 1]
 
             # Update the context with the selected protocol
-            update_context_with_protocol(selected_protocol)
+            update_context_with_protocol(selected_protocol, context)
 
             logger.info(f"Selected protocol: {selected_protocol}")
         except ValueError:

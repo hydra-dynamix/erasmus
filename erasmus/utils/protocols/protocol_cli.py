@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 
 from erasmus.utils.logging import get_logger
 from erasmus.utils.paths import SetupPaths
+from erasmus.utils.context import get_rules_path
 from .manager import ProtocolManager
 
 logger = get_logger(__name__)
@@ -40,30 +41,19 @@ def add_protocol_management_commands(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def get_ide_env_rules_path() -> Path:
-    """Get the path to the IDE environment rules file."""
-    # This is a placeholder - you'll need to implement the actual logic
-    # to determine the IDE environment and rules file path
-    ide_env = os.environ.get("IDE_ENV", "default")
-    return Path(f"./.{ide_env}rules")
-
-
 def update_context_with_protocol(protocol_name: str) -> None:
     """Update the context object in the IDE environment rules file with the protocol."""
-    rules_path = get_ide_env_rules_path()
-
+    rules_path = get_rules_path()
     # Create the file if it doesn't exist
     if not rules_path.exists():
         rules_path.parent.mkdir(parent=True, exist_ok=True)
-        with open(rules_path, "w") as f:
-            json.dump({"protocols": [protocol_name]}, f, indent=2)
+        rules_path.write_text(json.dumps({"protocols": [protocol_name]}, indent=2))
         logger.info(f"Created new rules file at {rules_path}")
         return
 
     # Read the existing rules
     try:
-        with open(rules_path, "r") as f:
-            rules = json.load(f)
+        rules = json.loads(rules_path.read_text())
     except json.JSONDecodeError:
         logger.error(f"Invalid JSON in rules file: {rules_path}")
         rules = {"protocols": []}
@@ -77,37 +67,26 @@ def update_context_with_protocol(protocol_name: str) -> None:
         rules["protocols"].insert(0, protocol_name)
 
     # Write the updated rules
-    with open(rules_path, "w") as f:
-        json.dump(rules, f, indent=2)
+    rules_path.write_text(json.dumps(rules, indent=2))
 
     logger.info(f"Updated rules file with protocol: {protocol_name}")
 
 
-def handle_protocol_management_commands(args: argparse.Namespace) -> None:
+async def handle_protocol_management_commands(args: argparse.Namespace) -> None:
     """Handle protocol management commands."""
     if not (
         args.restore_protocol or args.select_protocol or args.store_protocol or args.delete_protocol
     ):
         return
 
-    # Create setup paths
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-
     # Initialize the protocol manager
     protocol_manager = ProtocolManager()
 
     # Load the registry
-    registry_path = setup_paths.protocols_dir / "agent_registry.json"
-    if not registry_path.exists():
-        logger.error(f"Registry file not found: {registry_path}")
-        return
-
-    # Load the registry
-    with open(registry_path, "r") as f:
-        registry_data = json.load(f)
+    await protocol_manager.load_registry()
 
     # Create protocols directory if it doesn't exist
-    protocols_dir = setup_paths.protocols_dir / "stored"
+    protocols_dir = protocol_manager.setup_paths.protocols_dir / "stored"
     protocols_dir.mkdir(parents=True, exist_ok=True)
 
     # Handle restore protocol command
@@ -120,8 +99,7 @@ def handle_protocol_management_commands(args: argparse.Namespace) -> None:
             return
 
         try:
-            with open(protocol_file, "r") as f:
-                protocol_data = json.load(f)
+            protocol_data = json.loads(protocol_file.read_text())
 
             # Update the context with the protocol
             update_context_with_protocol(protocol_name)
@@ -134,8 +112,8 @@ def handle_protocol_management_commands(args: argparse.Namespace) -> None:
     if args.select_protocol:
         # List available protocols
         available_protocols = []
-        for agent in registry_data["agents"]:
-            protocol_name = agent["name"]
+        for agent in protocol_manager.agents:
+            protocol_name = agent.name
             protocol_file = protocols_dir / f"{protocol_name}.json"
             if protocol_file.exists():
                 available_protocols.append(protocol_name)
@@ -171,8 +149,8 @@ def handle_protocol_management_commands(args: argparse.Namespace) -> None:
 
         # Find the protocol in the registry
         protocol_data = None
-        for agent in registry_data["agents"]:
-            if agent["name"] == protocol_name:
+        for agent in protocol_manager.agents:
+            if agent.name == protocol_name:
                 protocol_data = agent
                 break
 
@@ -182,8 +160,7 @@ def handle_protocol_management_commands(args: argparse.Namespace) -> None:
 
         # Store the protocol
         protocol_file = protocols_dir / f"{protocol_name}.json"
-        with open(protocol_file, "w") as f:
-            json.dump(protocol_data, f, indent=2)
+        protocol_file.write_text(json.dumps(protocol_data, indent=2))
 
         logger.info(f"Stored protocol: {protocol_name}")
 
@@ -197,7 +174,7 @@ def handle_protocol_management_commands(args: argparse.Namespace) -> None:
             return
 
         try:
-            os.remove(protocol_file)
+            protocol_file.unlink()
             logger.info(f"Deleted protocol: {protocol_name}")
         except Exception as e:
             logger.error(f"Error deleting protocol {protocol_name}: {e}")

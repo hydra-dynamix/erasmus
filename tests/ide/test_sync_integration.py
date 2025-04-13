@@ -39,6 +39,7 @@ async def sync_setup(tmp_path):
     await context_manager.stop()
     await asyncio.sleep(0.2)  # Wait for cleanup to complete
 
+
 @pytest.mark.asyncio
 async def test_initial_sync(sync_setup):
     """Test initial synchronization of files."""
@@ -54,6 +55,7 @@ async def test_initial_sync(sync_setup):
     assert rules["progress"] == "# Test progress"
     assert "tasks" in rules
     assert rules["tasks"] == "# Test tasks"
+
 
 @pytest.mark.asyncio
 async def test_file_change_sync(sync_setup):
@@ -75,6 +77,7 @@ async def test_file_change_sync(sync_setup):
 
     assert rules["architecture"] == "# Updated architecture"
 
+
 @pytest.mark.asyncio
 async def test_context_change_sync(sync_setup):
     """Test synchronization when context changes."""
@@ -87,8 +90,9 @@ async def test_context_change_sync(sync_setup):
     await asyncio.sleep(0.5)
 
     # Check source file was updated
-    arch_content = safe_read_file(workspace / "architecture.md")
-    assert arch_content == "# Changed via Context"
+    architecture_content = safe_read_file(workspace / "architecture.md")
+    assert architecture_content == "# Changed via Context"
+
 
 @pytest.mark.asyncio
 async def test_concurrent_changes(sync_setup):
@@ -119,6 +123,7 @@ async def test_concurrent_changes(sync_setup):
     assert safe_read_file(workspace / "tasks.md") == "# tasks Update 1"
     assert safe_read_file(workspace / "architecture.md") == "# architecture Update 1"
 
+
 @pytest.mark.asyncio
 async def test_error_handling(sync_setup):
     """Test error handling during synchronization."""
@@ -145,5 +150,5 @@ async def test_error_handling(sync_setup):
     rules = json.loads(rules_content)
     assert rules["architecture"] == "# Recovery Test"
 
-    arch_content = safe_read_file(workspace / "architecture.md")
-    assert arch_content == "# Recovery Test"
+    architecture_content = safe_read_file(workspace / "architecture.md")
+    assert architecture_content == "# Recovery Test"
