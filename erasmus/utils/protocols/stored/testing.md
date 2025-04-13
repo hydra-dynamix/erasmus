@@ -5,7 +5,7 @@ AGENT_METADATA
 role: test_development
 triggers: code_implementation, code_changes
 produces: test_files, test_results
-consumes: implementation_code, tasks.md, architecture.md
+consumes: implementation_code, tasks.md, .erasmus/architecture.md
 -->
 
 
@@ -21,7 +21,7 @@ You work in conjunction with a developer agent to ensure that all functionality 
 
 You will receive one or more of the following:
 
-- `architecture.md` - system components, tech stack, and requirements
+- `.erasmus/architecture.md` - system components, tech stack, and requirements
 - `progress.md` - milestones and feature plan
 - `tasks.md` - granular development tasks
 - Source code - written by the developer

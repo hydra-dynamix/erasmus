@@ -31,12 +31,14 @@ async def bench_env(tmp_path) -> tuple[Path, Path, FileSynchronizer]:
     # Cleanup
     await syncer.stop()
 
+
 async def measure_operation_time(operation) -> float:
     """Measure the time taken for an async operation."""
     start_time = time.perf_counter()
     await operation
     end_time = time.perf_counter()
     return end_time - start_time
+
 
 @pytest.mark.asyncio
 async def test_sync_single_file_performance(bench_env):
@@ -45,13 +47,13 @@ async def test_sync_single_file_performance(bench_env):
 
     # Measure initial sync time
     sync_time = await measure_operation_time(
-        syncer.sync_file("architecture.md"),
+        syncer.sync_file(".erasmus/architecture.md"),
     )
 
     # Measure sync time after modification
-    (workspace / "architecture.md").write_text("Modified content")
+    (workspace / ".erasmus/architecture.md").write_text("Modified content")
     modified_sync_time = await measure_operation_time(
-        syncer.sync_file("architecture.md"),
+        syncer.sync_file(".erasmus/architecture.md"),
     )
 
     # Print benchmark results
@@ -62,6 +64,7 @@ async def test_sync_single_file_performance(bench_env):
     # Verify reasonable performance
     assert sync_time < 1.0, "Initial sync took too long"
     assert modified_sync_time < 1.0, "Modified sync took too long"
+
 
 @pytest.mark.asyncio
 async def test_sync_all_files_performance(bench_env):
@@ -82,11 +85,12 @@ async def test_sync_all_files_performance(bench_env):
     print("\nAll Files Sync Performance:")
     print(f"Initial sync time: {sync_time:.4f}s")
     print(f"Modified sync time: {modified_sync_time:.4f}s")
-    print(f"Average time per file: {modified_sync_time/len(FileSynchronizer.TRACKED_FILES):.4f}s")
+    print(f"Average time per file: {modified_sync_time / len(FileSynchronizer.TRACKED_FILES):.4f}s")
 
     # Verify reasonable performance
     assert sync_time < 2.0, "Initial sync_all took too long"
     assert modified_sync_time < 2.0, "Modified sync_all took too long"
+
 
 @pytest.mark.asyncio
 async def test_concurrent_sync_performance(bench_env):
@@ -111,11 +115,14 @@ async def test_concurrent_sync_performance(bench_env):
     # Print benchmark results
     print("\nConcurrent Sync Performance:")
     print(f"Total time for {len(test_files)} files: {concurrent_sync_time:.4f}s")
-    print(f"Average time per file: {concurrent_sync_time/len(test_files):.4f}s")
+    print(f"Average time per file: {concurrent_sync_time / len(test_files):.4f}s")
 
     # Verify reasonable performance
     assert concurrent_sync_time < 3.0, "Concurrent sync took too long"
-    assert concurrent_sync_time/len(test_files) < 0.5, "Average concurrent sync time per file too high"
+    assert concurrent_sync_time / len(test_files) < 0.5, (
+        "Average concurrent sync time per file too high"
+    )
+
 
 @pytest.mark.asyncio
 async def test_status_check_performance(bench_env):

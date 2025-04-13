@@ -11,7 +11,7 @@ Erasmus leverages modern AI IDE capabilities by utilizing their rule injection m
 
 ### Intelligent Document Management
 
-**architecture.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
+**.erasmus/architecture.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
 
 **progress.md** tracks components derived from the architecture document, organizing them into a development schedule.
 
@@ -46,7 +46,7 @@ Erasmus sits in the background of your development environment and:
 
 ### Core Files Managed by Erasmus
 
-- **architecture.md** - Project architecture documentation
+- **.erasmus/architecture.md** - Project architecture documentation
 - **progress.md** - Development progress tracking
 - **tasks.md** - Granular task management
 - **.IDErules** - Bundled context for IDE integration

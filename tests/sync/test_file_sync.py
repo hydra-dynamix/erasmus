@@ -31,6 +31,7 @@ async def sync_env(tmp_path):
     # Cleanup
     await syncer.stop()
 
+
 @pytest.mark.asyncio
 async def test_initial_sync(sync_env):
     """Test initial synchronization of files."""
@@ -45,6 +46,7 @@ async def test_initial_sync(sync_env):
     for filename, key in FileSynchronizer.TRACKED_FILES.items():
         assert key in rules
         assert rules[key] == f"Test content for {filename}"
+
 
 @pytest.mark.asyncio
 async def test_file_change_detection(sync_env):
@@ -62,6 +64,7 @@ async def test_file_change_detection(sync_env):
     rules_file = rules_dir / "rules.json"
     rules = json.loads(rules_file.read_text())
     assert rules["tasks"] == "Updated content"
+
 
 @pytest.mark.asyncio
 async def test_multiple_rapid_updates(sync_env):
@@ -82,27 +85,29 @@ async def test_multiple_rapid_updates(sync_env):
     rules = json.loads(rules_file.read_text())
     assert rules["progress"] == "Update 4"
 
+
 @pytest.mark.asyncio
 async def test_missing_file_handling(sync_env):
     """Test handling of missing source files."""
     workspace, rules_dir, syncer = sync_env
 
     # First sync the file
-    await syncer.sync_file("architecture.md")
+    await syncer.sync_file(".erasmus/architecture.md")
 
     # Delete a source file
-    test_file = workspace / "architecture.md"
+    test_file = workspace / ".erasmus/architecture.md"
     test_file.unlink()
 
     # Try to sync the file again
     with pytest.raises(FileNotFoundError):
-        await syncer.sync_file("architecture.md")
+        await syncer.sync_file(".erasmus/architecture.md")
 
     # Verify rules were cleaned up
     rules_file = rules_dir / "rules.json"
     assert rules_file.exists()
     rules = json.loads(rules_file.read_text())
     assert "architecture" not in rules
+
 
 @pytest.mark.asyncio
 async def test_sync_status(tmp_path):
@@ -123,8 +128,8 @@ async def test_sync_status(tmp_path):
 
     # Get initial status
     status = await syncer.get_sync_status()
-    assert all(info['exists'] for info in status.values())
-    assert not any(info['synced'] for info in status.values())
+    assert all(info["exists"] for info in status.values())
+    assert not any(info["synced"] for info in status.values())
 
     # Sync a file
     await syncer.sync_file("tasks.md")
@@ -138,13 +143,14 @@ async def test_sync_status(tmp_path):
     # Cleanup
     await syncer.stop()
 
+
 @pytest.mark.asyncio
 async def test_concurrent_updates(sync_env):
     """Test handling of concurrent file updates."""
     workspace, rules_dir, syncer = sync_env
 
     # Update multiple files concurrently
-    files = ["architecture.md", "tasks.md", "progress.md"]
+    files = [".erasmus/architecture.md", "tasks.md", "progress.md"]
     for i, filename in enumerate(files):
         file_path = workspace / filename
         file_path.write_text(f"Concurrent update {i}")
@@ -157,6 +163,7 @@ async def test_concurrent_updates(sync_env):
     rules = json.loads(rules_file.read_text())
     for i, (_, key) in enumerate(FileSynchronizer.TRACKED_FILES.items()):
         assert rules[key] == f"Concurrent update {i}"
+
 
 @pytest.mark.asyncio
 async def test_error_recovery(sync_env):

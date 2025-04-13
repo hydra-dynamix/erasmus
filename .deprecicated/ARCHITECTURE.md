@@ -38,7 +38,7 @@ A single-file context watcher for cursor and windsurf, designed to streamline pr
 
 ### 1. Project Initialization
 - Create essential project files and directories:
-  - `ARCHITECTURE.md`: Project architecture documentation
+  - `.erasmus/architecture.md`: Project architecture documentation
   - `progress.md`: Development progress tracking
   - `tasks.md`: Granular task management
   - `.IDErules`: Bundled context for IDE integration

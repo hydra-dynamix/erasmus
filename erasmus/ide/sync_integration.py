@@ -15,6 +15,7 @@ from erasmus.utils.file import safe_read_file, safe_write_file
 
 logger = logging.getLogger(__name__)
 
+
 class SyncIntegration:
     """Handles integration between FileSynchronizer and CursorContextManager."""
 
@@ -29,7 +30,7 @@ class SyncIntegration:
         self._last_sync = {}
         self._update_retries = {}
         self.source_files = {
-            "architecture": workspace_path / "architecture.md",
+            "architecture": workspace_path / ".erasmus/architecture.md",
             "progress": workspace_path / "progress.md",
             "tasks": workspace_path / "tasks.md",
         }
@@ -71,7 +72,9 @@ class SyncIntegration:
                         # Try update with retries
                         for attempt in range(2):
                             if attempt > 0:
-                                logger.info(f"Retrying initial sync for {component} (attempt {attempt + 1})")
+                                logger.info(
+                                    f"Retrying initial sync for {component} (attempt {attempt + 1})"
+                                )
                                 await asyncio.sleep(0.2)
 
                             update_task = asyncio.create_task(
@@ -93,9 +96,13 @@ class SyncIntegration:
                                             break
 
                                 if attempt == 0:
-                                    logger.warning(f"Initial sync verification failed for {component}, will retry")
+                                    logger.warning(
+                                        f"Initial sync verification failed for {component}, will retry"
+                                    )
                                 else:
-                                    logger.error(f"Initial sync verification failed for {component} after retry")
+                                    logger.error(
+                                        f"Initial sync verification failed for {component} after retry"
+                                    )
 
                             except asyncio.TimeoutError:
                                 logger.exception(f"Timeout during initial sync of {component}")
@@ -145,7 +152,9 @@ class SyncIntegration:
                     # Update rules file directly
                     rules_file = self.context_manager.rules_file
                     try:
-                        current_rules = json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
+                        current_rules = (
+                            json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
+                        )
                     except json.JSONDecodeError:
                         current_rules = {}
 
@@ -186,10 +195,9 @@ class SyncIntegration:
                 current_content = safe_read_file(file_path)
 
                 # Only update if content is different and no file change event is pending
-                if (content != current_content and
-                    component not in self._file_change_events):
+                if content != current_content and component not in self._file_change_events:
                     # Write atomically using temporary file
-                    temp_path = file_path.with_suffix('.tmp')
+                    temp_path = file_path.with_suffix(".tmp")
                     try:
                         safe_write_file(temp_path, content)
                         temp_path.replace(file_path)

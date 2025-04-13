@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any, Set
+from datetime import datetime
 
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -26,31 +27,122 @@ class ProtocolRegistry(BaseModel):
 
 
 class ProtocolManager(BaseModel):
-    """Manages protocol loading, registration, and execution."""
+    """Manages protocol files and their registration."""
 
+    path_manager: PathManager = Field(default_factory=PathManager)
+    registry: Dict[str, Any] = Field(default_factory=dict)
+    event_handlers: Dict[str, List[Callable]] = Field(default_factory=dict)
+    prompt_functions: Dict[str, Callable] = Field(default_factory=dict)
+    transitions: List[ProtocolTransition] = Field(default_factory=list)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    protocols: Dict[str, Protocol] = Field(default_factory=dict)
-    prompt_functions: Dict[str, Callable] = Field(default_factory=dict)
-    event_handlers: Dict[str, List[Callable]] = Field(default_factory=dict)
-    path_manager: PathManager = Field(default_factory=PathManager)
-    transitions: List[ProtocolTransition] = Field(default_factory=list)
-
-    # TODO: Add a global context field in the rules file to store shared context across protocols
-    # This will allow protocols to access common information without passing it explicitly
-    # Implementation should include:
-    # 1. Reading global context from rules file
-    # 2. Merging with protocol-specific context
-    # 3. Updating rules file when global context changes
+    def __init__(self, **data):
+        """Initialize the ProtocolManager."""
+        if 'path_manager' not in data:
+            data['path_manager'] = PathManager()
+        super().__init__(**data)
 
     @classmethod
     async def create(cls) -> "ProtocolManager":
         """Create a new ProtocolManager instance."""
         instance = cls()
-        instance.path_manager.ensure_directories()
-        await instance.load_registry()
-        await instance.register_default_prompts()
+        try:
+            instance.path_manager.ensure_directories()
+            await instance.load_registry()
+            await instance.register_default_prompts()
+        except Exception as e:
+            logger.error(f"Error creating ProtocolManager: {e}")
+            # Optionally, you could re-raise the exception or handle it differently
+            raise
         return instance
+
+    async def load_registry(self) -> Dict[str, Any]:
+        """Load the protocol registry from disk."""
+        registry_file = self.path_manager.registry_file
+        if not registry_file.exists():
+            logger.info(f"Registry file not found at {registry_file}, creating new registry")
+            self.registry = {}
+            return self.registry
+        try:
+            with open(registry_file, "r") as f:
+                self.registry = json.load(f)
+                return self.registry
+        except Exception as e:
+            logger.error(f"Failed to load registry from {registry_file}: {e}")
+            self.registry = {}
+            return self.registry
+
+    async def register_default_prompts(self) -> None:
+        """Register default prompt functions for all protocols."""
+        protocols_dir = self.path_manager.protocols_dir / "stored"
+        registry_file = self.path_manager.registry_file
+        
+        # Ensure the protocols directory exists
+        if not protocols_dir.exists():
+            logger.warning(f"Protocols directory not found: {protocols_dir}")
+            return
+
+        # Find all markdown files in the stored protocols directory
+        protocol_files = list(protocols_dir.glob("*.md"))
+        
+        if not protocol_files:
+            logger.info("No protocol files found in stored protocols directory")
+            return
+
+        for protocol_file in protocol_files:
+            protocol_name = protocol_file.stem
+            
+            try:
+                # Read the protocol content from the file
+                with open(protocol_file, "r") as f:
+                    protocol_content = f.read().strip()
+
+                # If protocol not in registry, add it
+                if protocol_name not in self.registry:
+                    self.registry[protocol_name] = {
+                        "name": protocol_name,
+                        "description": f"Default protocol for {protocol_name}",
+                        "file_path": str(protocol_file)
+                    }
+                    logger.info(f"Added protocol {protocol_name} to registry")
+
+            except IOError as e:
+                logger.error(f"Error reading protocol file {protocol_file}: {e}")
+            except Exception as e:
+                logger.error(f"Unexpected error processing protocol {protocol_name}: {e}")
+
+        # Optionally save the updated registry
+        try:
+            # Ensure the directory exists
+            registry_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Write the serializable registry to the file
+            with open(registry_file, "w") as f:
+                serializable_registry = {}
+                for name, protocol in self.registry.items():
+                    # Ensure protocol is a dictionary or has model_dump method
+                    if hasattr(protocol, 'model_dump'):
+                        protocol_dict = protocol.model_dump()
+                    elif not isinstance(protocol, dict):
+                        protocol_dict = {
+                            "name": name,
+                            "description": "",
+                            "file_path": ""
+                        }
+                    else:
+                        protocol_dict = protocol
+
+                    # Convert PosixPath to string
+                    serializable_registry[name] = {
+                        "name": protocol_dict.get("name", name),
+                        "description": protocol_dict.get("description", ""),
+                        "file_path": str(protocol_dict.get("file_path", ""))
+                    }
+                json.dump(serializable_registry, f, indent=2)
+
+            logger.info(f"Registry saved to {registry_file}")
+        except Exception as e:
+            logger.error(f"Failed to save updated registry: {e}")
 
     async def load_registry(self) -> None:
         """Load the protocol registry from the registry file."""
@@ -66,16 +158,63 @@ class ProtocolManager(BaseModel):
             with open(registry_path, "r") as f:
                 registry_data = json.load(f)
 
+            # Ensure stored protocols directory exists
+            stored_protocols_dir = self.path_manager.stored_protocols_dir
+            stored_protocols_dir.mkdir(parents=True, exist_ok=True)
+
             for agent in registry_data.get("agents", []):
+                # Sanitize protocol name for file path
+                safe_name = agent["name"].replace("/", "_").replace("\\", "_").strip()
+
+                # Check for existing protocol file
+                protocol_file = None
+
+                # First check in the stored protocols directory
+                stored_file = stored_protocols_dir / f"{safe_name}.md"
+                if stored_file.exists():
+                    protocol_file = stored_file
+                    logger.info(f"Found existing protocol file: {protocol_file}")
+
+                # If not found in stored directory, check in the default protocols directory
+                if not protocol_file:
+                    default_file = self.path_manager.protocols_dir / f"{safe_name}.md"
+                    if default_file.exists():
+                        protocol_file = default_file
+                        logger.info(f"Found protocol file in default directory: {protocol_file}")
+
+                # If still not found, create a new file in the stored directory
+                if not protocol_file:
+                    protocol_file = stored_file
+                    # Create a basic protocol template
+                    protocol_content = f"""# {agent["name"]}
+
+## Role
+{agent["role"]}
+
+## Triggers
+{", ".join(agent.get("triggers", []))}
+
+## Produces
+{", ".join(agent.get("produces", []))}
+
+## Consumes
+{", ".join(agent.get("consumes", []))}
+
+## Description
+This is a protocol for the {agent["name"]} role.
+"""
+                    protocol_file.write_text(protocol_content)
+                    logger.info(f"Created new protocol file: {protocol_file}")
+
                 protocol = Protocol(
-                    name=agent["name"],
+                    name=agent["name"],  # Keep original name for display
                     role=agent["role"],
                     triggers=agent.get("triggers", []),
                     produces=agent.get("produces", []),
                     consumes=agent.get("consumes", []),
-                    file_path=self.path_manager.get_protocol_file(agent["name"]),
+                    file_path=protocol_file,
                 )
-                self.protocols[protocol.name] = protocol
+                self.registry[protocol.name] = protocol
                 logger.info(f"Loaded protocol: {protocol.name}")
 
             # Load workflow transitions
@@ -90,68 +229,99 @@ class ProtocolManager(BaseModel):
 
     def register_prompt_function(self, protocol_name: str, prompt_function: Callable) -> None:
         """Register a prompt function for a protocol."""
-        if protocol_name not in self.protocols:
+        if protocol_name not in self.registry:
             logger.warning(f"Cannot register prompt function for unknown protocol: {protocol_name}")
             return
 
         self.prompt_functions[protocol_name] = prompt_function
         logger.info(f"Registered prompt function for protocol: {protocol_name}")
 
-    async def register_default_prompts(self) -> None:
-        """Register default prompt functions for all protocols."""
-        for protocol in self.protocols.values():
-            if not protocol.file_path or not protocol.file_path.exists():
-                logger.warning(f"No file path for protocol: {protocol.name}")
-                continue
+    def save_registry(self) -> None:
+        """Save the protocol registry to a JSON file."""
+        try:
+            # Create a serializable version of the registry
+            serializable_registry = {}
+            for name, protocol in self.registry.items():
+                # Convert Protocol objects to dictionaries
+                if hasattr(protocol, 'model_dump'):
+                    serializable_registry[name] = protocol.model_dump()
+                else:
+                    serializable_registry[name] = {
+                        "name": protocol.get("name", name),
+                        "description": protocol.get("description", ""),
+                        "file_path": protocol.get("file_path", "")
+                    }
 
-            try:
-                # Read the protocol content from the file
-                with open(protocol.file_path, "r") as f:
-                    protocol_content = f.read()
+            # Ensure the directory exists
+            registry_file = self.path_manager.agent_registry_file
+            registry_file.parent.mkdir(parents=True, exist_ok=True)
 
-                # Create a prompt function that formats the protocol name and context
-                async def create_prompt(protocol_name, content):
-                    async def prompt(context):
-                        # Ensure context is a dictionary
-                        if not isinstance(context, dict):
-                            context = {"context": context}
+            # Write the serializable registry to the file
+            with open(registry_file, "w") as f:
+                json.dump(serializable_registry, f, indent=2)
 
-                        # Add protocol-specific context
-                        context["protocol_name"] = protocol_name
+            logger.info(f"Registry saved to {registry_file}")
+        except Exception as e:
+            logger.error(f"Failed to save registry to {registry_file}: {e}")
 
-                        # Return the formatted prompt
-                        return f"# {protocol_name}\n\n{content}\n\n## Context\n\n{json.dumps(context, indent=2)}"
+    def register_protocol(self, name: str, description: str, file_path: Path) -> None:
+        """Register a new protocol in the registry."""
+        if name in self.registry:
+            logger.warning(f"Protocol {name} already exists in registry")
+            return
 
-                    return prompt
+        self.registry[name] = {
+            "description": description,
+            "file_path": str(file_path),
+            "created_at": datetime.now().isoformat(),
+        }
+        self.save_registry()
+        logger.info(f"Registered protocol {name}")
 
-                # Register the prompt function
-                protocol.prompt = await create_prompt(protocol.name, protocol_content)
-                logger.info(f"Registered prompt for protocol: {protocol.name}")
+    def unregister_protocol(self, name: str) -> None:
+        """Remove a protocol from the registry."""
+        if name not in self.registry:
+            logger.warning(f"Protocol {name} not found in registry")
+            return
 
-            except Exception as e:
-                logger.error(f"Error loading markdown files: {e}")
-                continue
+        del self.registry[name]
+        self.save_registry()
+        logger.info(f"Unregistered protocol {name}")
+
+    def get_protocol(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get a protocol from the registry by name."""
+        return self.registry.get(name)
+
+    def list_protocols(self) -> List[Dict[str, Any]]:
+        """List all registered protocols."""
+        return list(self.registry.values())
+
+    def get_protocol_file(self, name: str) -> Optional[Path]:
+        """Get the file path for a protocol by name."""
+        protocol = self.get_protocol(name)
+        if not protocol:
+            return None
+        return Path(protocol.get("file_path", ""))
+
+    def get_protocol_json(self, name: str) -> Optional[Path]:
+        """Get the JSON file path for a protocol by name."""
+        protocol = self.get_protocol(name)
+        if not protocol:
+            return None
+        file_path = Path(protocol.get("file_path", ""))
+        return file_path.with_suffix(".json")
 
     def register_event_handler(self, event_type: str, handler: Callable) -> None:
         """Register an event handler for a specific event type."""
         if event_type not in self.event_handlers:
             self.event_handlers[event_type] = []
         self.event_handlers[event_type].append(handler)
-        logger.info(f"Registered handler for event: {event_type}")
 
-    async def _emit_event(self, event_type: str, data: Any) -> None:
+    def _emit_event(self, event_type: str, data: Any) -> None:
         """Emit an event to all registered handlers."""
-        if event_type not in self.event_handlers:
-            return
-
-        for handler in self.event_handlers[event_type]:
-            try:
-                if asyncio.iscoroutinefunction(handler):
-                    await handler(data)
-                else:
-                    handler(data)
-            except Exception as e:
-                logger.error(f"Error in {event_type} event handler: {e}")
+        if event_type in self.event_handlers:
+            for handler in self.event_handlers[event_type]:
+                handler(data)
 
     async def execute_protocol(self, name: str, context: dict) -> List[ProtocolTransition]:
         """Execute a protocol and return possible next transitions."""
@@ -164,8 +334,8 @@ class ProtocolManager(BaseModel):
             context = {"context": context}
 
         # Add protocol-specific context
-        context["protocol_name"] = protocol.name
-        context["protocol_role"] = protocol.role
+        context["protocol_name"] = protocol["name"]
+        context["protocol_role"] = protocol["role"]
 
         # Execute the protocol
         artifacts = await protocol.execute(context)
@@ -176,19 +346,19 @@ class ProtocolManager(BaseModel):
             transitions = [
                 t
                 for t in self.transitions
-                if t.from_agent == protocol.name and t.artifact == artifact.name
+                if t.from_agent == protocol["name"] and t.artifact == artifact.name
             ]
             possible_transitions.extend(transitions)
 
         return possible_transitions
 
-    def get_protocol(self, protocol_name: str) -> Optional[Protocol]:
+    def get_protocol(self, protocol_name: str) -> Optional[Dict[str, Any]]:
         """Get a protocol by name."""
-        return self.protocols.get(protocol_name)
+        return self.registry.get(protocol_name)
 
-    def list_protocols(self) -> List[Protocol]:
+    def list_protocols(self) -> List[Dict[str, Any]]:
         """List all available protocols."""
-        return list(self.protocols.values())
+        return list(self.registry.values())
 
     def get_transitions_from(self, protocol_name: str) -> List[ProtocolTransition]:
         """Get all transitions originating from a protocol."""
@@ -199,14 +369,21 @@ class ProtocolManager(BaseModel):
         return [t for t in self.transitions if t.to_agent == protocol_name]
 
     async def activate_protocol(self, protocol_name: str) -> bool:
-        """Activate a protocol."""
-        protocol = self.get_protocol(protocol_name)
-        if not protocol:
-            logger.error(f"Cannot activate unknown protocol: {protocol_name}")
-            return False
+        """Activate a protocol by name."""
+        try:
+            # Check if the protocol exists in the registry
+            if protocol_name not in self.registry:
+                logger.warning(f"Protocol {protocol_name} not found in registry")
+                return False
 
-        await self._emit_event("protocol_activated", {"protocol": protocol})
-        return True
+            # Perform any necessary activation steps
+            # This could involve setting a default agent, initializing resources, etc.
+            logger.info(f"Activating protocol: {protocol_name}")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Error activating protocol {protocol_name}: {e}")
+            return False
 
     async def complete_protocol(self, protocol_name: str, result: Dict[str, Any]) -> bool:
         """Complete a protocol."""
@@ -226,7 +403,7 @@ class ProtocolManager(BaseModel):
         self, protocol_name: str, context: Dict[str, Any]
     ) -> List[ProtocolTransition]:
         """Get available transitions for a protocol based on context."""
-        if protocol_name not in self.protocols:
+        if protocol_name not in self.registry:
             raise ValueError(f"Unknown protocol: {protocol_name}")
 
         # Ensure context is a dictionary
@@ -235,7 +412,7 @@ class ProtocolManager(BaseModel):
 
         # Add protocol-specific context
         context["protocol_name"] = protocol_name
-        context["protocol_role"] = self.protocols[protocol_name].role
+        context["protocol_role"] = self.registry[protocol_name]["role"]
 
         return [
             t for t in self.transitions if t.from_agent == protocol_name and t.condition(context)

@@ -24,7 +24,7 @@ def temp_workspace(tmp_path):
 
     # Create test files
     files = {
-        "architecture": docs_dir / "architecture.md",
+        "architecture": docs_dir / ".erasmus/architecture.md",
         "progress": docs_dir / "progress.md",
         "script": scripts_dir / "test_script.py",
     }
@@ -35,6 +35,7 @@ def temp_workspace(tmp_path):
     files["script"].write_text("print('Hello, World!')")
 
     return tmp_path, files
+
 
 def test_concurrent_file_updates(temp_workspace):
     """Test handling of concurrent file updates across different watchers."""
@@ -77,6 +78,7 @@ def test_concurrent_file_updates(temp_workspace):
     finally:
         factory.stop_all()
 
+
 def test_error_recovery(temp_workspace):
     """Test system recovery from errors in callbacks."""
     workspace, files = temp_workspace
@@ -116,6 +118,7 @@ def test_error_recovery(temp_workspace):
 
     finally:
         factory.stop_all()
+
 
 def test_file_system_events(temp_workspace):
     """Test handling of various file system events."""
@@ -159,6 +162,7 @@ def test_file_system_events(temp_workspace):
 
     finally:
         factory.stop_all()
+
 
 def test_watcher_interactions(temp_workspace):
     """Test interactions between different types of watchers."""

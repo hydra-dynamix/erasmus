@@ -32,7 +32,6 @@ from erasmus.utils.context import (
 from erasmus.utils.logging import LogContext, get_logger
 from erasmus.utils.paths import SetupPaths
 
-from .setup import setup as setup_env
 from .protocol import protocol
 
 load_dotenv()
@@ -77,36 +76,47 @@ cli.add_command(protocol)
 
 # === Task Management Commands ===
 @cli.group()
-@log_command
-def task():
+@click.pass_context
+def task(ctx):
     """Task management commands."""
+    return
 
 
 @task.command()
 @click.argument("description")
-@log_command
-def add(description: str):
+@click.pass_context
+def add(ctx, description: str):
     """Add a new task with the given description."""
     with LogContext(logger, "add_task"):
-        logger.debug(f"Adding task with description: {description}")
-        new_task = task_manager.add_task(description)
-        logger.info(f"Created task {new_task.id}: {description}")
-        console.print(f"✨ Created task [bold green]{new_task.id}[/]")
-        console.print(f"Description: {new_task.description}")
+        try:
+            logger.debug(f"Adding task with description: {description}")
+            new_task = task_manager.add_task(description)
+            logger.info(f"Created task {new_task.id}: {description}")
+            console.print(f"✨ Created task [bold green]{new_task.id}[/]")
+            console.print(f"Description: {new_task.description}")
+        except Exception as e:
+            logger.error(f"Failed to add task: {e}", exc_info=True)
+            console.print(f"❌ Failed to add task: {e}", style="red")
+            ctx.exit(1)
 
 
 @task.command()
 @click.argument("task_id")
 @click.argument("status", type=click.Choice(["pending", "in_progress", "completed", "blocked"]))
-@log_command
-def status(task_id: str, status: str):
+@click.pass_context
+def status(ctx, task_id: str, status: str):
     """Update the status of a task."""
     with LogContext(logger, "update_task_status"):
-        logger.debug(f"Updating task {task_id} status to {status}")
-        task_status = TaskStatus[status.lower()]
-        task_manager.update_task_status(task_id, task_status)
-        logger.info(f"Updated task {task_id} status to {status}")
-        console.print(f"📝 Updated task [bold]{task_id}[/] status to [bold green]{status}[/]")
+        try:
+            logger.debug(f"Updating task {task_id} status to {status}")
+            task_status = TaskStatus[status.lower()]
+            task_manager.update_task_status(task_id, task_status)
+            logger.info(f"Updated task {task_id} status to {status}")
+            console.print(f"📝 Updated task [bold]{task_id}[/] status to [bold green]{status}[/]")
+        except Exception as e:
+            logger.error(f"Failed to update task status: {e}", exc_info=True)
+            console.print(f"❌ Failed to update task status: {e}", style="red")
+            ctx.exit(1)
 
 
 @task.command()
@@ -115,116 +125,146 @@ def status(task_id: str, status: str):
     type=click.Choice(["pending", "in_progress", "completed", "blocked"]),
     help="Filter tasks by status",
 )
-@log_command
-def list(status: str | None = None):
+@click.pass_context
+def list(ctx, status: str | None = None):
     """List all tasks, optionally filtered by status."""
     with LogContext(logger, "list_tasks"):
-        logger.debug(f"Listing tasks with status filter: {status}")
-        task_status = TaskStatus[status.lower()] if status else None
-        tasks = task_manager.list_tasks(task_status)
+        try:
+            logger.debug(f"Listing tasks with status filter: {status}")
+            task_status = TaskStatus[status.lower()] if status else None
+            tasks = task_manager.list_tasks(task_status)
 
-        if not tasks:
-            logger.info("No tasks found")
-            console.print("No tasks found.")
-            return
+            if not tasks:
+                logger.info("No tasks found")
+                console.print("No tasks found.")
+                return
 
-        logger.info(f"Found {len(tasks)} tasks")
-        table = Table(show_header=True)
-        table.add_column("ID", style="cyan")
-        table.add_column("Description")
-        table.add_column("Status", style="green")
+            logger.info(f"Found {len(tasks)} tasks")
+            table = Table(show_header=True)
+            table.add_column("ID", style="cyan")
+            table.add_column("Description")
+            table.add_column("Status", style="green")
 
-        for task in tasks:
-            logger.debug(f"Adding task to table: {task.id} - {task.status}")
-            table.add_row(
-                task.id,
-                task.description,
-                task.status.value.lower().replace("_", " "),
-            )
+            for task in tasks:
+                logger.debug(f"Adding task to table: {task.id} - {task.status}")
+                table.add_row(
+                    task.id,
+                    task.description,
+                    task.status.value.lower().replace("_", " "),
+                )
 
-        console.print(table)
+            console.print(table)
+        except Exception as e:
+            logger.error(f"Failed to list tasks: {e}", exc_info=True)
+            console.print(f"❌ Failed to list tasks: {e}", style="red")
+            ctx.exit(1)
 
 
 @task.command()
 @click.argument("task_id")
 @click.argument("note")
-@log_command
-def note(task_id: str, note: str):
+@click.pass_context
+def note(ctx, task_id: str, note: str):
     """Add a note to a task."""
     with LogContext(logger, "add_task_note"):
-        logger.debug(f"Adding note to task {task_id}: {note}")
-        task_manager.add_note_to_task(task_id, note)
-        logger.info(f"Added note to task {task_id}")
-        console.print(f"📝 Added note to task [bold]{task_id}[/]")
+        try:
+            logger.debug(f"Adding note to task {task_id}: {note}")
+            task_manager.add_note_to_task(task_id, note)
+            logger.info(f"Added note to task {task_id}")
+            console.print(f"📝 Added note to task [bold]{task_id}[/]")
+        except Exception as e:
+            logger.error(f"Failed to add note: {e}", exc_info=True)
+            console.print(f"❌ Failed to add note: {e}", style="red")
+            ctx.exit(1)
 
 
 # === Git Commands ===
 @cli.group()
-@log_command
-def git():
+@click.pass_context
+def git(ctx):
     """Git operations."""
+    return
 
 
 @git.command()
-@log_command
-def status():
+@click.pass_context
+def status(ctx):
     """Show git repository status."""
     with LogContext(logger, "git_status"):
-        logger.debug("Getting repository status")
-        git_manager = GitManager(Path.cwd())
-        state = git_manager.get_repository_state()
-        logger.info(
-            f"Repository status - Branch: {state['branch']}, "
-            + f"Staged: {len(state['staged'])}, "
-            + f"Unstaged: {len(state['unstaged'])}, "
-            + f"Untracked: {len(state['untracked'])}",
-        )
-        console.print(state)
+        try:
+            logger.debug("Getting repository status")
+            git_manager = GitManager(Path.cwd())
+            state = git_manager.get_repository_state()
+            logger.info(
+                f"Repository status - Branch: {state['branch']}, "
+                + f"Staged: {len(state['staged'])}, "
+                + f"Unstaged: {len(state['unstaged'])}, "
+                + f"Untracked: {len(state['untracked'])}",
+            )
+            console.print(state)
+        except Exception as e:
+            logger.error(f"Failed to get git status: {e}", exc_info=True)
+            console.print(f"❌ Failed to get git status: {e}", style="red")
+            ctx.exit(1)
 
 
 @git.command()
 @click.argument("message")
-@log_command
-def commit(message: str):
+@click.pass_context
+def commit(ctx, message: str):
     """Create a git commit with the given message."""
     with LogContext(logger, "git_commit"):
-        logger.debug(f"Attempting to commit with message: {message}")
-        git_manager = GitManager(Path.cwd())
-        if git_manager.commit_changes(message):
-            logger.info("Successfully committed changes")
-            console.print("✨ Changes committed successfully")
-        else:
-            logger.error("Failed to commit changes")
-            console.print("❌ Failed to commit changes", style="red")
+        try:
+            logger.debug(f"Attempting to commit with message: {message}")
+            git_manager = GitManager(Path.cwd())
+            if git_manager.commit_changes(message):
+                logger.info("Successfully committed changes")
+                console.print("✨ Changes committed successfully")
+            else:
+                logger.error("Failed to commit changes")
+                console.print("❌ Failed to commit changes", style="red")
+                ctx.exit(1)
+        except Exception as e:
+            logger.error(f"Failed to commit changes: {e}", exc_info=True)
+            console.print(f"❌ Failed to commit changes: {e}", style="red")
+            ctx.exit(1)
 
 
 @git.command()
 @click.argument("name")
-@log_command
-def branch(name: str):
+@click.pass_context
+def branch(ctx, name: str):
     """Create and switch to a new git branch."""
     with LogContext(logger, "git_branch"):
-        logger.debug(f"Creating and switching to branch: {name}")
-        git_manager = GitManager(Path.cwd())
         try:
+            logger.debug(f"Creating and switching to branch: {name}")
+            git_manager = GitManager(Path.cwd())
             git_manager._run_git_command(["checkout", "-b", name])
             logger.info(f"Created and switched to branch: {name}")
             console.print(f"✨ Created and switched to branch: [bold]{name}[/]")
-        except Exception:
-            logger.error("Failed to create/switch branch", exc_info=True)
+        except Exception as e:
+            logger.error(f"Failed to create/switch branch: {e}", exc_info=True)
             console.print(f"❌ Failed to create branch: {name}", style="red")
+            ctx.exit(1)
 
 
 # === Project Commands ===
 @cli.command()
-@log_command
-def setup():
+@click.pass_context
+def setup(ctx):
     """Set up a new project with necessary files and configuration."""
     with LogContext(logger, "project_setup"):
-        logger.info("Starting project setup")
-        setup_env()
-        logger.info("Project setup completed successfully")
-        console.print("✨ Project setup complete")
+        try:
+            logger.info("Starting project setup")
+            from erasmus.cli.setup import setup_env
+
+            setup_env()
+            logger.info("Project setup completed successfully")
+            console.print("✨ Project setup complete")
+        except Exception as e:
+            logger.error(f"Project setup failed: {e}", exc_info=True)
+            console.print(f"❌ Project setup failed: {e}", style="red")
+            ctx.exit(1)
 
 
 @cli.command()
@@ -234,39 +274,41 @@ def setup():
     help="Type of file to update",
 )
 @click.option("--content", help="New content for the file")
-@log_command
-def update(type: str, content: str):
+@click.pass_context
+def update(ctx, type: str, content: str):
     """Update project files."""
     with LogContext(logger, "update_file"):
-        logger.debug(f"Updating {type} file")
         try:
+            logger.debug(f"Updating {type} file")
             update_specific_file(type, content)
             logger.info(f"Successfully updated {type} file")
             console.print(f"✨ Updated {type} file")
         except Exception as e:
-            logger.error(f"Failed to update {type} file", exc_info=True)
-            console.print(f"❌ Failed to update {type} file: {e!s}", style="red")
+            logger.error(f"Failed to update {type} file: {e}", exc_info=True)
+            console.print(f"❌ Failed to update {type} file: {e}", style="red")
+            ctx.exit(1)
 
 
 @cli.command()
 @click.option("--force", is_flag=True, help="Force cleanup without confirmation")
-@log_command
-def cleanup(force: bool):
+@click.pass_context
+def cleanup(ctx, force: bool):
     """Remove all generated files and restore backups if available."""
     with LogContext(logger, "cleanup"):
-        logger.debug(f"Starting cleanup with force={force}")
-        if not force:
-            if not click.confirm("This will remove all generated files. Are you sure?"):
-                logger.info("Cleanup cancelled by user")
-                console.print("Cleanup cancelled.")
-                return
         try:
+            logger.debug(f"Starting cleanup with force={force}")
+            if not force:
+                if not click.confirm("This will remove all generated files. Are you sure?"):
+                    logger.info("Cleanup cancelled by user")
+                    console.print("Cleanup cancelled.")
+                    return
             cleanup_project()
             logger.info("Successfully cleaned up project files")
             console.print("🧹 Cleanup complete")
         except Exception as e:
-            logger.error("Failed to clean up project", exc_info=True)
-            console.print(f"❌ Cleanup failed: {e!s}", style="red")
+            logger.error(f"Failed to clean up project: {e}", exc_info=True)
+            console.print(f"❌ Cleanup failed: {e}", style="red")
+            ctx.exit(1)
 
 
 @cli.command()
@@ -334,100 +376,142 @@ def watch():
 
 
 @cli.group()
-@log_command
-def context():
+@click.pass_context
+def context(ctx):
     """Context management commands."""
     return
 
 
 @context.command()
-@log_command
-def store():
+@click.pass_context
+def store(ctx):
     """Store the current context in the context directory."""
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-    success = store_context(setup_paths)
-    if success:
-        console.print("✨ Context stored successfully")
-    else:
-        console.print("❌ Failed to store context. Check logs for details.", style="red")
+    with LogContext(logger, "store_context"):
+        try:
+            setup_paths = SetupPaths.with_project_root(Path.cwd())
+            success = store_context(setup_paths)
+            if success:
+                logger.info("Context stored successfully")
+                console.print("✨ Context stored successfully")
+            else:
+                logger.error("Failed to store context")
+                console.print("❌ Failed to store context. Check logs for details.", style="red")
+                ctx.exit(1)
+        except Exception as e:
+            logger.error(f"Failed to store context: {e}", exc_info=True)
+            console.print(f"❌ Failed to store context: {e}", style="red")
+            ctx.exit(1)
 
 
 @context.command()
-@log_command
 @click.argument("context_dir", required=False)
 @click.option(
     "--architecture_context_dir",
     type=str,
     help="Context directory to restore (deprecated, use positional argument instead)",
 )
-def restore(context_dir: str = None, architecture_context_dir: str = None):
+@click.pass_context
+def restore(ctx, context_dir: str = None, architecture_context_dir: str = None):
     """Restore the context from the specified context directory."""
-    # Use context_dir if provided, otherwise fall back to architecture_context_dir
-    directory_path = context_dir or architecture_context_dir
+    with LogContext(logger, "restore_context"):
+        try:
+            # Use context_dir if provided, otherwise fall back to architecture_context_dir
+            directory_path = context_dir or architecture_context_dir
 
-    if not directory_path:
-        console.print(
-            "❌ No context directory specified. Please provide a context directory path.",
-            style="red",
-        )
-        return
+            if not directory_path:
+                logger.error("No context directory specified")
+                console.print(
+                    "❌ No context directory specified. Please provide a context directory path.",
+                    style="red",
+                )
+                ctx.exit(1)
 
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-    context_path = Path(directory_path)
+            setup_paths = SetupPaths.with_project_root(Path.cwd())
+            context_path = Path(directory_path)
 
-    if not context_path.exists():
-        console.print(f"❌ Context directory not found: {directory_path}", style="red")
-        return
+            if not context_path.exists():
+                logger.error(f"Context directory not found: {directory_path}")
+                console.print(f"❌ Context directory not found: {directory_path}", style="red")
+                ctx.exit(1)
 
-    success = restore_context(setup_paths, context_path)
-    if success:
-        console.print("✨ Context restored successfully")
-    else:
-        console.print("❌ Failed to restore context. Check logs for details.", style="red")
-
-
-@context.command()
-@log_command
-def list_context():
-    """List all context directories."""
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-    dirs = list_context_dirs(setup_paths)
-
-    if dirs:
-        console.print("Available context directories:")
-        for i, dir_path in enumerate(dirs, 1):
-            # Try to get a readable name from the directory
-            dir_name = Path(dir_path).name
-            console.print(f"{i}. {dir_name}")
-    else:
-        console.print("No context directories found")
-
-    console.print("✨ Context directories listed successfully")
+            success = restore_context(setup_paths, context_path)
+            if success:
+                logger.info("Context restored successfully")
+                console.print("✨ Context restored successfully")
+            else:
+                logger.error("Failed to restore context")
+                console.print("❌ Failed to restore context. Check logs for details.", style="red")
+                ctx.exit(1)
+        except Exception as e:
+            logger.error(f"Failed to restore context: {e}", exc_info=True)
+            console.print(f"❌ Failed to restore context: {e}", style="red")
+            ctx.exit(1)
 
 
 @context.command()
-@log_command
-def select():
+@click.pass_context
+def list(ctx):
+    """List all available context directories."""
+    with LogContext(logger, "list_context_dirs"):
+        try:
+            setup_paths = SetupPaths.with_project_root(Path.cwd())
+            dirs = list_context_dirs(setup_paths)
+
+            if dirs:
+                logger.info(f"Found {len(dirs)} context directories")
+                console.print("Available context directories:")
+                for i, dir_path in enumerate(dirs, 1):
+                    # Try to get a readable name from the directory
+                    dir_name = Path(dir_path).name
+                    console.print(f"{i}. {dir_name}")
+            else:
+                logger.info("No context directories found")
+                console.print("No context directories found")
+
+            console.print("✨ Context directories listed successfully")
+        except Exception as e:
+            logger.error(f"Failed to list context directories: {e}", exc_info=True)
+            console.print(f"❌ Failed to list context directories: {e}", style="red")
+            ctx.exit(1)
+
+
+@context.command()
+@click.pass_context
+def select(ctx):
     """Select a context directory to restore."""
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-    architecture_context_dir = select_context_dir(setup_paths)
+    with LogContext(logger, "select_context"):
+        try:
+            setup_paths = SetupPaths.with_project_root(Path.cwd())
+            architecture_context_dir = select_context_dir(setup_paths)
 
-    if not architecture_context_dir:
-        console.print("No context directory selected", style="yellow")
-        return
+            if not architecture_context_dir:
+                logger.info("No context directory selected")
+                console.print("No context directory selected", style="yellow")
+                return
 
-    console.print(f"Selected context directory: {architecture_context_dir}")
+            logger.info(f"Selected context directory: {architecture_context_dir}")
+            console.print(f"Selected context directory: {architecture_context_dir}")
 
-    # Confirm before restoring
-    prompt = "Do you want to restore this context? This will overwrite current files."
-    if click.confirm(prompt):
-        success = restore_context(setup_paths, architecture_context_dir)
-        if success:
-            console.print("✨ Context restored successfully")
-        else:
-            console.print("❌ Failed to restore context. Check logs for details.", style="red")
-    else:
-        console.print("Context restoration cancelled")
+            # Confirm before restoring
+            prompt = "Do you want to restore this context? This will overwrite current files."
+            if click.confirm(prompt):
+                success = restore_context(setup_paths, architecture_context_dir)
+                if success:
+                    logger.info("Context restored successfully")
+                    console.print("✨ Context restored successfully")
+                else:
+                    logger.error("Failed to restore context")
+                    console.print(
+                        "❌ Failed to restore context. Check logs for details.", style="red"
+                    )
+                    ctx.exit(1)
+            else:
+                logger.info("Context restoration cancelled")
+                console.print("Context restoration cancelled")
+        except Exception as e:
+            logger.error(f"Failed to select context: {e}", exc_info=True)
+            console.print(f"❌ Failed to select context: {e}", style="red")
+            ctx.exit(1)
 
 
 if __name__ == "__main__":

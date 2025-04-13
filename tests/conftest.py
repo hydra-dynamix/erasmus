@@ -17,6 +17,7 @@ src_path = str(Path(__file__).parent.parent / "src")
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
+
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
     """
@@ -31,6 +32,7 @@ def temp_dir() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory() as temp_dir:
         yield Path(temp_dir)
 
+
 @pytest.fixture
 def setup_files(temp_dir: Path) -> dict[str, Path]:
     """
@@ -43,7 +45,7 @@ def setup_files(temp_dir: Path) -> dict[str, Path]:
         Dict[str, Path]: Dictionary mapping file keys to their paths
     """
     files = {
-        "architecture": temp_dir / "architecture.md",
+        "architecture": temp_dir / ".erasmus/architecture.md",
         "progress": temp_dir / "progress.md",
         "tasks": temp_dir / "tasks.md",
     }
@@ -53,6 +55,7 @@ def setup_files(temp_dir: Path) -> dict[str, Path]:
         path.touch()
 
     return files
+
 
 @pytest.fixture
 def test_script(temp_dir: Path) -> Path:

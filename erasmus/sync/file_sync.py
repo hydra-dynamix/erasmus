@@ -21,6 +21,7 @@ from erasmus.utils.file import safe_read_file, safe_write_file
 
 logger = logging.getLogger(__name__)
 
+
 class FileChangeHandler(FileSystemEventHandler):
     """Handles file system events for tracked files."""
 
@@ -40,13 +41,14 @@ class FileChangeHandler(FileSystemEventHandler):
         if not event.is_directory and Path(event.src_path).name == self.filename:
             self.callback(self.filename)
 
+
 class FileSynchronizer:
     """Manages synchronization of project files to the rules directory."""
 
     TRACKED_FILES = {
-        'architecture.md': 'architecture',
-        'tasks.md': 'tasks',
-        'progress.md': 'progress',
+        ".erasmus/architecture.md": "architecture",
+        "tasks.md": "tasks",
+        "progress.md": "progress",
     }
 
     def __init__(self, workspace_path: Path, rules_dir: Path):
@@ -89,8 +91,9 @@ class FileSynchronizer:
             source_file = self.workspace_path / filename
             if source_file.exists():
                 # Create and configure the handler
-                handler = FileChangeHandler(filename, lambda f=filename:
-                    asyncio.run_coroutine_threadsafe(
+                handler = FileChangeHandler(
+                    filename,
+                    lambda f=filename: asyncio.run_coroutine_threadsafe(
                         self._handle_file_change(f),
                         self._event_loop,
                     ),
@@ -132,8 +135,7 @@ class FileSynchronizer:
         """Synchronize all tracked files in the workspace."""
         # Create a list of tracked files that exist in the workspace
         files_to_sync = [
-            filename for filename in self.TRACKED_FILES
-            if (self.workspace_path / filename).exists()
+            filename for filename in self.TRACKED_FILES if (self.workspace_path / filename).exists()
         ]
 
         # Synchronize each existing tracked file
@@ -161,7 +163,9 @@ class FileSynchronizer:
             rules_file = self.rules_dir / "rules.json"
             async with self._sync_lock:
                 try:
-                    current_rules = json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
+                    current_rules = (
+                        json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
+                    )
                     component = self.TRACKED_FILES[filename]
                     if component in current_rules:
                         del current_rules[component]
@@ -180,7 +184,9 @@ class FileSynchronizer:
             rules_file = self.rules_dir / "rules.json"
             async with self._sync_lock:
                 try:
-                    current_rules = json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
+                    current_rules = (
+                        json.loads(safe_read_file(rules_file)) if rules_file.exists() else {}
+                    )
                 except json.JSONDecodeError:
                     logger.exception("Invalid JSON in rules file")
                     current_rules = {}
@@ -257,19 +263,18 @@ class FileSynchronizer:
             if source_file.exists():
                 source_content = safe_read_file(source_file)
                 is_synced = (
-                    component in current_rules and
-                    current_rules[component] == source_content
+                    component in current_rules and current_rules[component] == source_content
                 )
                 status[filename] = {
-                    'last_sync': self._last_sync.get(filename) if is_synced else None,
-                    'exists': True,
-                    'synced': is_synced,
+                    "last_sync": self._last_sync.get(filename) if is_synced else None,
+                    "exists": True,
+                    "synced": is_synced,
                 }
             else:
                 status[filename] = {
-                    'last_sync': None,
-                    'exists': False,
-                    'synced': False,
+                    "last_sync": None,
+                    "exists": False,
+                    "synced": False,
                 }
         return status
 

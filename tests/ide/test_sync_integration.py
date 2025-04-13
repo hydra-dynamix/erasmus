@@ -17,7 +17,7 @@ async def sync_setup(tmp_path):
     workspace.mkdir()
 
     # Create source files
-    (workspace / "architecture.md").write_text("# Test architecture")
+    (workspace / ".erasmus/architecture.md").write_text("# Test architecture")
     (workspace / "progress.md").write_text("# Test progress")
     (workspace / "tasks.md").write_text("# Test tasks")
 
@@ -63,7 +63,7 @@ async def test_file_change_sync(sync_setup):
     workspace, context_manager = sync_setup
 
     # Modify a source file
-    (workspace / "architecture.md").write_text("# Updated architecture")
+    (workspace / ".erasmus/architecture.md").write_text("# Updated architecture")
 
     # Wait for sync
     await asyncio.sleep(0.5)
@@ -90,7 +90,7 @@ async def test_context_change_sync(sync_setup):
     await asyncio.sleep(0.5)
 
     # Check source file was updated
-    architecture_content = safe_read_file(workspace / "architecture.md")
+    architecture_content = safe_read_file(workspace / ".erasmus/architecture.md")
     assert architecture_content == "# Changed via Context"
 
 
@@ -102,7 +102,7 @@ async def test_concurrent_changes(sync_setup):
     # Create multiple concurrent changes
     (workspace / "progress.md").write_text("# progress Update 1")
     await context_manager.queue_update("tasks", "# tasks Update 1")
-    (workspace / "architecture.md").write_text("# architecture Update 1")
+    (workspace / ".erasmus/architecture.md").write_text("# architecture Update 1")
 
     # Wait for all changes to sync
     await asyncio.sleep(1.0)
@@ -121,7 +121,7 @@ async def test_concurrent_changes(sync_setup):
     # Verify source files
     assert safe_read_file(workspace / "progress.md") == "# progress Update 1"
     assert safe_read_file(workspace / "tasks.md") == "# tasks Update 1"
-    assert safe_read_file(workspace / "architecture.md") == "# architecture Update 1"
+    assert safe_read_file(workspace / ".erasmus/architecture.md") == "# architecture Update 1"
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_error_handling(sync_setup):
     (workspace / ".cursorrules" / "rules.json").write_text("{invalid json")
 
     # Try to sync changes
-    (workspace / "architecture.md").write_text("# Should Still Work")
+    (workspace / ".erasmus/architecture.md").write_text("# Should Still Work")
 
     # Wait for recovery
     await asyncio.sleep(0.5)
@@ -150,5 +150,5 @@ async def test_error_handling(sync_setup):
     rules = json.loads(rules_content)
     assert rules["architecture"] == "# Recovery Test"
 
-    architecture_content = safe_read_file(workspace / "architecture.md")
+    architecture_content = safe_read_file(workspace / ".erasmus/architecture.md")
     assert architecture_content == "# Recovery Test"

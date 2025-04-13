@@ -3,6 +3,7 @@
 import re
 from collections.abc import Callable
 from pathlib import Path
+import os
 
 import click
 from rich.console import Console
@@ -55,7 +56,7 @@ def read_env_example() -> dict[str, str]:
 def get_default_prompts(defaults: dict[str, str]) -> dict[str, str]:
     """Get prompts for each environment variable."""
     return {
-        "IDE_ENV": f"Select IDE environment (C)ursor or (W)indsurf [{defaults.get('IDE_ENV', 'C')}]: ",
+        "IDE_ENV": f"Select IDE environment (C)ursor or (W)indsurf (enter 'C' or 'W') [{defaults.get('IDE_ENV', 'C')}]: ",
         "OPENAI_API_KEY": f"Enter OpenAI API key [{defaults.get('OPENAI_API_KEY', '')}]: ",
         "OPENAI_BASE_URL": f"Enter OpenAI base URL [{defaults.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')}]: ",
         "OPENAI_MODEL": f"Enter OpenAI model [{defaults.get('OPENAI_MODEL', 'gpt-4')}]: ",
@@ -73,10 +74,10 @@ def prompt_for_values(prompts: dict[str, str], defaults: dict[str, str]) -> dict
             if key == "IDE_ENV":
                 value = value.lower()
                 if value.startswith(("c", "w")):
-                    values[key] = value
+                    values[key] = value[0]  # Just take the first character
                     break
                 console.print(
-                    "[red]Invalid IDE environment. Must start with 'C' for Cursor or 'W' for Windsurf[/red]"
+                    "[red]Invalid IDE environment. Please enter 'C' for Cursor or 'W' for Windsurf[/red]"
                 )
                 continue
 
@@ -129,36 +130,65 @@ def write_env_file(values: dict[str, str]) -> None:
     env_path.write_text("\n".join(new_lines))
 
 
-@click.command()
-def setup():
-    """Set up environment configuration with interactive prompts."""
+def setup_env() -> None:
+    """Set up environment variables and project structure."""
     try:
+        # Initialize environment manager
+        env_manager = EnvironmentManager()
+
         # Read defaults from .env.example
         defaults = read_env_example()
 
-        # Get prompts and values
-        default_prompts = get_default_prompts(defaults)
-        values = prompt_for_values(default_prompts, defaults)
+        # Get prompts for each environment variable
+        prompts = get_default_prompts(defaults)
 
-        # Write to .env file
-        write_env_file(values)
+        # Prompt for values
+        values = prompt_for_values(prompts, defaults)
 
-        # Update environment manager
-        env_manager = EnvironmentManager()
-        env_manager.set_ide_env(values.get("IDE_ENV", ""))
+        # Set environment variables
+        for key, value in values.items():
+            if key == "IDE_ENV":
+                # Only set if not already set or if explicitly changed
+                current_ide_env = env_manager.ide_env
+                if not current_ide_env or current_ide_env.lower() != value.lower():
+                    env_manager.set_ide_env(value)
+            else:
+                env_manager.set_env_var(key, value)
 
-        # Now that IDE_ENV is set, run setup_project
-        from erasmus.utils.context import setup_project
+        # Setup project structure first
+        from erasmus.utils.paths import PathManager
 
-        setup_project()
+        path_manager = PathManager()
+        path_manager.ensure_directories()
 
-        console.print("\n[green]Environment configuration completed successfully![/green]")
-        console.print("The .env file has been created with your settings.")
+        # Set default agent to Orchestration Agent
+        from erasmus.utils.protocols.manager import ProtocolManager
+        import asyncio
+
+        async def set_default_agent():
+            protocol_manager = await ProtocolManager.create()
+            await protocol_manager.activate_protocol("Orchestration Agent")
+
+        # Get the current event loop or create a new one
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # Run the async function in the event loop
+        loop.run_until_complete(set_default_agent())
+
+        console.print("✨ Environment setup complete")
+        console.print("✨ Default agent set to Orchestration Agent")
 
     except Exception as e:
-        console.print(f"\n[red]Error during setup: {e!s}[/red]")
-        return 1  # Return error code instead of raising
+        console.print(f"❌ Environment setup failed: {e}", style="red")
+        raise
 
 
 if __name__ == "__main__":
-    setup()
+    # Only run as a command when executed directly
+    from erasmus.cli.commands import cli
+
+    cli()

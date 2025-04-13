@@ -4,7 +4,7 @@
 AGENT_METADATA
 role: project_planning
 triggers: project_initiation
-produces: architecture.md, progress.md
+produces: .erasmus/architecture.md, progress.md
 consumes: user_request.md
 -->
 
@@ -15,7 +15,7 @@ Your task is to read and understand the [user request](./user_request.md) and ta
 
 ---
 
-## Step 1: Generate Architecture Design Document (`./context/{project_name}/architecture.md`)
+## Step 1: Generate Architecture Design Document (`./context/{project_name}/.erasmus/architecture.md`)
 
 Create a comprehensive architecture design document based on the project request. This document should include:
 
@@ -40,7 +40,7 @@ Create a comprehensive architecture design document based on the project request
 - Define comprehensive functional and non-functional requirements
 - Highlight potential constraints (regulatory, performance, uptime)
 
-Write this content to: `./context/{project_name}/architecture.md`
+Write this content to: `./context/{project_name}/.erasmus/architecture.md`
 
 ---
 

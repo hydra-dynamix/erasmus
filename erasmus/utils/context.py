@@ -191,9 +191,11 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
     # Get the correct rules file path based on IDE environment
     rules_context_path = setup_paths.rules_file
 
-    # Write updated context
-    if rules_context_path.exists():
-        write_file(rules_context_path, json.dumps(scrubbed_context, indent=2), backup=backup)
+    # Create parent directory if it doesn't exist
+    rules_context_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write updated context, creating the file if it doesn't exist
+    write_file(rules_context_path, json.dumps(scrubbed_context, indent=2), backup=backup)
     return context
 
 
@@ -550,14 +552,14 @@ def store_context(setup_paths: SetupPaths) -> bool:
     import shutil
 
     try:
-        context_dir = setup_paths.stored_context
+        context_dir = setup_paths.context_dir
         if not context_dir.exists():
             context_dir.mkdir(parents=True, exist_ok=True)
 
-        # Get the markdown files from the root directory
-        progress_file = setup_paths.markdown_files["progress"]
-        tasks_file = setup_paths.markdown_files["tasks"]
-        architecture_file = setup_paths.markdown_files["architecture"]
+        # Get the markdown files from the project context directory
+        progress_file = setup_paths.progress_file
+        tasks_file = setup_paths.tasks_file
+        architecture_file = setup_paths.architecture_file
 
         # Ensure architecture file exists and has content
         if not architecture_file.exists() or not architecture_file.read_text().strip():
@@ -583,24 +585,20 @@ def store_context(setup_paths: SetupPaths) -> bool:
         if not architecture_title:
             architecture_title = "unnamed_project"
 
-        architecture_context_dir = context_dir / architecture_title
-        if not architecture_context_dir.exists():
-            architecture_context_dir.mkdir(parents=True, exist_ok=True)
+        # Create a new context directory with the sanitized title
+        context_subdir = context_dir / architecture_title
+        if not context_subdir.exists():
+            context_subdir.mkdir(parents=True, exist_ok=True)
 
         # Copy files to context directory preserving original content
-        write_file(architecture_context_dir / "architecture.md", architecture_file.read_text())
-        write_file(architecture_context_dir / "progress.md", progress_file.read_text())
-        write_file(architecture_context_dir / "tasks.md", tasks_file.read_text())
+        write_file(context_subdir / "architecture.md", architecture_file.read_text())
+        write_file(context_subdir / "progress.md", progress_file.read_text())
+        write_file(context_subdir / "tasks.md", tasks_file.read_text())
 
-        # Clear original files if needed
-        architecture_file.write_text("")
-        progress_file.write_text("")
-        tasks_file.write_text("")
-
-        logger.info("Context stored successfully in %s", architecture_context_dir)
+        logger.info("Context stored successfully in %s", context_subdir)
         return True
-    except Exception:
-        logger.exception("Failed to store context")
+    except Exception as e:
+        logger.error("Failed to store context: %s", str(e), exc_info=True)
         return False
 
 
@@ -629,13 +627,15 @@ def restore_context(setup_paths: SetupPaths, architecture_context_dir: Path) -> 
     import shutil
 
     try:
-        if not architecture_context_dir.exists():
-            logger.error("Context directory does not exist: %s", architecture_context_dir)
+        # Use the Erasmus_Project_Architecture directory by default
+        context_dir = setup_paths.context_dir / "Erasmus_Project_Architecture"
+        if not context_dir.exists():
+            logger.error("Context directory does not exist: %s", context_dir)
             return False
 
-        architecture_file = architecture_context_dir / "architecture.md"
-        progress_file = architecture_context_dir / "progress.md"
-        tasks_file = architecture_context_dir / "tasks.md"
+        architecture_file = context_dir / "architecture.md"
+        progress_file = context_dir / "progress.md"
+        tasks_file = context_dir / "tasks.md"
 
         # Check if all required files exist
         missing_files = []
@@ -650,17 +650,36 @@ def restore_context(setup_paths: SetupPaths, architecture_context_dir: Path) -> 
             logger.error("Missing files in context directory: %s", ", ".join(missing_files))
             return False
 
-        # Copy files to project directory
-        shutil.copy2(architecture_file, setup_paths.markdown_files["architecture"])
-        shutil.copy2(progress_file, setup_paths.markdown_files["progress"])
-        shutil.copy2(tasks_file, setup_paths.markdown_files["tasks"])
+        # Get destination paths
+        dest_architecture = setup_paths.markdown_files["architecture"]
+        dest_progress = setup_paths.markdown_files["progress"]
+        dest_tasks = setup_paths.markdown_files["tasks"]
 
-        # Update the rules file with the new content
-        context = {
-            "architecture": read_file(setup_paths.markdown_files["architecture"]),
-            "progress": read_file(setup_paths.markdown_files["progress"]),
-            "tasks": read_file(setup_paths.markdown_files["tasks"]),
-        }
+        # Check if source and destination are the same
+        if (
+            architecture_file == dest_architecture
+            and progress_file == dest_progress
+            and tasks_file == dest_tasks
+        ):
+            logger.info("Source and destination files are the same, no need to copy")
+            # Just update the rules file with the current content
+            context = {
+                "architecture": read_file(architecture_file),
+                "progress": read_file(progress_file),
+                "tasks": read_file(tasks_file),
+            }
+        else:
+            # Copy files to project directory
+            shutil.copy2(architecture_file, dest_architecture)
+            shutil.copy2(progress_file, dest_progress)
+            shutil.copy2(tasks_file, dest_tasks)
+
+            # Update the rules file with the new content
+            context = {
+                "architecture": read_file(dest_architecture),
+                "progress": read_file(dest_progress),
+                "tasks": read_file(dest_tasks),
+            }
 
         # Scrub non-ASCII characters only when writing to rules files
         scrubbed_context = {
@@ -671,7 +690,15 @@ def restore_context(setup_paths: SetupPaths, architecture_context_dir: Path) -> 
         # Write updated context to rules file
         write_file(setup_paths.rules_file, json.dumps(scrubbed_context, indent=2))
 
-        logger.info("Context restored successfully from %s", architecture_context_dir)
+        # Also update the global rules file if it exists
+        try:
+            if setup_paths.global_rules_file.exists():
+                logger.info("Updating global rules file: %s", setup_paths.global_rules_file)
+                write_file(setup_paths.global_rules_file, json.dumps(scrubbed_context, indent=2))
+        except Exception as e:
+            logger.warning("Failed to update global rules file: %s", str(e))
+
+        logger.info("Context restored successfully from %s", context_dir)
         return True
     except Exception:
         logger.exception("Failed to restore context")
@@ -696,9 +723,12 @@ def list_context_dirs(setup_paths: SetupPaths) -> list[str]:
         # Get all directories that contain the required context files
         valid_dirs = []
         for d in context_dir.iterdir():
-            files_to_check = ["architecture.md", "progress.md", "tasks.md"]
-            if d.is_dir() and all((d / f).exists() for f in files_to_check):
-                valid_dirs.append(str(d))
+            # Check for project directories that start with "Project-"
+            if d.is_dir() and d.name.startswith("Project-"):
+                # Check for the required files in the project directory
+                files_to_check = ["architecture.md", "progress.md", "tasks.md"]
+                if all((d / f).exists() for f in files_to_check):
+                    valid_dirs.append(str(d))
 
         if not valid_dirs:
             logger.debug("No valid context directories found in %s", context_dir)
@@ -726,6 +756,8 @@ def print_context_dirs(setup_paths: SetupPaths) -> None:
     for i, context_dir in enumerate(context_dirs, 1):
         # Try to extract a more readable name from the path
         dir_name = Path(context_dir).name
+        # Remove the "Project-" prefix for display
+        display_name = dir_name.replace("Project-", "")
         # Get the first line of architecture.md as title if possible
         architecture_file = Path(context_dir) / "architecture.md"
         if architecture_file.exists():
@@ -733,11 +765,11 @@ def print_context_dirs(setup_paths: SetupPaths) -> None:
                 with architecture_file.open() as f:
                     first_line = f.readline().strip("#").strip()
                     if first_line:
-                        dir_name = f"{dir_name} - {first_line}"
+                        display_name = f"{display_name} - {first_line}"
             except Exception:
                 pass  # Just use the directory name if we can't read the file
 
-        console.print(f"{i}. {dir_name}")
+        console.print(f"{i}. {display_name}")
 
 
 def select_context_dir(setup_paths: SetupPaths) -> Path | None:

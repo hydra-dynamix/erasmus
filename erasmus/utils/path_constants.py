@@ -14,16 +14,16 @@ DIRECTORIES: Final[Dict[str, str]] = {
     "config": ".erasmus",
     "cache": ".erasmus/cache",
     "logs": ".erasmus/logs",
-    "protocols": "erasmus/utils/protocols",
-    "stored_protocols": "erasmus/utils/protocols/stored",
+    "protocols": ".erasmus/protocols",
+    "stored_protocols": ".erasmus/protocols/stored",
     "stored_context": ".erasmus/context",
 }
 
 # Markdown files
 MARKDOWN_FILES: Final[Dict[str, str]] = {
-    "architecture": ".architecture.md",
-    "progress": ".progress.md",
-    "tasks": ".tasks.md",
+    "architecture": ".erasmus/architecture.md",
+    "progress": ".erasmus/progress.md",
+    "tasks": ".erasmus/tasks.md",
 }
 
 # Script files

@@ -37,7 +37,7 @@ graph TD
 - **Initiates**: Project planning and requirements definition
 - **Receives from**: Orchestrator Agent (project initiation)
 - **Hands off to**: Developer Agent (architecture and sprint plan)
-- **Produces**: `architecture.md`, `progress.md`
+- **Produces**: `.erasmus/architecture.md`, `progress.md`
 
 ### 3. Developer Agent
 - **Initiates**: Code implementation and task breakdown

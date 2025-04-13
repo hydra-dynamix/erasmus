@@ -40,7 +40,7 @@ This guide explains how to integrate the Erasmus context management system into 
    workspace/
    ├── .cursorrules/
    │   └── rules.json
-   ├── architecture.md
+   ├── .erasmus/architecture.md
    ├── progress.md
    └── tasks.md
    ```
@@ -93,7 +93,7 @@ sync = SyncIntegration(context_manager, workspace_path)
 await sync.start()
 
 # Handle file changes
-await sync.handle_file_change(Path("architecture.md"))
+await sync.handle_file_change(Path(".erasmus/architecture.md"))
 ```
 
 ### Error Recovery

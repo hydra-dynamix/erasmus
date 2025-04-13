@@ -107,7 +107,7 @@
 - [ ] Create IDE configuration guide
 
 ### Developer Documentation
-- [ ] Update ARCHITECTURE.md with detailed system design
+- [ ] Update .erasmus/architecture.md with detailed system design
 - [ ] Create CONTRIBUTING.md with contribution guidelines
 - [ ] Document code style guidelines
 - [ ] Create developer setup guide

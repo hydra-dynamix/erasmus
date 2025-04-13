@@ -154,7 +154,7 @@ Required environment variables for the system:
 
 Important file paths in the system:
 
-- `architecture.md`: System architecture documentation
+- `.erasmus/architecture.md`: System architecture documentation
 - `progress.md`: Development progress tracking
 - `tasks.md`: Task tracking and management
 - `.cursorrules/rules.json`: Rules file for cursor IDE

@@ -14,7 +14,7 @@ mkdir -p "$BUILD_DIR"
 
 # Copy example architecture
 echo -e "${YELLOW}Copying example architecture...${NC}"
-cp "$PWD/docs/examples/game_sync/architecture.md" "$BUILD_DIR/architecture.md"
+cp "$PWD/docs/examples/game_sync/.erasmus/architecture.md" "$BUILD_DIR/.erasmus/architecture.md"
 
 cd "$BUILD_DIR"
 
@@ -34,9 +34,8 @@ source .venv/bin/activate
 echo -e "${YELLOW}Installing Erasmus and dependencies...${NC}"
 uv pip install -e ./erasmus
 
-
 # Create initial project files
-cat > README.md << EOF
+cat >README.md <<EOF
 # GameSync: Real-time Multiplayer Game Leaderboard and Replay System
 
 ## Create environment
@@ -54,12 +53,12 @@ Run \`uv run erasmus --setup\` to configure erasmus and \`uv run erasmus --watch
 EOF
 
 uv add \
-pygame \
-rustworkx \
-redis \
-react \
-three \
-pandas
+    pygame \
+    rustworkx \
+    redis \
+    react \
+    three \
+    pandas
 
 echo -e "${GREEN}GameSync demo project setup complete!${NC}"
 echo -e "${YELLOW}Next steps:${NC}"

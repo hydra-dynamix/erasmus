@@ -22,34 +22,46 @@ def temp_dir(tmp_path):
     """Create a temporary directory for testing."""
     return tmp_path
 
+
 @pytest.fixture
 def mock_callback():
     """Create a mock callback function that tracks calls."""
     calls = []
+
     def callback(file_key: str):
         calls.append(file_key)
+
     callback.calls = calls  # type: ignore
     return callback
+
 
 @pytest.fixture
 def mock_event():
     """Create a mock event with the required attributes."""
-    def create_event(src_path: str, is_directory: bool = False, event_type: str = 'modified', dest_path: str | None = None):
+
+    def create_event(
+        src_path: str,
+        is_directory: bool = False,
+        event_type: str = "modified",
+        dest_path: str | None = None,
+    ):
         attrs = {
-            'src_path': src_path,
-            'is_directory': is_directory,
-            'event_type': event_type,
+            "src_path": src_path,
+            "is_directory": is_directory,
+            "event_type": event_type,
         }
         if dest_path:
-            attrs['dest_path'] = dest_path
-        return type('Event', (), attrs)()
+            attrs["dest_path"] = dest_path
+        return type("Event", (), attrs)()
+
     return create_event
+
 
 @pytest.fixture
 def setup_files(temp_dir):
     """Create temporary markdown files for testing."""
     files = {
-        "architecture": temp_dir / "architecture.md",
+        "architecture": temp_dir / ".erasmus/architecture.md",
         "progress": temp_dir / "progress.md",
         "tasks": temp_dir / "tasks.md",
     }
@@ -60,12 +72,14 @@ def setup_files(temp_dir):
 
     return files
 
+
 @pytest.fixture
 def test_script(temp_dir):
     """Create a test script file."""
     script_file = temp_dir / "test_script.py"
     script_file.write_text("print('Hello, World!')")
     return script_file
+
 
 def test_base_watcher_initialization(temp_dir, mock_callback):
     """Test BaseWatcher initialization and configuration."""
@@ -89,6 +103,7 @@ def test_base_watcher_initialization(temp_dir, mock_callback):
     assert watcher.callback == mock_callback
     assert len(mock_callback.calls) == 0
 
+
 def test_base_watcher_event_handling(temp_dir, mock_callback, mock_event):
     """Test BaseWatcher event handling for different event types."""
     # Set up test file
@@ -106,6 +121,7 @@ def test_base_watcher_event_handling(temp_dir, mock_callback, mock_event):
     # Check callback was called
     assert len(mock_callback.calls) == 1
     assert mock_callback.calls[0] == "test_key"
+
 
 def test_base_watcher_unknown_file(temp_dir, mock_callback, mock_event):
     """Test BaseWatcher behavior with unknown files."""
@@ -126,6 +142,7 @@ def test_base_watcher_unknown_file(temp_dir, mock_callback, mock_event):
     # Check callback was not called
     assert len(mock_callback.calls) == 0
 
+
 def test_base_watcher_error_handling(temp_dir, mock_callback, mock_event):
     """Test BaseWatcher error handling."""
     # Set up test file
@@ -134,6 +151,7 @@ def test_base_watcher_error_handling(temp_dir, mock_callback, mock_event):
 
     # Create watcher with a callback that raises an exception
     error_count = 0
+
     def failing_callback(file_key):
         nonlocal error_count
         error_count += 1
@@ -149,6 +167,7 @@ def test_base_watcher_error_handling(temp_dir, mock_callback, mock_event):
     # Check callback was called (error was caught)
     assert error_count == 1
 
+
 def test_markdown_watcher_initialization(setup_files):
     """Test MarkdownWatcher initialization."""
     # Create watcher
@@ -157,10 +176,12 @@ def test_markdown_watcher_initialization(setup_files):
     # Check initialization
     assert watcher.file_paths == setup_files
 
+
 def test_markdown_watcher_event_handling(setup_files, mock_event):
     """Test MarkdownWatcher event handling."""
     # Track which files were modified
     modified_files = []
+
     def callback(file_key):
         modified_files.append(file_key)
 
@@ -187,10 +208,12 @@ def test_markdown_watcher_event_handling(setup_files, mock_event):
     watcher.on_modified(event)
     assert not modified_files
 
+
 def test_markdown_watcher_content_validation(setup_files, mock_event):
     """Test MarkdownWatcher content validation."""
     # Track which files were modified
     modified_files = []
+
     def callback(file_key):
         modified_files.append(file_key)
 
@@ -211,6 +234,7 @@ def test_markdown_watcher_content_validation(setup_files, mock_event):
     watcher.on_modified(event)
     assert not modified_files  # Should not trigger callback for invalid content
 
+
 def test_script_watcher_initialization(test_script):
     """Test ScriptWatcher initialization."""
     # Create watcher
@@ -219,10 +243,12 @@ def test_script_watcher_initialization(test_script):
     # Check initialization
     assert watcher.file_paths == {"test_script": test_script}
 
+
 def test_script_watcher_event_handling(test_script, mock_event):
     """Test ScriptWatcher event handling."""
     # Track restart events
     restart_count = 0
+
     def callback(file_key):
         nonlocal restart_count
         restart_count += 1
@@ -248,10 +274,12 @@ def test_script_watcher_event_handling(test_script, mock_event):
     watcher.on_modified(event)
     assert restart_count == 0
 
+
 def test_script_watcher_content_validation(test_script, mock_event):
     """Test ScriptWatcher content validation."""
     # Track restart events
     restart_count = 0
+
     def callback(file_key):
         nonlocal restart_count
         restart_count += 1
@@ -260,7 +288,9 @@ def test_script_watcher_content_validation(test_script, mock_event):
     watcher = ScriptWatcher(test_script, callback)
 
     # Test valid Python content
-    test_script.write_text("def main():\n    print('Hello')\n\nif __name__ == '__main__':\n    main()")
+    test_script.write_text(
+        "def main():\n    print('Hello')\n\nif __name__ == '__main__':\n    main()"
+    )
     event = mock_event(str(test_script))
     watcher.on_modified(event)
     assert restart_count == 1
@@ -272,10 +302,12 @@ def test_script_watcher_content_validation(test_script, mock_event):
     watcher.on_modified(event)
     assert restart_count == 0  # Should not trigger callback for invalid content
 
+
 def test_script_watcher_error_handling(test_script, mock_event):
     """Test ScriptWatcher error handling."""
     # Track restart events
     restart_count = 0
+
     def callback(file_key):
         nonlocal restart_count
         restart_count += 1
@@ -289,8 +321,10 @@ def test_script_watcher_error_handling(test_script, mock_event):
     watcher.on_modified(event)  # Should not raise exception
     assert restart_count == 1  # Callback should still be called
 
+
 def test_create_file_watchers(setup_files, test_script):
     """Test creation and configuration of file watchers."""
+
     # Define callback functions
     def update_callback(file_key):
         pass
@@ -313,11 +347,13 @@ def test_create_file_watchers(setup_files, test_script):
     markdown_observer.stop()
     script_observer.stop()
 
+
 def test_watcher_factory_initialization():
     """Test WatcherFactory initialization and configuration."""
     factory = WatcherFactory()
     assert isinstance(factory.observers, list)
     assert len(factory.observers) == 0
+
 
 def test_watcher_factory_create_markdown_watcher(setup_files, mock_callback):
     """Test creation of markdown watcher through factory."""
@@ -329,6 +365,7 @@ def test_watcher_factory_create_markdown_watcher(setup_files, mock_callback):
     assert isinstance(watcher, MarkdownWatcher)
     assert watcher.file_paths == setup_files
 
+
 def test_watcher_factory_create_script_watcher(test_script, mock_callback):
     """Test creation of script watcher through factory."""
     factory = WatcherFactory()
@@ -338,6 +375,7 @@ def test_watcher_factory_create_script_watcher(test_script, mock_callback):
 
     assert isinstance(watcher, ScriptWatcher)
     assert watcher.file_paths == {"test_script": test_script}
+
 
 def test_watcher_factory_create_observer(temp_dir, mock_callback):
     """Test creation and configuration of observer through factory."""
@@ -355,6 +393,7 @@ def test_watcher_factory_create_observer(temp_dir, mock_callback):
     assert observer.is_alive()
     observer.stop()
     observer.join()
+
 
 def test_watcher_factory_start_and_stop(setup_files, test_script, mock_callback):
     """Test starting and stopping watchers through factory."""
@@ -375,6 +414,7 @@ def test_watcher_factory_start_and_stop(setup_files, test_script, mock_callback)
     # Stop all observers
     factory.stop_all()
     assert all(not observer.is_alive() for observer in factory.observers)
+
 
 def test_watcher_factory_error_handling(temp_dir):
     """Test error handling in watcher factory."""

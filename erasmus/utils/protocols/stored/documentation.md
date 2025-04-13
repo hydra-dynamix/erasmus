@@ -5,7 +5,7 @@ AGENT_METADATA
 role: documentation_management
 triggers: code_review_passed
 produces: readme, api_docs, inline_comments
-consumes: implementation_code, architecture.md, test_files
+consumes: implementation_code, .erasmus/architecture.md, test_files
 -->
 
 
@@ -32,7 +32,7 @@ You may generate or update:
 
 You can draw from:
 
-- `architecture.md`, `progress.md`, `tasks.md`
+- `.erasmus/architecture.md`, `progress.md`, `tasks.md`
 - Existing code files
 - Test cases (for usage examples)
 - Developer outputs or commit messages

@@ -13,7 +13,7 @@ def product_owner_prompt(context: dict) -> dict:
     """Example prompt function for the Product Owner Agent."""
     # In a real implementation, this would use your AI model or other logic
     return {
-        "architecture.md": "# Project Architecture\n\nThis is a sample architecture document.",
+        ".erasmus/architecture.md": "# Project Architecture\n\nThis is a sample architecture document.",
         "progress.md": "# Development Progress\n\nCurrent progress: 0%",
     }
 

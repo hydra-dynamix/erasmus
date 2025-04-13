@@ -286,6 +286,16 @@ class RulesManager:
             path: Path to write rules to
             title: Title for the rules file
         """
+        # Read existing content if file exists
+        existing_content = ""
+        if path.exists():
+            with path.open("r") as f:
+                existing_content = f.read().strip()
+
+        # If existing content is a complete JSON object, preserve it
+        if existing_content.startswith("{") and existing_content.endswith("}"):
+            return
+
         # Group rules by category
         rules_by_category: dict[str, list[Rule]] = {}
         for rule in rules:
@@ -296,7 +306,10 @@ class RulesManager:
 
         # Write rules to file
         with path.open("w") as f:
-            f.write(f"# {title}\n\n")
+            # Write title if not already present
+            if not existing_content.startswith(f"# {title}"):
+                f.write(f"# {title}\n\n")
+            
             for category in sorted(rules_by_category.keys()):
                 f.write(f"## {category}\n")
                 for rule in sorted(rules_by_category[category], key=lambda r: r.description):

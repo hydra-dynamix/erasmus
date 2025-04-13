@@ -32,8 +32,77 @@ class PathManager:
             project_root: Optional project root path. If not provided, uses current directory.
         """
         self.project_root = Path(project_root) if project_root else Path.cwd()
-        self._setup_paths = SetupPaths.with_project_root(self.project_root)
         self._ide_env = self._detect_ide_environment()
+        self._setup_paths = None  # Will be initialized in _migrate_files
+        self._migrate_files()
+
+    def _migrate_files(self) -> None:
+        """Migrate existing files to the new .erasmus directory structure."""
+        try:
+            # Create .erasmus directory if it doesn't exist
+            erasmus_dir = self.project_root / ".erasmus"
+            erasmus_dir.mkdir(exist_ok=True)
+
+            # Create protocol directories in .erasmus (but don't copy files)
+            new_protocols_dir = erasmus_dir / "protocols"
+            new_protocols_dir.mkdir(exist_ok=True)
+            (new_protocols_dir / "stored").mkdir(exist_ok=True)
+
+            # Create a symlink to the original protocols directory
+            original_protocols_dir = self.project_root / "erasmus/utils/protocols"
+            if original_protocols_dir.exists():
+                # Create symlink for stored protocols
+                stored_link = new_protocols_dir / "stored"
+                if not stored_link.exists():
+                    stored_link.symlink_to(
+                        original_protocols_dir / "stored", target_is_directory=True
+                    )
+
+                # Copy only the registry file (since it might be modified)
+                registry_file = original_protocols_dir / "agent_registry.json"
+                if registry_file.exists():
+                    shutil.copy2(registry_file, new_protocols_dir / "agent_registry.json")
+
+            # Migrate markdown files
+            for file_name in MARKDOWN_FILES.values():
+                old_file = self.project_root / file_name
+                if old_file.exists():
+                    # Create the target directory if it doesn't exist
+                    target_file = erasmus_dir / file_name
+
+                    # Ensure the parent directory exists
+                    target_file.parent.mkdir(parents=True, exist_ok=True)
+
+                    # Copy the file
+                    shutil.copy2(old_file, target_file)
+                    logger.info(f"Migrated {file_name} to {target_file}")
+
+            # Initialize SetupPaths after migration
+            self._setup_paths = SetupPaths.with_project_root(self.project_root)
+
+            logger.info("Successfully migrated files to .erasmus directory")
+        except Exception as e:
+            logger.error(f"Error migrating files: {e}")
+            raise
+
+    def ensure_directories(self) -> None:
+        """Ensure all required directories exist."""
+        try:
+            # Create .erasmus directory
+            erasmus_dir = self.project_root / ".erasmus"
+            erasmus_dir.mkdir(exist_ok=True)
+
+            # Create all subdirectories
+            for dir_name, dir_path in DIRECTORIES.items():
+                if dir_name != "config":  # Skip .erasmus itself
+                    full_path = self.project_root / dir_path
+                    full_path.mkdir(parents=True, exist_ok=True)
+                    logger.debug(f"Ensured directory exists: {full_path}")
+
+            logger.info("Successfully created all required directories")
+        except Exception as e:
+            logger.error(f"Error creating directories: {e}")
+            raise
 
     def _detect_ide_environment(self) -> str:
         """Detect the current IDE environment.
@@ -44,9 +113,9 @@ class PathManager:
         # Check environment variable first
         ide_env = os.getenv("IDE_ENV", "").lower()
         if ide_env:
-            if ide_env.startswith("w"):
+            if ide_env == "windsurf" or ide_env.startswith("w"):
                 return "windsurf"
-            if ide_env.startswith("c"):
+            if ide_env == "cursor" or ide_env.startswith("c"):
                 return "cursor"
 
         # Try to detect based on current working directory or known IDE paths
@@ -91,14 +160,15 @@ class PathManager:
         load_dotenv()
         ide_env = os.getenv("IDE_ENV", "").lower()
 
-        # Simple direct mapping based on IDE_ENV
+        # Map to the correct key for RULES_FILES dictionary
         if ide_env == "windsurf" or ide_env.startswith("w"):
-            return Path.cwd() / ".windsurfrules"
-        if ide_env == "cursor" or ide_env.startswith("c"):
-            return Path.cwd() / ".cursorrules"
+            ide_key = "windsurf"
+        elif ide_env == "cursor" or ide_env.startswith("c"):
+            ide_key = "cursor"
+        else:
+            ide_key = DEFAULT_IDE_ENV  # Default to cursor
 
-        # Default to cursor if IDE_ENV is not set or is empty
-        return Path.cwd() / ".cursorrules"
+        return Path.cwd() / RULES_FILES[ide_key]
 
     @property
     def global_rules_file(self) -> Path:
@@ -118,7 +188,7 @@ class PathManager:
     @property
     def registry_file(self) -> Path:
         """Get the agent registry file path."""
-        return Path("erasmus/utils/protocols/agent_registry.json")
+        return self.protocols_dir / "agent_registry.json"
 
     @property
     def markdown_files(self) -> Dict[str, Path]:
@@ -149,19 +219,6 @@ class PathManager:
     def stored_context(self) -> Path:
         """Get the stored context directory path."""
         return self._setup_paths.stored_context
-
-    def ensure_directories(self) -> None:
-        """Ensure all required directories exist."""
-        directories = [
-            self.config_dir,
-            self.cache_dir,
-            self.logs_dir,
-            self.protocols_dir,
-            self.stored_protocols_dir,
-            self.stored_context,
-        ]
-        for directory in directories:
-            directory.mkdir(parents=True, exist_ok=True)
 
     def get_protocol_file(self, protocol_name: str) -> Path:
         """Get the path to a protocol file.
@@ -217,6 +274,8 @@ class SetupPaths(BaseModel):
 
     project_root: Path
     config_dir: Path
+    cache_dir: Path
+    logs_dir: Path
     rules_file: Path
     global_rules_file: Path
     architecture_file: Path
@@ -228,10 +287,14 @@ class SetupPaths(BaseModel):
     @classmethod
     def with_project_root(cls, project_root: Path) -> "SetupPaths":
         """Create a new SetupPaths instance with the given project root."""
-        context_dir = project_root / ".context"
+        config_dir = project_root / DIRECTORIES["config"]
+        cache_dir = project_root / DIRECTORIES["cache"]
+        logs_dir = project_root / DIRECTORIES["logs"]
+        context_dir = project_root / DIRECTORIES["stored_context"]
 
-        # Ensure context directory exists
-        context_dir.mkdir(parents=True, exist_ok=True)
+        # Ensure directories exist
+        for directory in [config_dir, cache_dir, logs_dir, context_dir]:
+            directory.mkdir(parents=True, exist_ok=True)
 
         # Create script files if they don't exist
         for script_name, script_path in SCRIPT_FILES.items():
@@ -244,20 +307,52 @@ class SetupPaths(BaseModel):
         # Get the rules file path based on IDE environment
         env_manager = EnvironmentManager()
         ide_env = env_manager.ide_env
-        rules_file = RULES_FILES[ide_env]
+
+        # Map to the correct key for RULES_FILES dictionary
+        if ide_env == "windsurf" or ide_env.startswith("w"):
+            ide_key = "windsurf"
+        elif ide_env == "cursor" or ide_env.startswith("c"):
+            ide_key = "cursor"
+        else:
+            ide_key = DEFAULT_IDE_ENV  # Default to cursor
+
+        rules_file = RULES_FILES[ide_key]
         rules_file_path = project_root / rules_file
-        global_rules_path = GLOBAL_RULES_PATHS[ide_env]
+        global_rules_path = GLOBAL_RULES_PATHS[ide_key]
+
+        # Create the rules file if it doesn't exist
+        if not rules_file_path.exists():
+            rules_file_path.touch()
+
+        # Create project-specific context directory and files
+        # Use a sanitized version of the project name for the context directory
+        project_name = project_root.name
+        # Replace spaces and special characters with underscores
+        sanitized_name = "".join(c if c.isalnum() else "_" for c in project_name)
+        project_context_dir = context_dir / f"Project-{sanitized_name}"
+        project_context_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create context files in the project directory
+        context_architecture = project_context_dir / "architecture.md"
+        context_progress = project_context_dir / "progress.md"
+        context_tasks = project_context_dir / "tasks.md"
+
+        # Create context files if they don't exist
+        for context_file in [context_architecture, context_progress, context_tasks]:
+            if not context_file.exists():
+                context_file.touch()
 
         return cls(
             project_root=project_root,
-            config_dir=context_dir,
+            config_dir=config_dir,
+            cache_dir=cache_dir,
+            logs_dir=logs_dir,
             rules_file=rules_file_path,
             global_rules_file=global_rules_path,
-            architecture_file=project_root / MARKDOWN_FILES["architecture"],
-            progress_file=project_root / MARKDOWN_FILES["progress"],
-            tasks_file=project_root / MARKDOWN_FILES["tasks"],
+            architecture_file=context_architecture,
+            progress_file=context_progress,
+            tasks_file=context_tasks,
             context_dir=context_dir,
-            _initialized=True,
         )
 
     def __init__(self, **data):
@@ -291,7 +386,7 @@ class SetupPaths(BaseModel):
     @property
     def registry_file(self) -> Path:
         """Get the agent registry file path."""
-        return Path("erasmus/utils/protocols/agent_registry.json")
+        return self.protocols_dir / "agent_registry.json"
 
     @property
     def markdown_files(self) -> Dict[str, Path]:

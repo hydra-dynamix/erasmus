@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 
 from .path_constants import DEFAULT_IDE_ENV
@@ -13,6 +13,7 @@ class EnvironmentManager:
 
     _instance: Optional["EnvironmentManager"] = None
     _ide_env: Optional[str] = None
+    _env_vars: Dict[str, str] = {}
 
     def __new__(cls) -> "EnvironmentManager":
         if cls._instance is None:
@@ -32,6 +33,9 @@ class EnvironmentManager:
         if not self._ide_env:
             self._ide_env = DEFAULT_IDE_ENV
 
+        # Load all environment variables
+        self._env_vars = {key: os.getenv(key, "") for key in os.environ}
+
     @property
     def ide_env(self) -> str:
         """Get the current IDE environment."""
@@ -43,31 +47,58 @@ class EnvironmentManager:
         if not (value.startswith("c") or value.startswith("w")):
             raise ValueError("IDE_ENV must start with 'C' for cursor or 'W' for windsurf")
 
+        # Map to full IDE name
+        if value.startswith("w"):
+            value = "windsurf"
+        elif value.startswith("c"):
+            value = "cursor"
+
         # Update environment variable
         os.environ["IDE_ENV"] = value
         self._ide_env = value
+        self._env_vars["IDE_ENV"] = value
 
         # Update .env file
+        self._update_env_file()
+
+    def set_env_var(self, key: str, value: str) -> None:
+        """Set an environment variable and update .env file."""
+        # Update environment variable
+        os.environ[key] = value
+        self._env_vars[key] = value
+
+        # Update .env file
+        self._update_env_file()
+
+    def get_env_var(self, key: str, default: str = "") -> str:
+        """Get an environment variable value."""
+        return self._env_vars.get(key, default)
+
+    def _update_env_file(self) -> None:
+        """Update the .env file with all environment variables."""
         env_path = Path(".env")
+
+        # Read existing content if file exists
+        existing_content = {}
         if env_path.exists():
-            content = env_path.read_text()
-            if "IDE_ENV=" in content:
-                # Replace existing IDE_ENV
-                lines = content.splitlines()
-                new_lines = []
-                for line in lines:
-                    if line.startswith("IDE_ENV="):
-                        new_lines.append(f"IDE_ENV={value}")
-                    else:
-                        new_lines.append(line)
-                env_path.write_text("\n".join(new_lines))
-            else:
-                # Append IDE_ENV
-                with env_path.open("a") as f:
-                    f.write(f"\nIDE_ENV={value}\n")
-        else:
-            # Create new .env file
-            env_path.write_text(f"IDE_ENV={value}\n")
+            with open(env_path, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#"):
+                        key, value = line.split("=", 1)
+                        existing_content[key.strip()] = value.strip()
+
+        # Update with current environment variables
+        for key, value in self._env_vars.items():
+            existing_content[key] = value
+
+        # Write updated content
+        content = []
+        for key, value in existing_content.items():
+            content.append(f"{key}={value}")
+
+        # Write to file
+        env_path.write_text("\n".join(content) + "\n")
 
     @property
     def is_cursor(self) -> bool:
