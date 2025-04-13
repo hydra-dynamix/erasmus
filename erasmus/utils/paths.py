@@ -118,7 +118,7 @@ class PathManager:
     @property
     def registry_file(self) -> Path:
         """Get the agent registry file path."""
-        return self.protocols_dir / "agent_registry.json"
+        return Path("erasmus/utils/protocols/agent_registry.json")
 
     @property
     def markdown_files(self) -> Dict[str, Path]:
@@ -291,7 +291,7 @@ class SetupPaths(BaseModel):
     @property
     def registry_file(self) -> Path:
         """Get the agent registry file path."""
-        return self.protocols_dir / "agent_registry.json"
+        return Path("erasmus/utils/protocols/agent_registry.json")
 
     @property
     def markdown_files(self) -> Dict[str, Path]:

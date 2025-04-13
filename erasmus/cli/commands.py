@@ -7,6 +7,8 @@ It uses Click for command parsing and handling.
 import time
 from functools import wraps
 from pathlib import Path
+import signal
+import sys
 
 import click
 from dotenv import load_dotenv
@@ -25,6 +27,7 @@ from erasmus.utils.context import (
     select_context_dir,
     update_context,
     update_specific_file,
+    handle_protocol_context,
 )
 from erasmus.utils.logging import LogContext, get_logger
 from erasmus.utils.paths import SetupPaths
@@ -267,58 +270,67 @@ def cleanup(force: bool):
 
 
 @cli.command()
-@log_command
 def watch():
-    """Watch project files for changes."""
+    """Watch for changes in project files and update context automatically."""
     with LogContext(logger, "watch"):
         try:
-            pwd = Path.cwd()
-            logger.info(f"Starting file watcher in {pwd}")
-
-            # Initialize components
+            # Initialize file watchers
+            setup_paths = SetupPaths.with_project_root(Path.cwd())
             factory = WatcherFactory()
-            setup_paths = SetupPaths.with_project_root(pwd)
-            logger.debug(f"Found markdown files: {setup_paths.markdown_files}")
 
-            # Update initial context without backup
-            logger.debug("Updating initial context")
-            update_context({}, backup=False)
-
-            # Setup markdown watcher
-            logger.debug("Setting up markdown watcher")
+            # Create watchers for markdown files
             markdown_watcher = factory.create_markdown_watcher(
-                setup_paths.markdown_files,
-                lambda key, content: update_specific_file(key, content),
+                setup_paths.markdown_files, update_specific_file
             )
-            factory.create_observer(markdown_watcher, str(pwd))
-            logger.info("Successfully initialized markdown watcher")
 
-            # Setup script watcher
-            logger.debug("Setting up script watcher")
-            script_watcher = factory.create_script_watcher(
-                setup_paths.script_files,
-                lambda _: console.print("Script updated"),
+            # Create watchers for protocol files
+            protocol_files = {
+                "agent_registry": setup_paths.protocols_dir / "agent_registry.json",
+                "protocols": setup_paths.protocols_dir / "stored",
+            }
+            protocol_watcher = factory.create_markdown_watcher(
+                protocol_files,
+                lambda file_type, content: handle_protocol_context(setup_paths, file_type),
             )
-            factory.create_observer(script_watcher, str(pwd))
-            logger.info("Successfully initialized script watcher")
+
+            # Create observers for each watcher
+            markdown_observer = factory.create_observer(
+                markdown_watcher, str(setup_paths.project_root)
+            )
+            protocol_observer = factory.create_observer(
+                protocol_watcher, str(setup_paths.protocols_dir)
+            )
 
             # Start all watchers
-            logger.debug("Starting all watchers")
             factory.start_all()
-            logger.info("All watchers started successfully")
+            logger.info("👀 Watching for file changes...")
+            console.print("👀 Watching for file changes... Press Ctrl+C to stop")
 
-            console.print("👀 Watching project files for changes. Press Ctrl+C to stop...")
-            try:
-                while True:
-                    time.sleep(1)
-            except KeyboardInterrupt:
-                logger.info("Received shutdown signal")
-                console.print("Shutting down...")
+            # Flag to control the main loop
+            running = True
+
+            # Handle shutdown gracefully
+            def handle_shutdown(signum, frame):
+                nonlocal running
+                logger.info("Shutting down watchers...")
+                console.print("\n🛑 Shutting down watchers...")
                 factory.stop_all()
                 logger.info("All watchers stopped")
+                console.print("✨ All watchers stopped successfully")
+                running = False
+
+            # Register signal handlers
+            signal.signal(signal.SIGINT, handle_shutdown)
+            signal.signal(signal.SIGTERM, handle_shutdown)
+
+            # Keep the main thread alive
+            while running:
+                time.sleep(1)
+
         except Exception as e:
-            logger.error("Failed to initialize watchers", exc_info=True)
-            console.print(f"❌ Failed to start watchers: {e!s}", style="red")
+            logger.error(f"Error in watch command: {e}", exc_info=True)
+            console.print(f"❌ Error in watch command: {e}", style="red")
+            raise
 
 
 @cli.group()

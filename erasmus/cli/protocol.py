@@ -297,19 +297,19 @@ def update_context_with_protocol(protocol_name: str, manager: ProtocolManager = 
     # Load markdown files into context
     try:
         # Add architecture if available
-        architecture_path = setup_paths.markdown_files.architecture
+        architecture_path = setup_paths.architecture_file
         if architecture_path.exists():
             with open(architecture_path, "r") as f:
                 rules["architecture"] = f.read()
 
         # Add progress if available
-        progress_path = setup_paths.markdown_files.progress
+        progress_path = setup_paths.progress_file
         if progress_path.exists():
             with open(progress_path, "r") as f:
                 rules["progress"] = f.read()
 
         # Add tasks if available
-        tasks_path = setup_paths.markdown_files.tasks
+        tasks_path = setup_paths.tasks_file
         if tasks_path.exists():
             with open(tasks_path, "r") as f:
                 rules["tasks"] = f.read()

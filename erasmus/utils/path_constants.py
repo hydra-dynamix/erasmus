@@ -14,8 +14,8 @@ DIRECTORIES: Final[Dict[str, str]] = {
     "config": ".erasmus",
     "cache": ".erasmus/cache",
     "logs": ".erasmus/logs",
-    "protocols": ".erasmus/protocols",
-    "stored_protocols": ".erasmus/protocols/stored",
+    "protocols": "erasmus/utils/protocols",
+    "stored_protocols": "erasmus/utils/protocols/stored",
     "stored_context": ".erasmus/context",
 }
 

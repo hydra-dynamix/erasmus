@@ -80,13 +80,10 @@ async def handle_protocol_management_commands(args: argparse.Namespace) -> None:
         return
 
     # Initialize the protocol manager
-    protocol_manager = ProtocolManager()
-
-    # Load the registry
-    await protocol_manager.load_registry()
+    protocol_manager = await ProtocolManager.create()
 
     # Create protocols directory if it doesn't exist
-    protocols_dir = protocol_manager.setup_paths.protocols_dir / "stored"
+    protocols_dir = protocol_manager.path_manager.stored_protocols_dir
     protocols_dir.mkdir(parents=True, exist_ok=True)
 
     # Handle restore protocol command
@@ -112,8 +109,8 @@ async def handle_protocol_management_commands(args: argparse.Namespace) -> None:
     if args.select_protocol:
         # List available protocols
         available_protocols = []
-        for agent in protocol_manager.agents:
-            protocol_name = agent.name
+        for protocol in protocol_manager.protocols.values():
+            protocol_name = protocol.name
             protocol_file = protocols_dir / f"{protocol_name}.json"
             if protocol_file.exists():
                 available_protocols.append(protocol_name)
@@ -149,9 +146,9 @@ async def handle_protocol_management_commands(args: argparse.Namespace) -> None:
 
         # Find the protocol in the registry
         protocol_data = None
-        for agent in protocol_manager.agents:
-            if agent.name == protocol_name:
-                protocol_data = agent
+        for protocol in protocol_manager.protocols.values():
+            if protocol.name == protocol_name:
+                protocol_data = protocol
                 break
 
         if not protocol_data:
@@ -160,7 +157,7 @@ async def handle_protocol_management_commands(args: argparse.Namespace) -> None:
 
         # Store the protocol
         protocol_file = protocols_dir / f"{protocol_name}.json"
-        protocol_file.write_text(json.dumps(protocol_data, indent=2))
+        protocol_file.write_text(json.dumps(protocol_data.model_dump(), indent=2))
 
         logger.info(f"Stored protocol: {protocol_name}")
 
