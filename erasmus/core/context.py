@@ -182,18 +182,3 @@ class ContextFileHandler:
             self.context_file.write_text(json.dumps(new_context, indent=2))
         except Exception as e:
             logger.error(f"Failed to update context: {e}")
-
-    def backup_rules(self) -> None:
-        """Create backups of rules files.
-
-        Creates .bak files for both rules.md and global_rules.md if they exist.
-        """
-        try:
-            if self.rules_file.exists():
-                shutil.copy2(self.rules_file, self.rules_file.with_suffix(".md.bak"))
-
-            if self.global_rules_file.exists():
-                shutil.copy2(self.global_rules_file, self.global_rules_file.with_suffix(".md.bak"))
-
-        except Exception as e:
-            raise ContextValidationError(f"Failed to create backups: {e!s}")

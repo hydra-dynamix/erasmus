@@ -28,7 +28,8 @@ from erasmus.utils.context import (
 from erasmus.utils.logging import LogContext, get_logger
 from erasmus.utils.paths import SetupPaths
 
-from .protocol import protocol
+from erasmus.cli.protocol import protocol
+
 
 load_dotenv()
 
@@ -291,7 +292,7 @@ def update(ctx, type: str, content: str):
 @click.option("--force", is_flag=True, help="Force cleanup without confirmation")
 @click.pass_context
 def cleanup(ctx, force: bool):
-    """Remove all generated files and restore backups if available."""
+    """Remove all generated files."""
     with LogContext(logger, "cleanup"):
         try:
             result = subprocess.run(

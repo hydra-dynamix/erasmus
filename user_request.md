@@ -6,40 +6,36 @@ You're tasked with a **comprehensive, structured codebase review**, performed on
 
 1. **Extract Functionality from `watcher.py`** (on `main` branch)
 
-   - Record its intended functionality in: `.architecture.md` below these instructions
+   - Record its intended functionality in: `.erasmus/review/target_functionality.md`
 
 2. **Generate Directory Structure**
 
-   - Use `uv run scripts/walk.py ./ .progress.md` to create a full directory tree of the project.
+   - Use `uv run scripts/walk.py ./ .erasmus/review/draft.md` to create a full directory tree of the project.
    - This tree becomes your **review checklist** — check off files as you complete them.
 
 3. **Perform a File-by-File Review**
 
-   - For each file:
-     - Analyze its content and logic
-     - Compare its functionality to `architecture.md` if applicable
-     - Log issues such as:
-       - Repetitive code
-       - Dead code
-       - Inappropriate path handling
-       - Excessive or missing validation
-       - Errors or anti-patterns
-     - Record the file name and notes inline in `.erasmus/review/draft.md` creating that file's entry
+- For each file:
+  - errors
+  - missing functionality
+  - dead code
+  - repeated code or functionality
+- Record notes inline in `.erasmus/review/draft.md` under that file's entry
 
-4. **Build a Dependency Graph**
+1. **Build a Dependency Graph**
 
    - Record all imports and usage relationships in the codebase
    - Output to `.erasmus/review/dependencies.md`
 
-5. **Final Comparison**
+2. **Final Comparison**
 
-   - Compare `.erasmus/review/draft.md` (what’s implemented) with `.architecture.md` (what should be implemented)
+   - Compare `.erasmus/review/draft.md` (what’s implemented) with `.erasmus/review/target_functionality.md` (what should be implemented)
    - Highlight:
      - Features present and missing
      - Redundancies or inefficiencies
      - Misalignments in architecture or functionality
 
-6. **Write the Final Report**
+3. **Write the Final Report**
 
    - Summarize findings in `.erasmus/review/final_report.md`
      - What’s working and what’s broken
@@ -47,7 +43,7 @@ You're tasked with a **comprehensive, structured codebase review**, performed on
      - Areas for refactoring
      - High-priority and low-priority issues
 
-7. **Propose an Action Plan**
+4. **Propose an Action Plan**
    - Output a task list in `.erasmus/review/action_plan.md`
      - Organized into phases or sprints
      - Assignable and traceable tasks
@@ -60,8 +56,8 @@ You're tasked with a **comprehensive, structured codebase review**, performed on
 ```mermaid
 flowchart TD
     A[Start: Checkout main branch] --> B[Extract functionality from watcher.py]
-    B --> C[Save to .architecture.md]
-    C --> D[Run: uv run scripts/walk.py ./ .progress.md]
+    B --> C[Save to .erasmus/review/target_functionality.md]
+    C --> D[Run: uv run scripts/walk.py ./ .erasmus/review/draft.md]
     D --> E[Begin File-by-File Review]
     E --> F{File in tree?}
     F -- Yes --> G[Analyze file]

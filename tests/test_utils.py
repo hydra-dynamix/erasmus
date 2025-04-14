@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from erasmus.utils.context import backup_rules_file, cleanup_project
+from erasmus.utils.context import cleanup_project
 
 
 @pytest.fixture
@@ -24,16 +24,6 @@ def temp_project_dir(tmp_path):
 
     # Cleanup and restore original directory
     os.chdir(original_dir)
-
-
-def test_backup_rules_file(temp_project_dir):
-    """Test that backup_rules_file creates backups correctly."""
-    rules_file = temp_project_dir / ".cursorrules"
-    backup_rules_file(rules_file)
-
-    backup_path = temp_project_dir / ".cursorrules.old"
-    assert backup_path.exists()
-    assert backup_path.read_text() == "test rules"
 
 
 def test_cleanup_project(temp_project_dir):

@@ -107,7 +107,7 @@ def read_file(path: Path) -> str:
 
 
 def write_file(path: Path, content: str) -> bool:
-    """Write content to a file, optionally creating a backup."""
+    """Write content to a file"""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -123,7 +123,7 @@ def get_rules_path() -> Path:
     return SETUP_PATHS.rules_file
 
 
-def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, Any]:
+def update_context(context: dict[str, Any]) -> dict[str, Any]:
     """Update the context with current file contents."""
     # Add architecture if available
     architecture_path = SETUP_PATHS.markdown_files["architecture"]
@@ -156,7 +156,7 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
     rules_context_path = SETUP_PATHS.rules_file
 
     # Write updated context, creating the file if it doesn't exist
-    write_file(rules_context_path, json.dumps(scrubbed_context, indent=2), backup=backup)
+    write_file(rules_context_path, json.dumps(scrubbed_context, indent=2))
     return context
 
 
@@ -226,7 +226,7 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
 
         if content is not None:
             try:
-                if write_file(path, content, backup=False):
+                if write_file(path, content):
                     logger.info(f"Successfully updated {path}")
                     if file_type != "context":
                         # Read current context
@@ -246,7 +246,7 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
                         # Just update the content and save
                         current_context[file_type] = content
                         logger.info(f"💾 Updating rules with changes from {file_type}")
-                        write_file(rules_path, json.dumps(current_context, indent=2), backup=False)
+                        write_file(rules_path, json.dumps(current_context, indent=2))
             except Exception as e:
                 logger.error(f"Failed to update {path}: {e}", exc_info=True)
                 raise
@@ -254,7 +254,7 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
 
 @log_execution()
 def cleanup_project() -> None:
-    """Remove all generated files and restore backups if available."""
+    """Remove all generated files."""
     with LogContext(logger, "cleanup_project"):
         setup_paths = SetupPaths.with_project_root(Path.cwd())
         rules_path = setup_paths.rules_file
@@ -451,6 +451,10 @@ def sanitize_dirname(name: str) -> str:
     return sanitized
 
 
+from pysnooper import snoop
+
+
+@snoop()
 def store_context(setup_paths: SetupPaths) -> bool:
     """Store the current context.
 
@@ -468,28 +472,22 @@ def store_context(setup_paths: SetupPaths) -> bool:
 
         # Create context directory if it doesn't exist
         context_dir = setup_paths.context_dir
-        context_dir.mkdir(parents=True, exist_ok=True)
 
-        # Define context files with dot prefix
+        architecture_title = architecture_content.split("\n")[0].strip("#").strip()
+        context_name = sanitize_dirname(architecture_title)
+
         context_files = {
-            ".architecture.md": architecture_content,
-            ".progress.md": progress_content,
-            ".tasks.md": tasks_content,
+            "architecture": architecture_content,
+            "progress": progress_content,
+            "tasks": tasks_content,
         }
 
-        # Copy files only if they don't exist or have changed
-        for filename, content in context_files.items():
-            target_path = context_dir / filename
-            if not target_path.exists() or target_path.read_text() != content:
-                target_path.write_text(content)
-                logger.info(f"Copied {filename} to context directory")
+        context_dir_path = context_dir / context_name
+        context_dir_path.mkdir(parents=True, exist_ok=True)
 
-        # Update IDE rules file if it exists
-        if setup_paths.rules_file.exists():
-            rules_content = read_file(setup_paths.rules_file)
-            rules_dict = json.loads(rules_content)
-            rules_dict.update({"context_dir": str(context_dir)})
-            write_file(setup_paths.rules_file, json.dumps(rules_dict, indent=2))
+        for filename, content in context_files.items():
+            target_path = context_dir_path / filename
+            write_file(target_path, content)
 
         logger.info("Successfully stored context")
         return True

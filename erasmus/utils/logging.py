@@ -23,6 +23,7 @@ from rich.logging import RichHandler
 # Configure console for rich output
 console = Console()
 
+
 class LogContext:
     """Context manager for tracking operation timing and context."""
 
@@ -45,6 +46,7 @@ class LogContext:
             )
         else:
             self.logger.debug(f"Completed {self.operation} in {duration:.2f}s")
+
 
 def get_logger(
     name: str,
@@ -77,10 +79,10 @@ def get_logger(
 
     # Create formatters
     file_formatter = logging.Formatter(
-        '%(asctime)s [%(process)d:%(thread)d] %(name)s - %(levelname)s - %(message)s',
+        "%(asctime)s [%(process)d:%(thread)d] %(name)s - %(levelname)s - %(message)s",
     )
     console_formatter = logging.Formatter(
-        '%(message)s',  # Rich handler adds its own formatting
+        "%(message)s",  # Rich handler adds its own formatting
     )
 
     # Add console handler with rich formatting
@@ -104,6 +106,7 @@ def get_logger(
 
     return logger
 
+
 def log_execution(level: str = "DEBUG") -> Callable:
     """Decorator to log function execution with timing.
 
@@ -113,6 +116,7 @@ def log_execution(level: str = "DEBUG") -> Callable:
     Returns:
         Decorator function
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -135,8 +139,11 @@ def log_execution(level: str = "DEBUG") -> Callable:
                     exc_info=True,
                 )
                 raise
+
         return wrapper
+
     return decorator
+
 
 def init_logging(
     level: str | int = "INFO",

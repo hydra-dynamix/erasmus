@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "python-script-packager"
+name = "erasmus"
 version = "0.1.0"
-description = "Package Python projects into standalone scripts with uv dependency management"
+description = "AI Context Watcher for Development"
 readme = "README.md"
 requires-python = ">=3.8"
 license = "MIT"
@@ -23,10 +23,11 @@ classifiers = [
 dependencies = [
     "typer>=0.9.0",
     "rich>=13.0.0",
+    "pysnooper>=1.2.2",
 ]
 
 [project.scripts]
-packager = "src.__main__:main"
+erasmus = "erasmus.__main__:main"
 
 [project.optional-dependencies]
 test = [
@@ -152,10 +153,7 @@ warn_no_return = true
 warn_unreachable = true
 
 [tool.uv.workspace]
-members = ["gamesync_demo", "erasmus"]
-
-[tool.uv.sources]
-erasmus = { workspace = true }
+members = ["gamesync_demo"]
 
 [dependency-groups]
 dev = [

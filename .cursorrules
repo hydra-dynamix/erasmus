@@ -9,7 +9,7 @@
     "Orchestration Agent"
   ],
   "protocol_markdown": "",
-  "current_protocol": "# Code Review Agent\n\n## Role\ncode_quality_assessment\n\n## Triggers\ntests_passing, style_verified\n\n## Produces\nreview_comments, approval\n\n## Consumes\nimplementation_code, test_files, style_reports\n\n## Description\nThis is a protocol for the Code Review Agent role.\n",
+  "current_protocol": "# Developer Agent\n\n## Role\n\ncode_implementation\n\n## Triggers\n\narchitecture_complete, code_review_issues, test_failures, style_issues, security_issues, performance_issues, dependency_issues\n\n## Produces\n\nimplementation_code, .tasks.md\n\n## Consumes\n\n.erasmus/.architecture.md, .progress.md, debug_reports, style_reports\n\n## Description\n\nThis is a protocol for the Developer Agent role.\n",
   "protocol_role": "issue_diagnosis",
   "protocol_triggers": [],
   "protocol_produces": [],
