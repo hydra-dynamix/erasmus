@@ -4,8 +4,11 @@ import os
 from pathlib import Path
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
-
 from .path_constants import DEFAULT_IDE_ENV
+from rich.prompt import Prompt
+from rich.console import Console
+
+console = Console()
 
 
 class EnvironmentManager:
@@ -14,6 +17,9 @@ class EnvironmentManager:
     _instance: Optional["EnvironmentManager"] = None
     _ide_env: Optional[str] = None
     _env_vars: Dict[str, str] = {}
+    _api_key: Optional[str] = None
+    _base_url: Optional[str] = None
+    _model: Optional[str] = None
 
     def __new__(cls) -> "EnvironmentManager":
         if cls._instance is None:
@@ -100,6 +106,17 @@ class EnvironmentManager:
         # Write to file
         env_path.write_text("\n".join(content) + "\n")
 
+    def prompt_for_ide_env(self) -> str:
+        """Prompt the user for the IDE environment."""
+        while not self.is_windsurf or not self.is_cursor:
+            user_input = Prompt.ask("Enter the IDE environment (windsurf/cursor)")
+            if user_input.lower().startswith("w"):
+                self._ide_env = "windsurf"
+            if user_input.lower().startswith("c"):
+                self._ide_env = "cursor"
+            console.print("[red]Invalid IDE environment. Please enter 'windsurf' or 'cursor'[/red]")
+        return self._ide_env
+
     @property
     def is_cursor(self) -> bool:
         """Check if the current IDE is Cursor."""
@@ -109,3 +126,16 @@ class EnvironmentManager:
     def is_windsurf(self) -> bool:
         """Check if the current IDE is Windsurf."""
         return self._ide_env.startswith("w")
+
+    def prompt_for_openai_credentials(self) -> None:
+        """Prompt the user for OpenAI credentials."""
+        self._api_key = Prompt.ask("Enter your OpenAI API key")
+        self._base_url = Prompt.ask("Enter your OpenAI base URL")
+        self._model = Prompt.ask("Enter your OpenAI model")
+
+    def get_openai_credentials():
+        """Get OpenAI credentials from environment variables."""
+        api_key = os.environ.get("OPENAI_API_KEY", "sk-1234")
+        base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        model = os.environ.get("OPENAI_MODEL", "gpt-4o")
+        return api_key, base_url, model

@@ -7,18 +7,20 @@ This guide explains how to integrate the Erasmus context management system into 
 ## Quick Start
 
 1. **Installation**
+
    ```bash
    pip install erasmus-context
    ```
 
 2. **Basic Configuration**
+
    ```python
    from erasmus.ide import CursorContextManager
    from pathlib import Path
 
    # Initialize context manager
    context_manager = CursorContextManager(Path.cwd())
-   
+
    # Start the manager
    await context_manager.start()
    ```
@@ -27,6 +29,7 @@ This guide explains how to integrate the Erasmus context management system into 
 
 1. **Required Environment Variables**
    Create a `.env` file in your project root:
+
    ```env
    IDE_TYPE=cursor
    RULES_DIR=.cursorrules
@@ -40,9 +43,9 @@ This guide explains how to integrate the Erasmus context management system into 
    workspace/
    ├── .cursorrules/
    │   └── rules.json
-   ├── .erasmus/architecture.md
-   ├── progress.md
-   └── tasks.md
+   ├── .erasmus/.architecture.md
+   ├── .progress.md
+   └── .tasks.md
    ```
 
 ## Context Management
@@ -93,7 +96,7 @@ sync = SyncIntegration(context_manager, workspace_path)
 await sync.start()
 
 # Handle file changes
-await sync.handle_file_change(Path(".erasmus/architecture.md"))
+await sync.handle_file_change(Path(".erasmus/.architecture.md"))
 ```
 
 ### Error Recovery
@@ -129,11 +132,11 @@ async def manage_resources():
         # Start components
         await context_manager.start()
         await sync.start()
-        
+
         # Main processing
         while running:
             await process_updates()
-            
+
     finally:
         # Cleanup
         await sync.stop()
@@ -153,7 +156,7 @@ class ThreadSafeHandler:
     def __init__(self):
         self._queue = Queue()
         self._lock = Lock()
-        
+
     def handle_event(self, event):
         with self._lock:
             self._queue.put(event)
@@ -207,7 +210,7 @@ async def test_context_manager():
     # Set up
     context_manager = CursorContextManager(tmp_path)
     await context_manager.start()
-    
+
     try:
         # Test update
         success = await context_manager.queue_update(
@@ -215,13 +218,13 @@ async def test_context_manager():
             "# Test Content"
         )
         assert success
-        
+
         # Verify update
         rules = json.loads(
             (tmp_path / ".cursorrules" / "rules.json").read_text()
         )
         assert rules["architecture"] == "# Test Content"
-        
+
     finally:
         await context_manager.stop()
 ```
@@ -233,20 +236,20 @@ async def test_sync_integration():
     # Set up components
     context_manager = CursorContextManager(workspace_path)
     sync = SyncIntegration(context_manager, workspace_path)
-    
+
     await context_manager.start()
     await sync.start()
-    
+
     try:
         # Test file change
         content = "# Updated Content"
         architecture_file.write_text(content)
         await sync.handle_file_change(architecture_file)
-        
+
         # Verify synchronization
         rules = json.loads(rules_file.read_text())
         assert rules["architecture"] == content
-        
+
     finally:
         await sync.stop()
         await context_manager.stop()
@@ -257,6 +260,7 @@ async def test_sync_integration():
 ### Common Issues
 
 1. **File Lock Errors**
+
    ```python
    # Solution: Use atomic operations
    temp_file = path.with_suffix('.tmp')
@@ -265,6 +269,7 @@ async def test_sync_integration():
    ```
 
 2. **Event Loop Errors**
+
    ```python
    # Solution: Ensure proper event loop usage
    loop = asyncio.get_event_loop()
@@ -282,12 +287,14 @@ async def test_sync_integration():
 ### Debugging
 
 1. Enable debug logging:
+
    ```python
    import logging
    logging.basicConfig(level=logging.DEBUG)
    ```
 
 2. Monitor file operations:
+
    ```python
    def debug_file_op(func):
        def wrapper(*args, **kwargs):
@@ -303,4 +310,4 @@ async def test_sync_integration():
        result = await context_manager.queue_update(component, content)
        logger.debug(f"Update result: {result}")
        return result
-   ``` 
+   ```

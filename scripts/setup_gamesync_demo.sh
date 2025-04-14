@@ -14,7 +14,7 @@ mkdir -p "$BUILD_DIR"
 
 # Copy example architecture
 echo -e "${YELLOW}Copying example architecture...${NC}"
-cp "$PWD/docs/examples/game_sync/.erasmus/architecture.md" "$BUILD_DIR/.erasmus/architecture.md"
+cp "$PWD/docs/examples/game_sync/.erasmus/.architecture.md" "$BUILD_DIR/.erasmus/.architecture.md"
 
 cd "$BUILD_DIR"
 

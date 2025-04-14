@@ -43,7 +43,7 @@ class StdlibDetector:
         available method for the current Python version.
         """
         # Method 1: Use sys.stdlib_module_names (Python 3.10+)
-        if hasattr(sys, 'stdlib_module_names'):
+        if hasattr(sys, "stdlib_module_names"):
             self._stdlib_modules = set(sys.stdlib_module_names)
             self._initialized = True
             return
@@ -51,6 +51,7 @@ class StdlibDetector:
         # Method 2: Try to use stdlib_list package if available
         try:
             import stdlib_list
+
             version = f"{sys.version_info.major}.{sys.version_info.minor}"
             self._stdlib_modules = set(stdlib_list.stdlib_list(version))
             self._initialized = True
@@ -63,38 +64,162 @@ class StdlibDetector:
         # This is a fallback method and may not be comprehensive
         self._stdlib_modules = {
             # Basic modules
-            'abc', 'argparse', 'array', 'ast', 'asyncio', 'base64', 'binascii',
-            'builtins', 'calendar', 'cmath', 'collections', 'concurrent',
-            'configparser', 'contextlib', 'copy', 'csv', 'ctypes', 'datetime',
-            'decimal', 'difflib', 'dis', 'email', 'enum', 'errno', 'fcntl',
-            'filecmp', 'fnmatch', 'fractions', 'ftplib', 'functools', 'gc',
-            'getopt', 'getpass', 'gettext', 'glob', 'gzip', 'hashlib', 'heapq',
-            'hmac', 'html', 'http', 'imaplib', 'importlib', 'inspect', 'io',
-            'ipaddress', 'itertools', 'json', 'keyword', 'linecache', 'locale',
-            'logging', 'lzma', 'math', 'mimetypes', 'mmap', 'multiprocessing',
-            'netrc', 'numbers', 'operator', 'os', 'pathlib', 'pickle', 'pkgutil',
-            'platform', 'plistlib', 'poplib', 'posix', 'pprint', 'profile',
-            'pstats', 'pwd', 'py_compile', 'pyclbr', 'queue', 'random', 're',
-            'reprlib', 'resource', 'runpy', 'sched', 'secrets', 'select',
-            'selectors', 'shelve', 'shlex', 'shutil', 'signal', 'site', 'smtplib',
-            'socket', 'socketserver', 'sqlite3', 'ssl', 'stat', 'statistics',
-            'string', 'struct', 'subprocess', 'sys', 'sysconfig', 'tarfile',
-            'tempfile', 'textwrap', 'threading', 'time', 'timeit', 'token',
-            'tokenize', 'trace', 'traceback', 'tracemalloc', 'types', 'typing',
-            'unicodedata', 'unittest', 'urllib', 'uuid', 'venv', 'warnings',
-            'wave', 'weakref', 'webbrowser', 'winreg', 'wsgiref', 'xml',
-            'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib',
+            "abc",
+            "argparse",
+            "array",
+            "ast",
+            "asyncio",
+            "base64",
+            "binascii",
+            "builtins",
+            "calendar",
+            "cmath",
+            "collections",
+            "concurrent",
+            "configparser",
+            "contextlib",
+            "copy",
+            "csv",
+            "ctypes",
+            "datetime",
+            "decimal",
+            "difflib",
+            "dis",
+            "email",
+            "enum",
+            "errno",
+            "fcntl",
+            "filecmp",
+            "fnmatch",
+            "fractions",
+            "ftplib",
+            "functools",
+            "gc",
+            "getopt",
+            "getpass",
+            "gettext",
+            "glob",
+            "gzip",
+            "hashlib",
+            "heapq",
+            "hmac",
+            "html",
+            "http",
+            "imaplib",
+            "importlib",
+            "inspect",
+            "io",
+            "ipaddress",
+            "itertools",
+            "json",
+            "keyword",
+            "linecache",
+            "locale",
+            "logging",
+            "lzma",
+            "math",
+            "mimetypes",
+            "mmap",
+            "multiprocessing",
+            "netrc",
+            "numbers",
+            "operator",
+            "os",
+            "pathlib",
+            "pickle",
+            "pkgutil",
+            "platform",
+            "plistlib",
+            "poplib",
+            "posix",
+            "pprint",
+            "profile",
+            "pstats",
+            "pwd",
+            "py_compile",
+            "pyclbr",
+            "queue",
+            "random",
+            "re",
+            "reprlib",
+            "resource",
+            "runpy",
+            "sched",
+            "secrets",
+            "select",
+            "selectors",
+            "shelve",
+            "shlex",
+            "shutil",
+            "signal",
+            "site",
+            "smtplib",
+            "socket",
+            "socketserver",
+            "sqlite3",
+            "ssl",
+            "stat",
+            "statistics",
+            "string",
+            "struct",
+            "subprocess",
+            "sys",
+            "sysconfig",
+            "tarfile",
+            "tempfile",
+            "textwrap",
+            "threading",
+            "time",
+            "timeit",
+            "token",
+            "tokenize",
+            "trace",
+            "traceback",
+            "tracemalloc",
+            "types",
+            "typing",
+            "unicodedata",
+            "unittest",
+            "urllib",
+            "uuid",
+            "venv",
+            "warnings",
+            "wave",
+            "weakref",
+            "webbrowser",
+            "winreg",
+            "wsgiref",
+            "xml",
+            "xmlrpc",
+            "zipapp",
+            "zipfile",
+            "zipimport",
+            "zlib",
             # Modules that might be confused with third-party packages
-            'distutils', 'setuptools', 'pip', 'pkg_resources',
+            "distutils",
+            "setuptools",
+            "pip",
+            "pkg_resources",
         }
 
         # Common prefixes for standard library modules
         self._stdlib_prefixes = [
-            'collections.', 'concurrent.', 'ctypes.', 'email.', 'html.', 'http.',
-            'importlib.', 'logging.', 'multiprocessing.', 'os.', 'unittest.',
-            'urllib.', 'xml.', 'xmlrpc.',
+            "collections.",
+            "concurrent.",
+            "ctypes.",
+            "email.",
+            "html.",
+            "http.",
+            "importlib.",
+            "logging.",
+            "multiprocessing.",
+            "os.",
+            "unittest.",
+            "urllib.",
+            "xml.",
+            "xmlrpc.",
         ]
-        
+
         self._initialized = True
 
     def is_stdlib_module(self, name: str) -> bool:
@@ -110,13 +235,16 @@ class StdlibDetector:
         if not self._initialized:
             self.initialize()
 
+        # Normalize the module name to lowercase
+        name = name.lower()
+
         # Direct match in the standard library modules set
-        if name in self._stdlib_modules:
+        if name in {m.lower() for m in self._stdlib_modules}:
             return True
 
         # Check if it's a submodule of a standard library module
         for prefix in self._stdlib_prefixes:
-            if name.startswith(prefix):
+            if name.startswith(prefix.lower()):
                 return True
 
         # Check if it's importable without installing anything
@@ -125,7 +253,7 @@ class StdlibDetector:
             spec = importlib.util.find_spec(name)
             if spec is not None and spec.origin is not None:
                 # Exclude modules from site-packages or dist-packages
-                site_pkgs = ('site-packages', 'dist-packages')
+                site_pkgs = ("site-packages", "dist-packages")
                 return not any(site_pkg in spec.origin for site_pkg in site_pkgs)
         except (ImportError, AttributeError, ValueError):
             pass

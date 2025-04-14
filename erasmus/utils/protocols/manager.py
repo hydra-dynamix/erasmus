@@ -1,18 +1,16 @@
 """Protocol manager for loading and executing protocols."""
 
-import asyncio
 import json
-import logging
-import os
-from pathlib import Path
-from typing import Dict, List, Optional, Callable, Any, Set
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from erasmus.utils.logging import get_logger
 from erasmus.utils.paths import PathManager
-from .base import Protocol, ProtocolTransition, ProtocolArtifact
+
+from .base import Protocol, ProtocolTransition
 
 logger = get_logger(__name__)
 
@@ -38,8 +36,8 @@ class ProtocolManager(BaseModel):
 
     def __init__(self, **data):
         """Initialize the ProtocolManager."""
-        if 'path_manager' not in data:
-            data['path_manager'] = PathManager()
+        if "path_manager" not in data:
+            data["path_manager"] = PathManager()
         super().__init__(**data)
 
     @classmethod
@@ -76,7 +74,7 @@ class ProtocolManager(BaseModel):
         """Register default prompt functions for all protocols."""
         protocols_dir = self.path_manager.protocols_dir / "stored"
         registry_file = self.path_manager.registry_file
-        
+
         # Ensure the protocols directory exists
         if not protocols_dir.exists():
             logger.warning(f"Protocols directory not found: {protocols_dir}")
@@ -84,14 +82,14 @@ class ProtocolManager(BaseModel):
 
         # Find all markdown files in the stored protocols directory
         protocol_files = list(protocols_dir.glob("*.md"))
-        
+
         if not protocol_files:
             logger.info("No protocol files found in stored protocols directory")
             return
 
         for protocol_file in protocol_files:
             protocol_name = protocol_file.stem
-            
+
             try:
                 # Read the protocol content from the file
                 with open(protocol_file, "r") as f:
@@ -102,7 +100,8 @@ class ProtocolManager(BaseModel):
                     self.registry[protocol_name] = {
                         "name": protocol_name,
                         "description": f"Default protocol for {protocol_name}",
-                        "file_path": str(protocol_file)
+                        "file_path": str(protocol_file),
+                        "protocol_content": protocol_content,
                     }
                     logger.info(f"Added protocol {protocol_name} to registry")
 
@@ -121,14 +120,10 @@ class ProtocolManager(BaseModel):
                 serializable_registry = {}
                 for name, protocol in self.registry.items():
                     # Ensure protocol is a dictionary or has model_dump method
-                    if hasattr(protocol, 'model_dump'):
+                    if hasattr(protocol, "model_dump"):
                         protocol_dict = protocol.model_dump()
                     elif not isinstance(protocol, dict):
-                        protocol_dict = {
-                            "name": name,
-                            "description": "",
-                            "file_path": ""
-                        }
+                        protocol_dict = {"name": name, "description": "", "file_path": ""}
                     else:
                         protocol_dict = protocol
 
@@ -136,7 +131,8 @@ class ProtocolManager(BaseModel):
                     serializable_registry[name] = {
                         "name": protocol_dict.get("name", name),
                         "description": protocol_dict.get("description", ""),
-                        "file_path": str(protocol_dict.get("file_path", ""))
+                        "file_path": str(protocol_dict.get("file_path", "")),
+                        "protocol_content": protocol_dict.get("protocol_content", ""),
                     }
                 json.dump(serializable_registry, f, indent=2)
 
@@ -243,13 +239,13 @@ This is a protocol for the {agent["name"]} role.
             serializable_registry = {}
             for name, protocol in self.registry.items():
                 # Convert Protocol objects to dictionaries
-                if hasattr(protocol, 'model_dump'):
+                if hasattr(protocol, "model_dump"):
                     serializable_registry[name] = protocol.model_dump()
                 else:
                     serializable_registry[name] = {
                         "name": protocol.get("name", name),
                         "description": protocol.get("description", ""),
-                        "file_path": protocol.get("file_path", "")
+                        "file_path": protocol.get("file_path", ""),
                     }
 
             # Ensure the directory exists
@@ -379,7 +375,7 @@ This is a protocol for the {agent["name"]} role.
             # Perform any necessary activation steps
             # This could involve setting a default agent, initializing resources, etc.
             logger.info(f"Activating protocol: {protocol_name}")
-            
+
             return True
         except Exception as e:
             logger.error(f"Error activating protocol {protocol_name}: {e}")

@@ -4,11 +4,11 @@ This module provides the command-line interface for interacting with Erasmus.
 It uses Click for command parsing and handling.
 """
 
+import signal
+import subprocess
 import time
 from functools import wraps
 from pathlib import Path
-import signal
-import sys
 
 import click
 from dotenv import load_dotenv
@@ -19,15 +19,11 @@ from erasmus.core.task import TaskManager, TaskStatus
 from erasmus.core.watcher import WatcherFactory
 from erasmus.git.manager import GitManager
 from erasmus.utils.context import (
-    cleanup_project,
-    store_context,
-    restore_context,
-    list_context_dirs,
-    print_context_dirs,
-    select_context_dir,
-    update_context,
-    update_specific_file,
     handle_protocol_context,
+    restore_context,
+    select_context_dir,
+    store_context,
+    update_specific_file,
 )
 from erasmus.utils.logging import LogContext, get_logger
 from erasmus.utils.paths import SetupPaths
@@ -40,6 +36,8 @@ load_dotenv()
 logger = get_logger(__name__)
 console = Console()
 task_manager = TaskManager()
+
+SETUP_PATHS = SetupPaths.with_project_root(Path.cwd())
 
 
 def log_command(f):
@@ -296,13 +294,10 @@ def cleanup(ctx, force: bool):
     """Remove all generated files and restore backups if available."""
     with LogContext(logger, "cleanup"):
         try:
-            logger.debug(f"Starting cleanup with force={force}")
-            if not force:
-                if not click.confirm("This will remove all generated files. Are you sure?"):
-                    logger.info("Cleanup cancelled by user")
-                    console.print("Cleanup cancelled.")
-                    return
-            cleanup_project()
+            result = subprocess.run(
+                ["bash", "scripts/cleanup.sh"], check=True, stdout=PIPE, stdin=PIPE
+            )
+            console.print(result.stdout)
             logger.info("Successfully cleaned up project files")
             console.print("🧹 Cleanup complete")
         except Exception as e:
@@ -317,30 +312,30 @@ def watch():
     with LogContext(logger, "watch"):
         try:
             # Initialize file watchers
-            setup_paths = SetupPaths.with_project_root(Path.cwd())
+
             factory = WatcherFactory()
 
             # Create watchers for markdown files
             markdown_watcher = factory.create_markdown_watcher(
-                setup_paths.markdown_files, update_specific_file
+                SETUP_PATHS.markdown_files, update_specific_file
             )
 
             # Create watchers for protocol files
             protocol_files = {
-                "agent_registry": setup_paths.protocols_dir / "agent_registry.json",
-                "protocols": setup_paths.protocols_dir / "stored",
+                "agent_registry": SETUP_PATHS.protocols_dir / "agent_registry.json",
+                "protocols": SETUP_PATHS.protocols_dir / "stored",
             }
             protocol_watcher = factory.create_markdown_watcher(
                 protocol_files,
-                lambda file_type, content: handle_protocol_context(setup_paths, file_type),
+                lambda file_type, content: handle_protocol_context(SETUP_PATHS, file_type),
             )
 
             # Create observers for each watcher
             markdown_observer = factory.create_observer(
-                markdown_watcher, str(setup_paths.project_root)
+                markdown_watcher, str(SETUP_PATHS.project_root)
             )
             protocol_observer = factory.create_observer(
-                protocol_watcher, str(setup_paths.protocols_dir)
+                protocol_watcher, str(SETUP_PATHS.protocols_dir)
             )
 
             # Start all watchers
@@ -388,8 +383,7 @@ def store(ctx):
     """Store the current context in the context directory."""
     with LogContext(logger, "store_context"):
         try:
-            setup_paths = SetupPaths.with_project_root(Path.cwd())
-            success = store_context(setup_paths)
+            success = store_context(SETUP_PATHS)
             if success:
                 logger.info("Context stored successfully")
                 console.print("✨ Context stored successfully")
@@ -416,9 +410,8 @@ def restore(ctx, path):
     """
     with LogContext(logger, "restore_context"):
         try:
-            setup_paths = SetupPaths.with_project_root(Path.cwd())
             context_path = Path(path) if path else None
-            success = restore_context(setup_paths, context_path)
+            success = restore_context(SETUP_PATHS, context_path)
             if success:
                 logger.info("Context restored successfully")
                 console.print("✨ Context restored successfully")
@@ -438,15 +431,14 @@ def list(ctx):
     """List all available context directories."""
     with LogContext(logger, "list_context_dirs"):
         try:
-            setup_paths = SetupPaths.with_project_root(Path.cwd())
-            dirs = list_context_dirs(setup_paths)
+            context_dirs = SETUP_PATHS.context_dir.iterdir()
+            context_dir_names = [dir_path.name for dir_path in context_dirs if dir_path.is_dir()]
 
-            if dirs:
-                logger.info(f"Found {len(dirs)} context directories")
+            if context_dir_names:
+                logger.info(f"Found {len(context_dir_names)} context directories")
                 console.print("Available context directories:")
-                for i, dir_path in enumerate(dirs, 1):
+                for i, dir_name in enumerate(context_dir_names, 1):
                     # Try to get a readable name from the directory
-                    dir_name = Path(dir_path).name
                     console.print(f"{i}. {dir_name}")
             else:
                 logger.info("No context directories found")
@@ -465,8 +457,7 @@ def select(ctx):
     """Select a context directory to restore."""
     with LogContext(logger, "select_context"):
         try:
-            setup_paths = SetupPaths.with_project_root(Path.cwd())
-            architecture_context_dir = select_context_dir(setup_paths)
+            architecture_context_dir = select_context_dir(SETUP_PATHS)
 
             if not architecture_context_dir:
                 logger.info("No context directory selected")
@@ -479,7 +470,7 @@ def select(ctx):
             # Confirm before restoring
             prompt = "Do you want to restore this context? This will overwrite current files."
             if click.confirm(prompt):
-                success = restore_context(setup_paths, architecture_context_dir)
+                success = restore_context(SETUP_PATHS, architecture_context_dir)
                 if success:
                     logger.info("Context restored successfully")
                     console.print("✨ Context restored successfully")

@@ -3,21 +3,30 @@
 This module provides Click-based commands for managing protocols in Erasmus.
 """
 
+import asyncio
 import json
 import os
 from pathlib import Path
 
 import click
 from rich.console import Console
-import asyncio
+from dotenv import load_dotenv
 
+from erasmus.core.context import ContextFileHandler
+from erasmus.utils.logging import LogContext, get_logger
 from erasmus.utils.paths import SetupPaths
-from erasmus.utils.logging import get_logger, LogContext
 from erasmus.utils.protocols.manager import ProtocolManager
-from erasmus.utils.context import update_context, scrub_non_ascii
+from erasmus.utils.env_manager import EnvironmentManager
+
+# Load environment variables
+load_dotenv()
 
 logger = get_logger(__name__)
 console = Console()
+
+# Initialize environment manager
+env_manager = EnvironmentManager()
+context_handler = ContextFileHandler(workspace_root=Path.cwd())
 
 # Global protocol manager instance
 protocol_manager = None
@@ -29,7 +38,7 @@ async def get_protocol_manager() -> ProtocolManager:
     if protocol_manager is None:
         protocol_manager = ProtocolManager()
         await protocol_manager.load_registry()
-        protocol_manager.register_default_prompts()  # Register default prompts
+        await protocol_manager.register_default_prompts()  # Register default prompts
     return protocol_manager
 
 
@@ -57,10 +66,10 @@ async def _list_protocols():
 
     table = click.style("\nAvailable Protocols:", bold=True)
     for protocol in protocols:
-        table += f"\n- {protocol.name} ({protocol.role})"
-        table += f"\n  Triggers: {', '.join(protocol.triggers)}"
-        table += f"\n  Produces: {', '.join(protocol.produces)}"
-        table += f"\n  Consumes: {', '.join(protocol.consumes)}\n"
+        table += f"\n- {protocol.get('name', 'Unknown')}"
+        table += f"\n  Triggers: {', '.join(protocol.get('triggers', []))}"
+        table += f"\n  Produces: {', '.join(protocol.get('produces', []))}"
+        table += f"\n  Consumes: {', '.join(protocol.get('consumes', []))}\n"
 
     console.print(table)
 
@@ -85,7 +94,7 @@ async def _restore_protocol(name: str):
             return
 
         # Update the context with the protocol
-        update_context_with_protocol(name, manager)
+        await update_context_with_protocol(name)
         console.print(f"✅ Restored protocol: {name}")
     except Exception as e:
         console.print(f"❌ Error restoring protocol: {e}", style="red")
@@ -109,7 +118,7 @@ async def _select_protocol():
 
     console.print("\nAvailable Protocols:")
     for i, protocol in enumerate(protocols, 1):
-        console.print(f"{i}. {protocol.name} ({protocol.role})")
+        console.print(f"{i}. {protocol.get('name', 'Unknown')}")
 
     try:
         selection = click.prompt("\nSelect a protocol (number)", type=int)
@@ -118,8 +127,8 @@ async def _select_protocol():
             return
 
         selected_protocol = protocols[selection - 1]
-        update_context_with_protocol(selected_protocol.name, manager)
-        console.print(f"✅ Selected protocol: {selected_protocol.name}")
+        await update_context_with_protocol(selected_protocol.get("name"))
+        console.print(f"✅ Selected protocol: {selected_protocol.get('name')}")
     except click.Abort:
         console.print("Selection cancelled.")
     except Exception as e:
@@ -151,8 +160,25 @@ async def _store_protocol(name: str):
         protocols_dir.mkdir(parents=True, exist_ok=True)
 
         protocol_file = protocols_dir / f"{name}.json"
+
+        # Convert protocol to a serializable dictionary
+        protocol_dict = {}
+        if hasattr(protocol, "model_dump"):
+            protocol_dict = protocol.model_dump()
+        else:
+            protocol_dict = {
+                "name": protocol.get("name", name),
+                "description": protocol.get("description", ""),
+                "file_path": str(protocol.get("file_path", "")),
+            }
+
+        # Ensure all paths are converted to strings
+        for key, value in protocol_dict.items():
+            if isinstance(value, Path):
+                protocol_dict[key] = str(value)
+
         with open(protocol_file, "w") as f:
-            json.dump(protocol.model_dump(), f, indent=2)
+            json.dump(protocol_dict, f, indent=2)
 
         console.print(f"✅ Stored protocol: {name}")
     except Exception as e:
@@ -264,121 +290,36 @@ async def _run_workflow(name: str, context: str):
         console.print(f"❌ Error running workflow: {e}", style="red")
 
 
-def update_context_with_protocol(protocol_name: str, manager: ProtocolManager = None) -> None:
-    """Update the context object in the IDE environment rules file with the protocol."""
-    # Get the rules file path
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-    rules_path = setup_paths.rules_file
+async def update_context_with_protocol(protocol_name: str):
+    """Update the context with the selected protocol."""
+    manager = await get_protocol_manager()
+    protocol_file = manager.get_protocol_file(protocol_name)
+    selected_protocol = protocol_file.read_text()
+    protocol = manager.get_protocol(protocol_name)
 
-    # Create the file if it doesn't exist
-    if not rules_path.exists():
-        rules_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(rules_path, "w") as f:
-            json.dump({"protocols": [protocol_name]}, f, indent=2)
-        logger.info(f"Created new rules file at {rules_path}")
-        return
+    if not selected_protocol:
+        console.print(f"❌ Protocol not found: {protocol_name}", style="red")
+        return False
 
-    # Read the existing rules
     try:
-        with open(rules_path, "r") as f:
-            rules = json.load(f)
-    except json.JSONDecodeError:
-        logger.error(f"Invalid JSON in rules file: {rules_path}")
-        rules = {"protocols": []}
+        # Get current context
+        context = context_handler.read_context()
 
-    # Update the protocols list
-    if "protocols" not in rules:
-        rules["protocols"] = []
+        # Update only protocol-related fields
+        context["current_protocol"] = selected_protocol
+        context["protocol_triggers"] = protocol.get("triggers", [])
+        context["protocol_produces"] = protocol.get("produces", [])
+        context["protocol_consumes"] = protocol.get("consumes", [])
+        context["protocol_markdown"] = protocol.get("markdown", "")
 
-    # Add the protocol as the first entry if it's not already there
-    if protocol_name not in rules["protocols"]:
-        rules["protocols"].insert(0, protocol_name)
+        # Store updated context
+        context_handler.update_context(context)
 
-    # Load markdown files into context
-    try:
-        # Add architecture if available
-        architecture_path = setup_paths.architecture_file
-        if architecture_path.exists():
-            with open(architecture_path, "r") as f:
-                rules["architecture"] = f.read()
-
-        # Add progress if available
-        progress_path = setup_paths.progress_file
-        if progress_path.exists():
-            with open(progress_path, "r") as f:
-                rules["progress"] = f.read()
-
-        # Add tasks if available
-        tasks_path = setup_paths.tasks_file
-        if tasks_path.exists():
-            with open(tasks_path, "r") as f:
-                rules["tasks"] = f.read()
-
-        # Add protocol markdown if available
-        # First try the exact protocol name
-        protocol_md_path = setup_paths.protocols_dir / "stored" / f"{protocol_name}.md"
-
-        # If not found, try to find a matching protocol file
-        if not protocol_md_path.exists():
-            # Get the protocol manager to find the correct file path
-            if manager is None:
-                import asyncio
-
-                manager = asyncio.run(get_protocol_manager())
-
-            # Get the protocol to find its file path
-            protocol = manager.get_protocol(protocol_name)
-            if protocol and hasattr(protocol, "file_path"):
-                # Extract the filename from the file_path
-                import os
-
-                file_name = os.path.basename(protocol.file_path)
-                protocol_md_path = setup_paths.protocols_dir / "stored" / file_name
-
-        if protocol_md_path.exists():
-            with open(protocol_md_path, "r") as f:
-                rules["protocol_markdown"] = f.read()
-                logger.info(f"Loaded protocol markdown from {protocol_md_path}")
-        else:
-            logger.warning(f"Protocol markdown file not found for {protocol_name}")
+        console.print(f"✅ Updated context with protocol: {protocol_name}")
+        return True
     except Exception as e:
-        logger.error(f"Error loading markdown files: {e}")
-
-    # Get the protocol manager to get additional protocol information
-    try:
-        if manager is None:
-            # Only create a new event loop if we don't have a manager
-            import asyncio
-
-            manager = asyncio.run(get_protocol_manager())
-
-        protocol = manager.get_protocol(protocol_name)
-        if protocol:
-            # Update the context with protocol information
-            context = {
-                "current_protocol": protocol_name,
-                "protocol_role": protocol.role,
-                "protocol_triggers": protocol.triggers,
-                "protocol_produces": protocol.produces,
-                "protocol_consumes": protocol.consumes,
-            }
-
-            # Scrub non-ASCII characters from context values
-            scrubbed_context = {
-                key: scrub_non_ascii(value) if isinstance(value, str) else value
-                for key, value in context.items()
-            }
-
-            # Update the rules with the scrubbed context
-            rules.update(scrubbed_context)
-    except Exception as e:
-        logger.error(f"Error getting protocol information: {e}")
-
-    # Write the updated rules
-    with open(rules_path, "w") as f:
-        json.dump(rules, f, indent=2)
-
-    logger.info(f"Updated rules file with protocol: {protocol_name}")
+        console.print(f"❌ Error updating context: {e}", style="red")
+        return False
 
 
 def get_ide_env_rules_path() -> Path:

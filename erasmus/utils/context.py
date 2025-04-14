@@ -17,6 +17,8 @@ from erasmus.utils.paths import SetupPaths
 from erasmus.utils.protocols.manager import ProtocolManager
 from erasmus.utils.protocols import Protocol
 from erasmus.utils.protocols.context import Context
+from erasmus.utils.env_manager import EnvironmentManager
+
 
 # Configure logging
 logger = get_logger(__name__)
@@ -31,15 +33,8 @@ PROJECT_MARKER = f"""
 {"=" * 40}
 """
 
-
-def get_openai_credentials():
-    """Get OpenAI credentials from environment variables."""
-    import os
-
-    api_key = os.environ.get("OPENAI_API_KEY")
-    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-    model = os.environ.get("OPENAI_MODEL")
-    return api_key, base_url, model
+SETUP_PATHS = SetupPaths.with_project_root(Path.cwd())
+ENV_MANAGER = EnvironmentManager()
 
 
 def extract_commit_message(message: str) -> str:
@@ -111,22 +106,10 @@ def read_file(path: Path) -> str:
         return ""
 
 
-def backup_rules_file(file_path: Path) -> None:
-    """Create a backup of a rules file if it exists."""
-    if file_path.exists():
-        backup_path = file_path.parent / f"{file_path.name}.old"
-        shutil.copy2(file_path, backup_path)
-        console.print(f"Created backup at {backup_path}")
-
-
-def write_file(path: Path, content: str, backup: bool = False) -> bool:
+def write_file(path: Path, content: str) -> bool:
     """Write content to a file, optionally creating a backup."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Create backup if requested and file exists
-        if backup and path.exists():
-            backup_rules_file(path)
 
         path.write_text(content)
         return True
@@ -137,49 +120,29 @@ def write_file(path: Path, content: str, backup: bool = False) -> bool:
 
 def get_rules_path() -> Path:
     """Get the appropriate rules file path based on IDE_ENV."""
-    from pathlib import Path
-
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-    return setup_paths.rules_file
-
-
-def restore_rules_backup() -> bool:
-    """Restore rules from backup if available."""
-    rules_path = get_rules_path()
-    backup_path = rules_path.parent / f"{rules_path.name}.old"
-
-    if backup_path.exists():
-        try:
-            shutil.copy2(backup_path, rules_path)
-            console.print(f"Restored rules from {backup_path}")
-            return True
-        except Exception as e:
-            console.print(f"Error restoring backup: {e}", style="red")
-    return False
+    return SETUP_PATHS.rules_file
 
 
 def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, Any]:
     """Update the context with current file contents."""
-    setup_paths = SetupPaths.with_project_root(Path.cwd())
-
     # Add architecture if available
-    architecture_path = setup_paths.markdown_files["architecture"]
+    architecture_path = SETUP_PATHS.markdown_files["architecture"]
     if architecture_path.exists():
         context["architecture"] = read_file(architecture_path)
 
     # Add progress if available
-    progress_path = setup_paths.markdown_files["progress"]
+    progress_path = SETUP_PATHS.markdown_files["progress"]
     if progress_path.exists():
         context["progress"] = read_file(progress_path)
 
     # Add tasks if available
-    tasks_path = setup_paths.markdown_files["tasks"]
+    tasks_path = SETUP_PATHS.markdown_files["tasks"]
     if tasks_path.exists():
         context["tasks"] = read_file(tasks_path)
 
     # Handle protocol context if a protocol is active
     if "current_protocol" in context:
-        success = handle_protocol_context(setup_paths, context["current_protocol"])
+        success = handle_protocol_context(SETUP_PATHS, context["current_protocol"])
         if not success:
             logger.warning(f"Failed to update protocol context for {context['current_protocol']}")
 
@@ -190,10 +153,7 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
     }
 
     # Get the correct rules file path based on IDE environment
-    rules_context_path = setup_paths.rules_file
-
-    # Create parent directory if it doesn't exist
-    rules_context_path.parent.mkdir(parents=True, exist_ok=True)
+    rules_context_path = SETUP_PATHS.rules_file
 
     # Write updated context, creating the file if it doesn't exist
     write_file(rules_context_path, json.dumps(scrubbed_context, indent=2), backup=backup)
@@ -202,21 +162,8 @@ def update_context(context: dict[str, Any], backup: bool = False) -> dict[str, A
 
 def setup_project() -> None:
     """Set up a new project with necessary files."""
-    # Import logging here to avoid circular imports
-    from erasmus.utils.logging import get_logger
 
-    logger = get_logger(__name__)
-
-    # Make sure .env is loaded
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    # Check IDE environment before creating SetupPaths
-    import os
-
-    ide_env = os.getenv("IDE_ENV", "").lower()
-    logger.info(f"Setup project detected IDE environment: '{ide_env}'")
+    logger.info(f"Setup project detected IDE environment: '{ENV_MANAGER.ide_env}'")
 
     setup_paths = SetupPaths.with_project_root(Path.cwd())
 
@@ -248,41 +195,6 @@ if __name__ == "__main__":
     main()
 """
 
-    # Try to restore from backup first
-    if not restore_rules_backup():
-        # If no backup, create new files
-        for filename, content in files.items():
-            path = Path(filename)
-            if not path.exists():
-                write_file(path, content)
-                console.print(f"Created {filename}")
-
-                # Make script files executable
-                if filename in [str(p) for p in setup_paths.script_files.values()]:
-                    path.chmod(0o755)
-
-        # Initialize context with file contents
-        context = {}
-
-        # Get the correct rules path based on IDE environment
-        rules_path = setup_paths.rules_file
-
-        # Read content from files
-        markdown_files = {
-            "architecture": setup_paths.markdown_files["architecture"],
-            "progress": setup_paths.markdown_files["progress"],
-            "tasks": setup_paths.markdown_files["tasks"],
-        }
-
-        for file_key, file_path in markdown_files.items():
-            if file_path.exists():
-                context[file_key] = read_file(file_path)
-
-        # Write to the correct rules file
-        write_file(rules_path, json.dumps(context, indent=2), backup=True)
-
-    console.print("Project setup complete!")
-
 
 @log_execution()
 def update_specific_file(file_type: str, content: str | None = None) -> None:
@@ -291,7 +203,7 @@ def update_specific_file(file_type: str, content: str | None = None) -> None:
         setup_paths = SetupPaths.with_project_root(Path.cwd())
         file_map = setup_paths.markdown_files
         # Get available file types from the MarkdownPaths object
-        available_types = ["architecture", "progress", "tasks"]
+        available_types = list(file_map.keys())
         logger.debug(f"Available file types: {available_types}")
 
         if file_type not in available_types:
@@ -354,17 +266,6 @@ def cleanup_project() -> None:
         files_to_rm_string.append(".env")
         logger.debug(f"Files to clean up: {files_to_rm_string}")
 
-        # First, create backups of all files
-        for filename in files_to_remove:
-            path = Path(filename)
-            if path.exists():
-                try:
-                    backup_rules_file(path)
-                    logger.info(f"Created backup for {path}")
-                except Exception as e:
-                    logger.error(f"Failed to backup {path}: {e}", exc_info=True)
-                    raise
-
         # Then remove generated files
         for filename in files_to_remove:
             path = Path(filename)
@@ -403,16 +304,7 @@ def cleanup_project() -> None:
 def check_creds() -> bool:
     """Check if OpenAI credentials are valid for API calls."""
     with LogContext(logger, "check_creds"):
-        api_key, base_url, model = get_openai_credentials()
-        logger.debug(f"Using base URL: {base_url}, model: {model}")
-
-        # Skip API call if using default key or OpenAI base URL
-        if api_key == "sk-1234" or "api.openai.com" in base_url.lower():
-            logger.warning("Using default credentials, skipping API check")
-            return False
-
-        logger.info("OpenAI credentials validated")
-        return True
+        return ENV_MANAGER.get_openai_credentials()
 
 
 @log_execution()
@@ -560,100 +452,50 @@ def sanitize_dirname(name: str) -> str:
 
 
 def store_context(setup_paths: SetupPaths) -> bool:
-    """Store the current context in the context directory.
+    """Store the current context.
 
     Args:
         setup_paths: The setup paths object containing file paths
 
     Returns:
-        bool: True if context was stored successfully, False otherwise
+        bool: True if context was stored successfully
     """
     try:
-        # Get the markdown files from the project context directory
-        progress_file = setup_paths.progress_file
-        tasks_file = setup_paths.tasks_file
-        architecture_file = Path(".architecture.md")  # Use root .architecture.md
+        # Read content from markdown files
+        architecture_content = read_file(setup_paths.architecture_file)
+        progress_content = read_file(setup_paths.progress_file)
+        tasks_content = read_file(setup_paths.tasks_file)
 
-        # Debug logging
-        logger.debug("Architecture file path: %s", architecture_file)
-        logger.debug("Architecture file exists: %s", architecture_file.exists())
-        logger.debug("Architecture file absolute path: %s", architecture_file.absolute())
+        # Create context directory if it doesn't exist
+        context_dir = setup_paths.context_dir
+        context_dir.mkdir(parents=True, exist_ok=True)
 
-        if not architecture_file.exists():
-            logger.error("Architecture file does not exist")
-            return False
+        # Define context files with dot prefix
+        context_files = {
+            ".architecture.md": architecture_content,
+            ".progress.md": progress_content,
+            ".tasks.md": tasks_content,
+        }
 
-        # Read the content of the architecture file
-        architecture_content = architecture_file.read_text().strip()
-        if not architecture_content:
-            logger.error("Architecture file is empty")
-            return False
+        # Copy files only if they don't exist or have changed
+        for filename, content in context_files.items():
+            target_path = context_dir / filename
+            if not target_path.exists() or target_path.read_text() != content:
+                target_path.write_text(content)
+                logger.info(f"Copied {filename} to context directory")
 
-        # Read the first line of the architecture file to use as directory name
-        first_line = architecture_content.split("\n")[0].strip()
-        if first_line.startswith("# "):
-            first_line = first_line[2:]  # Remove the markdown heading
-        dir_name = sanitize_dirname(first_line)
+        # Update IDE rules file if it exists
+        if setup_paths.rules_file.exists():
+            rules_content = read_file(setup_paths.rules_file)
+            rules_dict = json.loads(rules_content)
+            rules_dict.update({"context_dir": str(context_dir)})
+            write_file(setup_paths.rules_file, json.dumps(rules_dict, indent=2))
 
-        # Create the context directory with the sanitized name
-        context_dir = setup_paths.context_dir / dir_name
-        if not context_dir.exists():
-            context_dir.mkdir(parents=True, exist_ok=True)
-
-        # Define the context files with dot prefix
-        context_architecture = context_dir / ".architecture.md"
-        context_progress = context_dir / ".progress.md"
-        context_tasks = context_dir / ".tasks.md"
-
-        # Read content from all files
-        progress_content = progress_file.read_text().strip() if progress_file.exists() else ""
-        tasks_content = tasks_file.read_text().strip() if tasks_file.exists() else ""
-
-        # Only copy files if they don't exist or if they've changed
-        def should_copy_file(source_content: str, dest: Path) -> bool:
-            if not dest.exists():
-                return True
-            try:
-                return source_content != dest.read_text().strip()
-            except Exception:
-                return True
-
-        # Copy files to context directory only if needed
-        if should_copy_file(architecture_content, context_architecture):
-            write_file(context_architecture, architecture_content)
-            logger.debug("Copied architecture file to context directory")
-
-        if should_copy_file(progress_content, context_progress):
-            write_file(context_progress, progress_content)
-            logger.debug("Copied progress file to context directory")
-
-        if should_copy_file(tasks_content, context_tasks):
-            write_file(context_tasks, tasks_content)
-            logger.debug("Copied tasks file to context directory")
-
-        # Clean up any duplicate files without dot prefix
-        for file_name in ["architecture.md", "progress.md", "tasks.md"]:
-            duplicate_file = context_dir / file_name
-            if duplicate_file.exists():
-                duplicate_file.unlink()
-                logger.debug("Removed duplicate file: %s", duplicate_file)
-
-        # Update the IDE rules file if it exists
-        if hasattr(setup_paths, "ide_rules_file"):
-            try:
-                rules_content = {
-                    "architecture": architecture_content,
-                    "progress": progress_content,
-                    "tasks": tasks_content,
-                }
-                write_file(setup_paths.ide_rules_file, json.dumps(rules_content, indent=2))
-            except Exception as e:
-                logger.warning("Failed to update IDE rules file: %s", str(e))
-
-        logger.info("Context stored successfully in %s", context_dir)
+        logger.info("Successfully stored context")
         return True
+
     except Exception as e:
-        logger.error("Failed to store context: %s", str(e), exc_info=True)
+        logger.error(f"Failed to store context: {e}")
         return False
 
 
@@ -687,26 +529,10 @@ def restore_context(setup_paths: SetupPaths, context_path: Path | None = None) -
         else:
             context_dir = Path(context_path)
 
-        if not context_dir.exists():
-            logger.error("Context directory does not exist: %s", context_dir)
-            return False
-
         # Define the context files with dot prefix in the context directory
         context_architecture = context_dir / ".architecture.md"
         context_progress = context_dir / ".progress.md"
         context_tasks = context_dir / ".tasks.md"
-
-        # Check if all required files exist
-        required_files = {
-            "architecture": context_architecture,
-            "progress": context_progress,
-            "tasks": context_tasks,
-        }
-
-        missing_files = [name for name, path in required_files.items() if not path.exists()]
-        if missing_files:
-            logger.error("Missing required files in context directory: %s", missing_files)
-            return False
 
         # Read content from context files
         architecture_content = (
@@ -1033,3 +859,60 @@ class ContextManager:
             return False
 
         return await self.protocol_manager.activate_protocol(protocol_name)
+
+    def read_context(self) -> dict[str, Any]:
+        """Read and parse the context file.
+
+        Returns:
+            Dict containing context configuration
+        """
+        try:
+            if not self.context_file.exists():
+                return {
+                    "project_root": str(self.workspace_root),
+                    "active_rules": [],
+                    "global_rules": [],
+                    "file_patterns": ["*.py", "*.md"],
+                    "excluded_paths": ["venv/", "__pycache__/"],
+                }
+
+            content = self.context_file.read_text()
+            context = json.loads(content)
+            return context
+
+        except json.JSONDecodeError:
+            # If JSON is invalid, return default context
+            return {
+                "project_root": str(self.workspace_root),
+                "active_rules": [],
+                "global_rules": [],
+                "file_patterns": ["*.py", "*.md"],
+                "excluded_paths": ["venv/", "__pycache__/"],
+            }
+        except Exception as e:
+            logger.error(f"Failed to read context file: {e}")
+            return {
+                "project_root": str(self.workspace_root),
+                "active_rules": [],
+                "global_rules": [],
+                "file_patterns": ["*.py", "*.md"],
+                "excluded_paths": ["venv/", "__pycache__/"],
+            }
+
+    def update_context(self, new_context: dict[str, Any], partial: bool = False) -> None:
+        """Update the context file.
+
+        Args:
+            new_context: New context configuration
+            partial: If True, only update specified fields
+        """
+        try:
+            if partial:
+                current_context = self.read_context()
+                current_context.update(new_context)
+                new_context = current_context
+
+            # Write the updated context
+            self.context_file.write_text(json.dumps(new_context, indent=2))
+        except Exception as e:
+            logger.error(f"Failed to update context: {e}")

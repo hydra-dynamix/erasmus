@@ -1,0 +1,19 @@
+{
+  "project_root": "/home/bakobi/repos/erasmus",
+  "active_rules": [],
+  "global_rules": [],
+  "file_patterns": [
+    "*.py",
+    "*.md"
+  ],
+  "excluded_paths": [
+    "venv/",
+    "__pycache__/"
+  ],
+  "current_protocol": "# Code Review Agent\n\n## Role\ncode_quality_assessment\n\n## Triggers\ntests_passing, style_verified\n\n## Produces\nreview_comments, approval\n\n## Consumes\nimplementation_code, test_files, style_reports\n\n## Description\nThis is a protocol for the Code Review Agent role.\n",
+  "protocol_role": "",
+  "protocol_triggers": [],
+  "protocol_produces": [],
+  "protocol_consumes": [],
+  "protocol_markdown": ""
+}

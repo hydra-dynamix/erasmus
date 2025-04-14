@@ -1,0 +1,74 @@
+{
+  "CICD Agent": {
+    "name": "CICD Agent",
+    "description": "Default protocol for CICD Agent",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/CICD Agent.md",
+    "protocol_content": "# CI/CD Agent\n\n## Role\ncontinuous_integration\n\n## Triggers\nsecurity_verified, docs_updated\n\n## Produces\nbuild_artifacts, deployment_configs\n\n## Consumes\nimplementation_code, security_reports\n\n## Description\nThis is a protocol for the CI/CD Agent role."
+  },
+  "CodeReview": {
+    "name": "CodeReview",
+    "description": "Default protocol for CodeReview",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/CodeReview.md",
+    "protocol_content": "# Code Review Agent\n\n## Role\ncode_quality_assessment\n\n## Triggers\ntests_passing, style_verified\n\n## Produces\nreview_comments, approval\n\n## Consumes\nimplementation_code, test_files, style_reports\n\n## Description\nThis is a protocol for the Code Review Agent role."
+  },
+  "Style": {
+    "name": "Style",
+    "description": "Default protocol for Style",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Style.md",
+    "protocol_content": "# Style Agent\n\n## Role\ncode_style_verification\n\n## Triggers\ncode_implementation, code_changes\n\n## Produces\nstyle_reports, linting_fixes\n\n## Consumes\nimplementation_code\n\n## Description\nThis is a protocol for the Style Agent role."
+  },
+  "Debug": {
+    "name": "Debug",
+    "description": "Default protocol for Debug",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Debug.md",
+    "protocol_content": "# Debug Agent\n\n## Role\nissue_diagnosis\n\n## Triggers\ntest_failures\n\n## Produces\ndebug_reports, fix_recommendations\n\n## Consumes\nimplementation_code, test_results\n\n## Description\nThis is a protocol for the Debug Agent role."
+  },
+  "Documentation": {
+    "name": "Documentation",
+    "description": "Default protocol for Documentation",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Documentation.md",
+    "protocol_content": "# Documentation Agent\n\n## Role\n\ndocumentation_management\n\n## Triggers\n\ncode_review_passed\n\n## Produces\n\nreadme, api_docs, inline_comments\n\n## Consumes\n\nimplementation_code, .erasmus/.architecture.md, test_files\n\n## Description\n\nThis is a protocol for the Documentation Agent role."
+  },
+  "Developer": {
+    "name": "Developer",
+    "description": "Default protocol for Developer",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Developer.md",
+    "protocol_content": "# Developer Agent\n\n## Role\n\ncode_implementation\n\n## Triggers\n\narchitecture_complete, code_review_issues, test_failures, style_issues, security_issues, performance_issues, dependency_issues\n\n## Produces\n\nimplementation_code, .tasks.md\n\n## Consumes\n\n.erasmus/.architecture.md, .progress.md, debug_reports, style_reports\n\n## Description\n\nThis is a protocol for the Developer Agent role."
+  },
+  "Testing": {
+    "name": "Testing",
+    "description": "Default protocol for Testing",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Testing.md",
+    "protocol_content": "# Testing Agent\n\n## Role\n\ntest_development\n\n## Triggers\n\ncode_implementation, code_changes\n\n## Produces\n\ntest_files, test_results\n\n## Consumes\n\nimplementation_code, .tasks.md, .erasmus/.architecture.md\n\n## Description\n\nThis is a protocol for the Testing Agent role."
+  },
+  "Security": {
+    "name": "Security",
+    "description": "Default protocol for Security",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Security.md",
+    "protocol_content": "# Security Agent\n\n## Role\nsecurity_verification\n\n## Triggers\ncode_review_passed\n\n## Produces\nsecurity_reports, vulnerability_fixes\n\n## Consumes\nimplementation_code\n\n## Description\nThis is a protocol for the Security Agent role."
+  },
+  "Performance": {
+    "name": "Performance",
+    "description": "Default protocol for Performance",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Performance.md",
+    "protocol_content": "# Performance Agent\n\n## Role\nperformance_optimization\n\n## Triggers\ndeployment_ready\n\n## Produces\nperformance_reports, optimization_recommendations\n\n## Consumes\nimplementation_code, build_artifacts\n\n## Description\nThis is a protocol for the Performance Agent role."
+  },
+  "Orchestration": {
+    "name": "Orchestration",
+    "description": "Default protocol for Orchestration",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Orchestration.md",
+    "protocol_content": "# Orchestration Agent\n\n## Role\nworkflow_coordination\n\n## Triggers\nproject_start, performance_verified\n\n## Produces\nworkflow_status, agent_assignments\n\n## Consumes\nall_agent_outputs\n\n## Description\nThis is a protocol for the Orchestration Agent role."
+  },
+  "Dependency": {
+    "name": "Dependency",
+    "description": "Default protocol for Dependency",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/Dependency.md",
+    "protocol_content": "# Dependency Agent\n\n## Role\ndependency_management\n\n## Triggers\ncode_implementation, dependency_check\n\n## Produces\ndependency_reports, dependency_updates\n\n## Consumes\nimplementation_code, requirements_files\n\n## Description\nThis is a protocol for the Dependency Agent role."
+  },
+  "ProductOwner": {
+    "name": "ProductOwner",
+    "description": "Default protocol for ProductOwner",
+    "file_path": "/home/bakobi/repos/erasmus/.erasmus/protocols/stored/ProductOwner.md",
+    "protocol_content": "# Product Owner Agent\n\n## Role\n\nproject_planning\n\n## Triggers\n\nproject_initiation\n\n## Produces\n\n.erasmus/.architecture.md, .progress.md\n\n## Consumes\n\nuser_request.md\n\n## Description\n\nThis is a protocol for the Product Owner Agent role."
+  }
+}

@@ -1,13 +1,12 @@
 # Testing Agent
 
-<!-- 
+<!--
 AGENT_METADATA
 role: test_development
 triggers: code_implementation, code_changes
 produces: test_files, test_results
-consumes: implementation_code, tasks.md, .erasmus/architecture.md
+consumes: implementation_code, .tasks.md, .erasmus/.architecture.md
 -->
-
 
 ## Objective
 
@@ -21,9 +20,9 @@ You work in conjunction with a developer agent to ensure that all functionality 
 
 You will receive one or more of the following:
 
-- `.erasmus/architecture.md` - system components, tech stack, and requirements
-- `progress.md` - milestones and feature plan
-- `tasks.md` - granular development tasks
+- `.erasmus/.architecture.md` - system components, tech stack, and requirements
+- `.progress.md` - milestones and feature plan
+- `.tasks.md` - granular development tasks
 - Source code - written by the developer
 - Test output - logs or feedback from test execution
 
@@ -31,12 +30,14 @@ You will receive one or more of the following:
 
 ## TDD Workflow
 
-1. **For every new task in `tasks.md`:**
+1. **For every new task in `.tasks.md`:**
+
    - Review the architecture and functional intent
    - Write **failing tests first** that define success
    - Place tests in the correct file structure (e.g. `tests/` or `*_test.py` or `test_*.rs`)
 
 2. **During development:**
+
    - Review updated code
    - Re-run tests
    - Ensure tests are comprehensive and pass
@@ -85,6 +86,7 @@ Use these rules to interact with test runners:
 - Add flags like `--nocapture` in separate commands if needed
 
 Example (Rust):
+
 ```xml
 <function_calls>
 <invoke name="run_terminal_cmd">
@@ -93,3 +95,4 @@ Example (Rust):
   <parameter name="is_background">false</parameter>
 </invoke>
 </function_calls>
+```

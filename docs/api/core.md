@@ -10,14 +10,14 @@ The main class responsible for managing context updates in the cursor IDE enviro
 class CursorContextManager:
     def __init__(self, workspace_path: Path):
         """Initialize the CursorContextManager.
-        
+
         Args:
             workspace_path (Path): Path to the workspace root directory
         """
 
     async def start(self) -> None:
         """Start the context manager.
-        
+
         Initializes all required components:
         - Creates rules directory if it doesn't exist
         - Initializes rules file
@@ -28,7 +28,7 @@ class CursorContextManager:
 
     async def stop(self) -> None:
         """Stop the context manager.
-        
+
         Cleans up all resources:
         - Stops file watching
         - Cancels all pending tasks
@@ -37,14 +37,14 @@ class CursorContextManager:
 
     async def queue_update(self, component: str, content: Any) -> bool:
         """Queue an update for processing.
-        
+
         Args:
             component (str): Component to update ("architecture", "progress", "tasks")
             content (Any): New content for the component
-            
+
         Returns:
             bool: True if update was successful, False otherwise
-            
+
         Raises:
             RuntimeError: If context manager is not running
         """
@@ -58,7 +58,7 @@ Handles synchronization between source files and rules.
 class SyncIntegration:
     def __init__(self, context_manager: CursorContextManager, workspace_path: Path):
         """Initialize the sync integration.
-        
+
         Args:
             context_manager (CursorContextManager): The context manager instance
             workspace_path (Path): Path to the workspace root
@@ -66,24 +66,24 @@ class SyncIntegration:
 
     async def start(self) -> None:
         """Start the sync integration.
-        
+
         - Initializes file watching
         - Performs initial sync of all components
         """
 
     async def stop(self) -> None:
         """Stop the sync integration.
-        
+
         - Stops file watching
         - Cleans up resources
         """
 
     async def handle_file_change(self, file_path: Path) -> None:
         """Handle changes to source files.
-        
+
         Args:
             file_path (Path): Path to the changed file
-            
+
         Features:
         - Retries failed updates up to 3 times
         - Uses progressive delays between retries
@@ -102,14 +102,14 @@ Base class for file system event handling.
 class BaseWatcher(FileSystemEventHandler):
     def on_modified(self, event: FileSystemEvent) -> None:
         """Handle file modification events.
-        
+
         Args:
             event (FileSystemEvent): The file system event
         """
 
     def handle_event(self, file_key: str) -> None:
         """Handle a specific file event.
-        
+
         Args:
             file_key (str): Identifier for the file
         """
@@ -123,14 +123,14 @@ Handles file system events specifically for rules files.
 class CursorRulesHandler(FileSystemEventHandler):
     def __init__(self, manager: CursorContextManager):
         """Initialize the handler.
-        
+
         Args:
             manager (CursorContextManager): The context manager instance
         """
 
     def on_modified(self, event: FileSystemEvent) -> None:
         """Handle file modification events.
-        
+
         Features:
         - Debounces frequent events
         - Uses thread-safe queues for communication
@@ -154,9 +154,9 @@ Required environment variables for the system:
 
 Important file paths in the system:
 
-- `.erasmus/architecture.md`: System architecture documentation
-- `progress.md`: Development progress tracking
-- `tasks.md`: Task tracking and management
+- `.erasmus/.architecture.md`: System architecture documentation
+- `.progress.md`: Development progress tracking
+- `.tasks.md`: Task tracking and management
 - `.cursorrules/rules.json`: Rules file for cursor IDE
 
 ## Error Handling
@@ -164,11 +164,13 @@ Important file paths in the system:
 The system uses a comprehensive error handling approach:
 
 1. **File Operations**
+
    - Atomic writes using temporary files
    - Proper cleanup of temporary resources
    - Verification of file contents after writes
 
 2. **Update Processing**
+
    - progressive retry mechanism
    - Timeout handling with configurable limits
    - Event cleanup in finally blocks
@@ -181,6 +183,7 @@ The system uses a comprehensive error handling approach:
 ## Best Practices
 
 1. **Update Processing**
+
    ```python
    # Queue an update with proper error handling
    try:
@@ -192,6 +195,7 @@ The system uses a comprehensive error handling approach:
    ```
 
 2. **File Watching**
+
    ```python
    # Set up file watching with proper cleanup
    observer = Observer()
@@ -212,4 +216,4 @@ The system uses a comprehensive error handling approach:
            # ... operations ...
        finally:
            # ... cleanup ...
-   ``` 
+   ```

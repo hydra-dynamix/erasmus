@@ -13,7 +13,7 @@
       "file_path": "erasmus/utils/protocols/stored/product_owner.md",
       "role": "project_planning",
       "triggers": ["project_initiation"],
-      "produces": [".erasmus/architecture.md", "progress.md"],
+      "produces": [".erasmus/.architecture.md", ".progress.md"],
       "consumes": ["user_request.md"]
     },
     {
@@ -29,8 +29,8 @@
         "performance_issues",
         "dependency_issues"
       ],
-      "produces": ["implementation_code", "tasks.md"],
-      "consumes": [".erasmus/architecture.md", "progress.md", "debug_reports", "style_reports"]
+      "produces": ["implementation_code", ".tasks.md"],
+      "consumes": [".erasmus/.architecture.md", ".progress.md", "debug_reports", "style_reports"]
     },
     {
       "name": "Testing Agent",
@@ -38,7 +38,7 @@
       "role": "test_development",
       "triggers": ["code_implementation", "code_changes"],
       "produces": ["test_files", "test_results"],
-      "consumes": ["implementation_code", "tasks.md", ".erasmus/architecture.md"]
+      "consumes": ["implementation_code", ".tasks.md", ".erasmus/.architecture.md"]
     },
     {
       "name": "Style Agent",
@@ -70,7 +70,7 @@
       "role": "documentation_management",
       "triggers": ["code_review_passed"],
       "produces": ["readme", "api_docs", "inline_comments"],
-      "consumes": ["implementation_code", ".erasmus/architecture.md", "test_files"]
+      "consumes": ["implementation_code", ".erasmus/.architecture.md", "test_files"]
     },
     {
       "name": "CI/CD Agent",
@@ -116,7 +116,7 @@
       "from_agent": "Product Owner Agent",
       "to_agent": "Developer Agent",
       "trigger": "architecture_complete",
-      "artifact": ".erasmus/architecture.md"
+      "artifact": ".erasmus/.architecture.md"
     },
     {
       "from_agent": "Developer Agent",

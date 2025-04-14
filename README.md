@@ -1,6 +1,7 @@
 # Erasmus: AI Context Watcher for Development
 
 ## Overview
+
 Erasmus is a powerful context watcher that enhances your development environment by tracking project state and providing intelligent assistance through AI integration. It's designed to work with cursor and windsurf IDEs to provide contextual guidance during development.
 
 ## How It Works
@@ -11,15 +12,16 @@ Erasmus leverages modern AI IDE capabilities by utilizing their rule injection m
 
 ### Intelligent Document Management
 
-**.erasmus/architecture.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
+**.erasmus/.architecture.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
 
-**progress.md** tracks components derived from the architecture document, organizing them into a development schedule.
+**.progress.md** tracks components derived from the architecture document, organizing them into a development schedule.
 
-**tasks.md** breaks down components into manageable sub-tasks, tracking their completion status throughout development.
+**.tasks.md** breaks down components into manageable sub-tasks, tracking their completion status throughout development.
 
 ### Continuous Context Synchronization
 
 As development progresses:
+
 1. Erasmus monitors these files in real-time
 2. When file changes are detected, it updates the IDE rule files
 3. The AI assistant receives the updated context immediately
@@ -46,9 +48,9 @@ Erasmus sits in the background of your development environment and:
 
 ### Core Files Managed by Erasmus
 
-- **.erasmus/architecture.md** - Project architecture documentation
-- **progress.md** - Development progress tracking
-- **tasks.md** - Granular task management
+- **.erasmus/.architecture.md** - Project architecture documentation
+- **.progress.md** - Development progress tracking
+- **.tasks.md** - Granular task management
 - **.IDErules** - Bundled context for IDE integration
 
 ## Usage
@@ -102,15 +104,18 @@ uv run erasmus.py --convert-scripts
 ### Core Components
 
 1. **watcher.py** - Main application orchestrating project setup and management
+
    - `Watcher` class: Core functionality for file watching and context management
    - `Task` class: Task management and tracking
    - `TaskStatus` class: Task status enumeration
 
 2. **src/script_converter.py** - Handles script conversion between platforms
+
    - `ScriptConverter` class: Converts shell scripts to batch scripts
    - Command mapping and function templates
 
 3. **src/packager.py** - Python script packaging functionality
+
    - `ScriptPackager` class: Bundles multiple Python files into a single executable
    - AST-based code analysis and dependency tracking
 
@@ -122,6 +127,7 @@ uv run erasmus.py --convert-scripts
 ### Key Classes and Methods
 
 #### Watcher Class
+
 ```python
 class Watcher:
     def __init__(self, base_path: Path):
@@ -131,15 +137,16 @@ class Watcher:
 
     def watch_files(self):
         """Start watching project files for changes."""
-        
+
     def update_context(self):
         """Update project context based on file changes."""
-        
+
     def add_task(self, description: str) -> Task:
         """Add a new task to the project."""
 ```
 
 #### Task Class
+
 ```python
 class Task:
     def __init__(self, id: str, description: str):
@@ -153,6 +160,7 @@ class Task:
 ```
 
 #### ScriptPackager Class
+
 ```python
 class ScriptPackager:
     def __init__(self, base_path: Path):
@@ -223,6 +231,78 @@ uv run pytest tests/test_packager.py
 # Run tests with coverage
 uv run pytest --cov=src
 ```
+
+### Python Script Packager
+
+The Python Script Packager is a powerful tool that bundles Python projects into standalone executable scripts. It automatically handles dependency management using `uv`, making scripts fully portable across different environments.
+
+#### Features
+
+- Packages multiple Python files into a single executable script
+- Automatically detects and manages dependencies using `uv`
+- Cross-platform support (Linux, macOS, Windows)
+- Preserves code structure and comments (optional)
+- Groups imports by type (standard library, third-party, local)
+- Zero setup required beyond Python installation
+
+#### Usage
+
+```bash
+# Package a single Python file
+packager package script.py -o output.py
+
+# Package an entire project directory
+packager package src/ -o bundled.py
+
+# Package without grouping imports
+packager package script.py --no-group-imports
+
+# Package without preserving comments
+packager package script.py --no-comments
+
+# Show version information
+packager version
+```
+
+#### Components
+
+The packager consists of several key modules:
+
+- **collector.py**: Recursively finds Python files in a project
+- **parser.py**: Extracts and analyzes imports using AST
+- **builder.py**: Merges code bodies and formats imports
+- **mapping.py**: Maps imports to PyPI package names
+- **uv_wrapper.py**: Handles cross-platform `uv` bootstrapping
+
+#### Contributing to the Packager
+
+1. **Setup Development Environment**
+
+   ```bash
+   # Clone the repository
+   git clone https://github.com/bakobiibizo/erasmus.git
+   cd erasmus
+
+   # Install development dependencies
+   uv pip install -e .[dev,test]
+   ```
+
+2. **Run Packager Tests**
+
+   ```bash
+   # Run packager-specific tests
+   pytest tests/packager/
+
+   # Run with coverage
+   pytest tests/packager/ --cov=src/packager
+   ```
+
+3. **Development Guidelines**
+   - Write tests for new features
+   - Follow the existing code style
+   - Update documentation for API changes
+   - Add type hints to new functions
+   - Ensure cross-platform compatibility
 
 ### Building a Release
 

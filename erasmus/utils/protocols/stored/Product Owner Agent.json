@@ -6,8 +6,8 @@
     "project_initiation"
   ],
   "produces": [
-    ".erasmus/architecture.md",
-    "progress.md"
+    ".erasmus/.architecture.md",
+    ".progress.md"
   ],
   "consumes": [
     "user_request.md"

@@ -19,27 +19,41 @@ import fnmatch
 import os
 from collections.abc import Callable
 from typing import Optional
+from pathlib import Path
 
 
 # Default patterns to exclude from collection
 DEFAULT_EXCLUDE_PATTERNS = [
     # Version control directories
-    '.git', '.svn', '.hg', '.bzr',
+    ".git",
+    ".svn",
+    ".hg",
+    ".bzr",
     # Python cache directories
-    '__pycache__', '*.pyc', '*.pyo', '*.pyd',
+    "__pycache__",
+    "*.pyc",
+    "*.pyo",
+    "*.pyd",
     # Virtual environments
-    '.venv', 'venv', 'env', '.env',
+    ".venv",
+    "venv",
+    "env",
+    ".env",
     # Build directories
-    'build', 'dist', '*.egg-info',
+    "build",
+    "dist",
+    "*.egg-info",
     # IDE directories
-    '.idea', '.vscode', '*.sublime-*',
+    ".idea",
+    ".vscode",
+    "*.sublime-*",
     # Other common exclusions
-    'node_modules', '.DS_Store',
+    "node_modules",
+    ".DS_Store",
 ]
 
 
-def collect_py_files(base_path: str, 
-                     exclude_patterns: Optional[list[str]] = None) -> list[str]:
+def collect_py_files(base_path: str, exclude_patterns: Optional[list[str]] = None) -> list[str]:
     """
     Recursively collect all Python files in a directory.
 
@@ -55,15 +69,13 @@ def collect_py_files(base_path: str,
         PermissionError: If there are permission issues accessing files.
     """
     return collect_files_with_extensions(
-        base_path=base_path,
-        extensions=['.py'],
-        exclude_patterns=exclude_patterns
+        base_path=base_path, extensions=[".py"], exclude_patterns=exclude_patterns
     )
 
 
-def collect_files_with_extensions(base_path: str,
-                                 extensions: list[str],
-                                 exclude_patterns: Optional[list[str]] = None) -> list[str]:
+def collect_files_with_extensions(
+    base_path: str, extensions: list[str], exclude_patterns: Optional[list[str]] = None
+) -> list[str]:
     """
     Recursively collect files with specific extensions in a directory.
 
@@ -84,38 +96,38 @@ def collect_files_with_extensions(base_path: str,
 
     # Convert to absolute path
     base_path = os.path.abspath(base_path)
-    
+
     # Check if the base path exists
     if not os.path.exists(base_path):
         raise FileNotFoundError(f"The path {base_path} does not exist")
-    
+
     # Check if the base path is a directory
     if not os.path.isdir(base_path):
         raise NotADirectoryError(f"The path {base_path} is not a directory")
-    
+
     collected_files = []
-    
+
     # Walk through the directory tree
     for root, dirs, files in os.walk(base_path, topdown=True):
         # Filter out directories based on exclude patterns
         # This modifies dirs in-place to avoid walking excluded directories
         dirs[:] = [d for d in dirs if not _should_exclude(d, exclude_patterns)]
-        
+
         # Filter and collect files with the specified extensions
         for file in files:
             if _should_exclude(file, exclude_patterns):
                 continue
-                
+
             if any(file.endswith(ext) for ext in extensions):
                 file_path = os.path.join(root, file)
                 collected_files.append(file_path)
-    
+
     return collected_files
 
 
-def collect_files_with_filter(base_path: str,
-                             filter_func: Callable[[str], bool],
-                             exclude_patterns: Optional[list[str]] = None) -> list[str]:
+def collect_files_with_filter(
+    base_path: str, filter_func: Callable[[str], bool], exclude_patterns: Optional[list[str]] = None
+) -> list[str]:
     """
     Recursively collect files that pass a custom filter function.
 
@@ -136,32 +148,32 @@ def collect_files_with_filter(base_path: str,
 
     # Convert to absolute path
     base_path = os.path.abspath(base_path)
-    
+
     # Check if the base path exists
     if not os.path.exists(base_path):
         raise FileNotFoundError(f"The path {base_path} does not exist")
-    
+
     # Check if the base path is a directory
     if not os.path.isdir(base_path):
         raise NotADirectoryError(f"The path {base_path} is not a directory")
-    
+
     collected_files = []
-    
+
     # Walk through the directory tree
     for root, dirs, files in os.walk(base_path, topdown=True):
         # Filter out directories based on exclude patterns
         # This modifies dirs in-place to avoid walking excluded directories
         dirs[:] = [d for d in dirs if not _should_exclude(d, exclude_patterns)]
-        
+
         # Filter and collect files that pass the filter function
         for file in files:
             if _should_exclude(file, exclude_patterns):
                 continue
-                
+
             file_path = os.path.join(root, file)
             if filter_func(file_path):
                 collected_files.append(file_path)
-    
+
     return collected_files
 
 
@@ -170,13 +182,34 @@ def _should_exclude(name: str, exclude_patterns: list[str]) -> bool:
     Check if a file or directory name matches any of the exclude patterns.
 
     Args:
-        name: The file or directory name to check.
+        name: The name or path to check.
         exclude_patterns: List of glob patterns to exclude.
 
     Returns:
         True if the name matches any of the exclude patterns, False otherwise.
     """
-    return any(fnmatch.fnmatch(name, pattern) for pattern in exclude_patterns)
+    # Convert name to a Path object for proper path matching
+    path = Path(name)
+    str_path = str(path).replace("\\", "/")  # Normalize path separators
+
+    # Check each pattern
+    for pattern in exclude_patterns:
+        pattern = pattern.replace("\\", "/")  # Normalize pattern separators
+
+        # Handle directory-specific patterns (e.g., "src/**/*")
+        if "/" in pattern:
+            if fnmatch.fnmatch(str_path, pattern):
+                return True
+        # Handle simple name patterns
+        else:
+            if fnmatch.fnmatch(path.name, pattern):
+                return True
+            # Also check parent directories for exclusion
+            for parent in path.parents:
+                if fnmatch.fnmatch(parent.name, pattern):
+                    return True
+
+    return False
 
 
 def get_relative_paths(files: list[str], base_path: str) -> list[str]:
@@ -196,7 +229,7 @@ def get_relative_paths(files: list[str], base_path: str) -> list[str]:
 
 if __name__ == "__main__":
     import sys
-    
+
     if len(sys.argv) > 1:
         path = sys.argv[1]
         try:

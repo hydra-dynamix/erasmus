@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "erasmus"
+name = "python-script-packager"
 version = "0.1.0"
-description = "A context watcher for cursor and windsurf"
+description = "Package Python projects into standalone scripts with uv dependency management"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 license = "MIT"
 authors = [
-    { name = "Bakobi", email = "bakobiibizo@gmail.com" }
+    { name = "Your Name", email = "your.email@example.com" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -21,22 +21,12 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "openai>=1.0.0",
-    "python-dotenv>=1.0.0",
+    "typer>=0.9.0",
     "rich>=13.0.0",
-    "watchdog>=3.0.0",
-    "typing-extensions>=4.0.0",
-    "click>=8.1.0",
-    "pygame>=2.6.1",
-    "rustworkx>=0.16.0",
-    "redis>=5.2.1",
-    "react>=4.3.0",
-    "three>=0.8.0",
-    "pandas>=2.2.3",
 ]
 
 [project.scripts]
-erasmus = "erasmus.cli.commands:cli"
+packager = "src.__main__:main"
 
 [project.optional-dependencies]
 test = [
@@ -57,21 +47,22 @@ packages = ["erasmus"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra -q --cov=erasmus --cov-report=term-missing"
+addopts = "-v --cov=src"
 testpaths = [
     "tests",
 ]
+python_files = ["test_*.py"]
 
 [tool.coverage.run]
-source = ["erasmus"]
+source = ["src"]
+branch = true
 
 [tool.coverage.report]
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "if self.debug:",
-    "raise NotImplementedError",
     "if __name__ == .__main__.:",
+    "raise NotImplementedError",
 ]
 
 [tool.ruff]
@@ -161,7 +152,7 @@ warn_no_return = true
 warn_unreachable = true
 
 [tool.uv.workspace]
-members = ["gamesync_demo"]
+members = ["gamesync_demo", "erasmus"]
 
 [tool.uv.sources]
 erasmus = { workspace = true }
