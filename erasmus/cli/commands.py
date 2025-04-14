@@ -404,36 +404,20 @@ def store(ctx):
 
 
 @context.command()
-@click.argument("context_dir", required=False)
-@click.option(
-    "--architecture_context_dir",
-    type=str,
-    help="Context directory to restore (deprecated, use positional argument instead)",
+@click.argument(
+    "path", type=click.Path(exists=True, dir_okay=True, file_okay=False), required=False
 )
 @click.pass_context
-def restore(ctx, context_dir: str = None, architecture_context_dir: str = None):
-    """Restore the context from the specified context directory."""
+def restore(ctx, path):
+    """Restore the context from the context directory.
+
+    If PATH is provided, restore from that specific directory.
+    Otherwise, restore from the default project_context directory.
+    """
     with LogContext(logger, "restore_context"):
         try:
-            # Use context_dir if provided, otherwise fall back to architecture_context_dir
-            directory_path = context_dir or architecture_context_dir
-
-            if not directory_path:
-                logger.error("No context directory specified")
-                console.print(
-                    "❌ No context directory specified. Please provide a context directory path.",
-                    style="red",
-                )
-                ctx.exit(1)
-
             setup_paths = SetupPaths.with_project_root(Path.cwd())
-            context_path = Path(directory_path)
-
-            if not context_path.exists():
-                logger.error(f"Context directory not found: {directory_path}")
-                console.print(f"❌ Context directory not found: {directory_path}", style="red")
-                ctx.exit(1)
-
+            context_path = Path(path) if path else None
             success = restore_context(setup_paths, context_path)
             if success:
                 logger.info("Context restored successfully")

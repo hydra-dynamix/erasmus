@@ -15,9 +15,9 @@ def temp_workspace(tmp_path):
     workspace.mkdir()
 
     # Create mock project files
-    (workspace / ".erasmus/architecture.md").write_text("# architecture\nTest content")
-    (workspace / "tasks.md").write_text("# tasks\nTest content")
-    (workspace / "progress.md").write_text("# progress\nTest content")
+    (workspace / ".erasmus/.architecture.md").write_text("# architecture\nTest content")
+    (workspace / ".tasks.md").write_text("# tasks\nTest content")
+    (workspace / ".progress.md").write_text("# progress\nTest content")
 
     return workspace
 
@@ -62,8 +62,8 @@ async def test_sync_all_files(file_sync, temp_workspace, temp_rules_dir):
 @pytest.mark.asyncio
 async def test_sync_single_file(file_sync, temp_rules_dir):
     """Test synchronizing a single file to rules directory."""
-    # Sync only .erasmus/architecture.md
-    await file_sync.sync_file(".erasmus/architecture.md")
+    # Sync only .erasmus/.architecture.md
+    await file_sync.sync_file(".erasmus/.architecture.md")
 
     # Check that rules.json exists and contains correct content
     rules_file = temp_rules_dir / "rules.json"
@@ -122,14 +122,14 @@ async def test_auto_create_rules_dir(temp_workspace, tmp_path):
 async def test_update_existing_file(file_sync, temp_workspace, temp_rules_dir):
     """Test updating an existing file in rules directory."""
     # Initial sync
-    await file_sync.sync_file(".erasmus/architecture.md")
+    await file_sync.sync_file(".erasmus/.architecture.md")
 
     # Modify source file
     new_content = "# architecture\nUpdated content"
-    (temp_workspace / ".erasmus/architecture.md").write_text(new_content)
+    (temp_workspace / ".erasmus/.architecture.md").write_text(new_content)
 
     # Sync again
-    await file_sync.sync_file(".erasmus/architecture.md")
+    await file_sync.sync_file(".erasmus/.architecture.md")
 
     # Verify content was updated
     rules_file = temp_rules_dir / "rules.json"
@@ -144,7 +144,7 @@ async def test_cleanup_removed_files(file_sync, temp_workspace, temp_rules_dir):
     await file_sync.sync_all()
 
     # Remove a file from workspace
-    (temp_workspace / "tasks.md").unlink()
+    (temp_workspace / ".tasks.md").unlink()
 
     # Run cleanup
     await file_sync.cleanup()
@@ -161,7 +161,7 @@ async def test_sync_file_runtime_error(file_sync):
     # Create a mock that raises a runtime error
     with patch("erasmus.sync.file_sync.safe_write_file", side_effect=RuntimeError("Mock error")):
         with pytest.raises(RuntimeError) as exc_info:
-            await file_sync.sync_file(".erasmus/architecture.md")
+            await file_sync.sync_file(".erasmus/.architecture.md")
         assert "Failed to sync file" in str(exc_info.value)
 
 
@@ -175,7 +175,7 @@ async def test_cleanup_error_handling(file_sync, temp_workspace, caplog):
     await file_sync.sync_all()
 
     # Remove workspace file
-    (temp_workspace / "tasks.md").unlink()
+    (temp_workspace / ".tasks.md").unlink()
 
     # Mock safe_write_file to raise an error
     with patch("erasmus.sync.file_sync.safe_write_file", side_effect=Exception("Mock error")):
@@ -200,18 +200,18 @@ async def test_get_sync_status(file_sync, temp_workspace):
         assert info["last_sync"] is None
 
     # Sync one file
-    await file_sync.sync_file(".erasmus/architecture.md")
+    await file_sync.sync_file(".erasmus/.architecture.md")
     status = await file_sync.get_sync_status()
 
     # Check status after sync
-    assert status[".erasmus/architecture.md"]["exists"] is True
-    assert status[".erasmus/architecture.md"]["synced"] is True
-    assert status[".erasmus/architecture.md"]["last_sync"] is not None
+    assert status[".erasmus/.architecture.md"]["exists"] is True
+    assert status[".erasmus/.architecture.md"]["synced"] is True
+    assert status[".erasmus/.architecture.md"]["last_sync"] is not None
 
     # Modify file in workspace
-    (temp_workspace / ".erasmus/architecture.md").write_text("Modified content")
+    (temp_workspace / ".erasmus/.architecture.md").write_text("Modified content")
     status = await file_sync.get_sync_status()
-    assert status[".erasmus/architecture.md"]["synced"] is False
+    assert status[".erasmus/.architecture.md"]["synced"] is False
 
 
 @pytest.mark.asyncio
@@ -221,12 +221,12 @@ async def test_get_sync_status_with_errors(file_sync, temp_workspace):
     await file_sync.sync_all()
 
     # Remove a file to simulate error
-    (temp_workspace / "tasks.md").unlink()
+    (temp_workspace / ".tasks.md").unlink()
 
     # Get status
     status = await file_sync.get_sync_status()
 
     # Check error status
-    assert status["tasks.md"]["exists"] is False
-    assert status["tasks.md"]["synced"] is False
-    assert status["tasks.md"]["last_sync"] is None
+    assert status[".tasks.md"]["exists"] is False
+    assert status[".tasks.md"]["synced"] is False
+    assert status[".tasks.md"]["last_sync"] is None

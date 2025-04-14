@@ -61,9 +61,9 @@ def mock_event():
 def setup_files(temp_dir):
     """Create temporary markdown files for testing."""
     files = {
-        "architecture": temp_dir / ".erasmus/architecture.md",
-        "progress": temp_dir / "progress.md",
-        "tasks": temp_dir / "tasks.md",
+        "architecture": temp_dir / ".erasmus/.architecture.md",
+        "progress": temp_dir / ".progress.md",
+        "tasks": temp_dir / ".tasks.md",
     }
 
     # Create files with content

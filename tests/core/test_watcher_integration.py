@@ -24,8 +24,8 @@ def temp_workspace(tmp_path):
 
     # Create test files
     files = {
-        "architecture": docs_dir / ".erasmus/architecture.md",
-        "progress": docs_dir / "progress.md",
+        "architecture": docs_dir / ".erasmus/.architecture.md",
+        "progress": docs_dir / ".progress.md",
         "script": scripts_dir / "test_script.py",
     }
 

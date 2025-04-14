@@ -54,7 +54,7 @@ async def test_file_change_detection(sync_env):
     workspace, rules_dir, syncer = sync_env
 
     # Modify a file
-    test_file = workspace / "tasks.md"
+    test_file = workspace / ".tasks.md"
     test_file.write_text("Updated content")
 
     # Wait for sync
@@ -72,7 +72,7 @@ async def test_multiple_rapid_updates(sync_env):
     workspace, rules_dir, syncer = sync_env
 
     # Make multiple rapid changes
-    test_file = workspace / "progress.md"
+    test_file = workspace / ".progress.md"
     for i in range(5):
         test_file.write_text(f"Update {i}")
         await asyncio.sleep(0.1)
@@ -92,15 +92,15 @@ async def test_missing_file_handling(sync_env):
     workspace, rules_dir, syncer = sync_env
 
     # First sync the file
-    await syncer.sync_file(".erasmus/architecture.md")
+    await syncer.sync_file(".erasmus/.architecture.md")
 
     # Delete a source file
-    test_file = workspace / ".erasmus/architecture.md"
+    test_file = workspace / ".erasmus/.architecture.md"
     test_file.unlink()
 
     # Try to sync the file again
     with pytest.raises(FileNotFoundError):
-        await syncer.sync_file(".erasmus/architecture.md")
+        await syncer.sync_file(".erasmus/.architecture.md")
 
     # Verify rules were cleaned up
     rules_file = rules_dir / "rules.json"
@@ -132,13 +132,13 @@ async def test_sync_status(tmp_path):
     assert not any(info["synced"] for info in status.values())
 
     # Sync a file
-    await syncer.sync_file("tasks.md")
+    await syncer.sync_file(".tasks.md")
 
     # Check updated status
     new_status = await syncer.get_sync_status()
-    assert new_status["tasks.md"]["exists"]
-    assert new_status["tasks.md"]["synced"]
-    assert new_status["tasks.md"]["last_sync"] is not None
+    assert new_status[".tasks.md"]["exists"]
+    assert new_status[".tasks.md"]["synced"]
+    assert new_status[".tasks.md"]["last_sync"] is not None
 
     # Cleanup
     await syncer.stop()
@@ -150,7 +150,7 @@ async def test_concurrent_updates(sync_env):
     workspace, rules_dir, syncer = sync_env
 
     # Update multiple files concurrently
-    files = [".erasmus/architecture.md", "tasks.md", "progress.md"]
+    files = [".erasmus/.architecture.md", ".tasks.md", ".progress.md"]
     for i, filename in enumerate(files):
         file_path = workspace / filename
         file_path.write_text(f"Concurrent update {i}")
@@ -175,7 +175,7 @@ async def test_error_recovery(sync_env):
     rules_file.write_text("invalid json")
 
     # Update a file
-    test_file = workspace / "tasks.md"
+    test_file = workspace / ".tasks.md"
     test_file.write_text("Test recovery")
 
     # Wait for sync

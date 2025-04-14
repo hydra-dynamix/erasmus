@@ -21,9 +21,9 @@ DIRECTORIES: Final[Dict[str, str]] = {
 
 # Markdown files
 MARKDOWN_FILES: Final[Dict[str, str]] = {
-    "architecture": ".erasmus/architecture.md",
-    "progress": ".erasmus/progress.md",
-    "tasks": ".erasmus/tasks.md",
+    "architecture": ".architecture.md",
+    "progress": ".progress.md",
+    "tasks": ".tasks.md",
 }
 
 # Script files

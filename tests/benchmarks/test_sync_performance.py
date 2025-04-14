@@ -47,13 +47,13 @@ async def test_sync_single_file_performance(bench_env):
 
     # Measure initial sync time
     sync_time = await measure_operation_time(
-        syncer.sync_file(".erasmus/architecture.md"),
+        syncer.sync_file(".erasmus/.architecture.md"),
     )
 
     # Measure sync time after modification
-    (workspace / ".erasmus/architecture.md").write_text("Modified content")
+    (workspace / ".erasmus/.architecture.md").write_text("Modified content")
     modified_sync_time = await measure_operation_time(
-        syncer.sync_file(".erasmus/architecture.md"),
+        syncer.sync_file(".erasmus/.architecture.md"),
     )
 
     # Print benchmark results

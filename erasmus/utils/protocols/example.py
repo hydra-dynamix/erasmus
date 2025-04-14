@@ -13,8 +13,8 @@ def product_owner_prompt(context: dict) -> dict:
     """Example prompt function for the Product Owner Agent."""
     # In a real implementation, this would use your AI model or other logic
     return {
-        ".erasmus/architecture.md": "# Project Architecture\n\nThis is a sample architecture document.",
-        "progress.md": "# Development Progress\n\nCurrent progress: 0%",
+        ".erasmus/.architecture.md": "# Project Architecture\n\nThis is a sample architecture document.",
+        ".progress.md": "# Development Progress\n\nCurrent progress: 0%",
     }
 
 
@@ -22,7 +22,7 @@ def developer_prompt(context: dict) -> dict:
     """Example prompt function for the Developer Agent."""
     # In a real implementation, this would use your AI model or other logic
     return {
-        "tasks.md": "# Development Tasks\n\n1. Implement feature X\n2. Write tests\n3. Update documentation"
+        ".tasks.md": "# Development Tasks\n\n1. Implement feature X\n2. Write tests\n3. Update documentation"
     }
 
 

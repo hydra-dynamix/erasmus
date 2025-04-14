@@ -45,9 +45,9 @@ def setup_files(temp_dir: Path) -> dict[str, Path]:
         Dict[str, Path]: Dictionary mapping file keys to their paths
     """
     files = {
-        "architecture": temp_dir / ".erasmus/architecture.md",
-        "progress": temp_dir / "progress.md",
-        "tasks": temp_dir / "tasks.md",
+        "architecture": temp_dir / ".erasmus/.architecture.md",
+        "progress": temp_dir / ".progress.md",
+        "tasks": temp_dir / ".tasks.md",
     }
 
     # Create empty files

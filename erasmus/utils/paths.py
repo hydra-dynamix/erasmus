@@ -5,6 +5,7 @@ from pathlib import Path
 import logging
 from typing import Dict, Any, Optional, ClassVar
 import shutil
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -260,6 +261,29 @@ class PathManager:
             "stored_context": self.stored_context,
         }
 
+    def create_context_files(self) -> None:
+        """Create the context directory and files if they don't exist."""
+        try:
+            # Create context directory
+            context_dir = self.context_dir
+            context_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create timestamp-based context directory
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            context_subdir = context_dir / f"context_{timestamp}"
+            context_subdir.mkdir(parents=True, exist_ok=True)
+
+            # Create the context files
+            for file_name in [".architecture.md", ".progress.md", ".tasks.md"]:
+                file_path = context_subdir / file_name
+                if not file_path.exists():
+                    file_path.touch()
+
+            logger.debug("Created context files in %s", context_subdir)
+        except Exception as e:
+            logger.error("Failed to create context files: %s", e)
+            raise
+
 
 class FilePaths(BaseModel):
     """Base class for file paths."""
@@ -333,14 +357,19 @@ class SetupPaths(BaseModel):
         project_context_dir.mkdir(parents=True, exist_ok=True)
 
         # Create context files in the project directory
-        context_architecture = project_context_dir / "architecture.md"
-        context_progress = project_context_dir / "progress.md"
-        context_tasks = project_context_dir / "tasks.md"
+        context_architecture = project_context_dir / ".architecture.md"
+        context_progress = project_context_dir / ".progress.md"
+        context_tasks = project_context_dir / ".tasks.md"
 
         # Create context files if they don't exist
         for context_file in [context_architecture, context_progress, context_tasks]:
             if not context_file.exists():
                 context_file.touch()
+
+        # Get the actual markdown files from the project root
+        architecture_file = project_root / MARKDOWN_FILES["architecture"]
+        progress_file = project_root / MARKDOWN_FILES["progress"]
+        tasks_file = project_root / MARKDOWN_FILES["tasks"]
 
         return cls(
             project_root=project_root,
@@ -349,9 +378,9 @@ class SetupPaths(BaseModel):
             logs_dir=logs_dir,
             rules_file=rules_file_path,
             global_rules_file=global_rules_path,
-            architecture_file=context_architecture,
-            progress_file=context_progress,
-            tasks_file=context_tasks,
+            architecture_file=architecture_file,
+            progress_file=progress_file,
+            tasks_file=tasks_file,
             context_dir=context_dir,
         )
 

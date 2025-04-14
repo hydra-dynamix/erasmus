@@ -17,7 +17,7 @@ This module implements a context tracking and injection system designed to enhan
 AI-powered development environments.
 
 The Erasmus Context Watcher monitors project state by tracking changes to key documentation
-files (.erasmus/architecture.md, progress.md, and tasks.md), and dynamically updates context files
+files (.erasmus/.architecture.md, .progress.md, and .tasks.md), and dynamically updates context files
 that are used by AI-powered IDEs like cursor and windsurf to improve their understanding
 of the codebase and development process.
 
@@ -629,17 +629,17 @@ You will be given access to various development tools. Use them as appropriate. 
 
 Your workspace root contains three key documents:
 
-- **.erasmus/architecture.md**
+- **.erasmus/.architecture.md**
   Primary source of truth. Contains all major components and their requirements.
   → If missing, ask the user for requirements and generate this document.
 
-- **progress.md**
+- **.progress.md**
   Tracks major components and organizes them into a development schedule.
-  → If missing, generate from `.erasmus/architecture.md`.
+  → If missing, generate from `.erasmus/.architecture.md`.
 
-- **tasks.md**
+- **.tasks.md**
   Contains action-oriented tasks per component, small enough to develop and test independently.
-  → If missing, select the next component from `progress.md` and break it into tasks.
+  → If missing, select the next component from `.progress.md` and break it into tasks.
 
 ---
 
@@ -715,9 +715,9 @@ flowchart TD
    - Focus on patterns that apply across multiple projects
 
 4. **Project-Specific Information**
-   - Use .erasmus/architecture.md for project structure
-   - Use progress.md for development tracking
-   - Use tasks.md for granular task management
+   - Use .erasmus/.architecture.md for project structure
+   - Use .progress.md for development tracking
+   - Use .tasks.md for granular task management
    - Use local documentation for project-specific patterns
 
 ---
@@ -1540,7 +1540,7 @@ class MarkdownWatcher(BaseWatcher):
     Specialized watcher for monitoring markdown documentation files.
 
     This watcher subclass is specifically designed to monitor the project's
-    documentation files (.erasmus/architecture.md, progress.md, tasks.md, etc.).
+    documentation files (.erasmus/.architecture.md, .progress.md, .tasks.md, etc.).
     When any of these files change, it automatically updates the context
     tracking system and creates a Git commit to track the changes.
 
@@ -1921,9 +1921,9 @@ def extract_project_name(content):
 
 
 SETUP_FILES = {
-    "architecture": Path(".erasmus/architecture.md").resolve(),
-    "progress": Path("progress.md").resolve(),
-    "tasks": Path("tasks.md").resolve(),
+    "architecture": Path(".erasmus/.architecture.md").resolve(),
+    "progress": Path(".progress.md").resolve(),
+    "tasks": Path(".tasks.md").resolve(),
 }
 
 architecture_PATH = SETUP_FILES["architecture"]
@@ -1935,8 +1935,8 @@ def safe_read_file(file_path):
     """Safely read a file with proper error handling"""
     error_message = {
         architecture_PATH: "architecture file not found. Please ask the user for requirements to create it.",
-        progress_PATH: "progress file not found. Please generate from .erasmus/architecture.md",
-        tasks_PATH: "tasks file not found. Please generate from progress.md",
+        progress_PATH: "progress file not found. Please generate from .erasmus/.architecture.md",
+        tasks_PATH: "tasks file not found. Please generate from .progress.md",
     }
     msg = ""
     try:
