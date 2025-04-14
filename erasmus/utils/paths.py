@@ -348,24 +348,6 @@ class SetupPaths(BaseModel):
         if not rules_file_path.exists():
             rules_file_path.touch()
 
-        # Create project-specific context directory and files
-        # Use a sanitized version of the project name for the context directory
-        project_name = project_root.name
-        # Replace spaces and special characters with underscores
-        sanitized_name = "".join(c if c.isalnum() else "_" for c in project_name)
-        project_context_dir = context_dir / f"Project-{sanitized_name}"
-        project_context_dir.mkdir(parents=True, exist_ok=True)
-
-        # Create context files in the project directory
-        context_architecture = project_context_dir / ".architecture.md"
-        context_progress = project_context_dir / ".progress.md"
-        context_tasks = project_context_dir / ".tasks.md"
-
-        # Create context files if they don't exist
-        for context_file in [context_architecture, context_progress, context_tasks]:
-            if not context_file.exists():
-                context_file.touch()
-
         # Get the actual markdown files from the project root
         architecture_file = project_root / MARKDOWN_FILES["architecture"]
         progress_file = project_root / MARKDOWN_FILES["progress"]
