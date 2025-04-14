@@ -1,4 +1,5 @@
 """Convert shell scripts to Windows batch scripts using direct pattern matching."""
+
 print("Script converter module loaded!")
 import re
 from pathlib import Path
@@ -8,30 +9,31 @@ class ScriptConverter:
     def __init__(self):
         # Mapping of shell commands to batch equivalents
         self.command_map = {
-            'command -v': 'where',
-            'echo -e': 'echo',
-            '>/dev/null 2>&1': '>nul 2>&1',
-            '||': '|| (',
-            '&&': '&& (',
-            'fi': ')',
-            'then': '(',
-            'else': ') else (',
-            'case': 'if',
-            'esac': ')',
-            'uname -s': 'ver',
+            "command -v": "where",
+            "echo -e": "echo",
+            ">/dev/null 2>&1": ">nul 2>&1",
+            "||": "|| (",
+            "&&": "&& (",
+            "fi": ")",
+            "then": "(",
+            "else": ") else (",
+            "case": "if",
+            "esac": ")",
+            "uname -s": "ver",
         }
 
         # Special patterns that need custom handling
         self.patterns = {
-            r'#!/usr/bin/env bash': '@echo off\nsetlocal enabledelayedexpansion',
-            r'\$\{(\w+)\}': r'%\1%',  # ${VAR} -> %VAR%
-            r'\$(\w+)': r'%\1%',      # $VAR -> %VAR%
-            r'\[\[(.+?)\]\]': r'"\1"', # [[condition]] -> "condition"
+            r"#!/usr/bin/env bash": "@echo off\nsetlocal enabledelayedexpansion",
+            r"\$\{(\w+)\}": r"%\1%",  # ${VAR} -> %VAR%
+            r"\${(\w+)}": r"%\1%",  # ${VAR} -> %VAR%
+            r"\$(\w+)": r"%\1%",  # $VAR -> %VAR%
+            r"\[\[(.+?)\]\]": r'"\1"',  # [[condition]] -> "condition"
         }
 
         # Function conversion templates
         self.function_templates = {
-            'detect_os': ''':detect_os
+            "detect_os": """:detect_os
 set "OS=Unknown"
 for /f "tokens=* usebackq" %%i in (`ver`) do set "VER_OUT=%%i"
 echo !VER_OUT! | findstr /i "Windows" >nul 2>&1 && (
@@ -46,8 +48,8 @@ echo !VER_OUT! | findstr /i "Linux" >nul 2>&1 && (
     set "OS=Linux"
     goto :eof
 )
-goto :eof''',
-            'check_python': ''':check_python
+goto :eof""",
+            "check_python": """:check_python
 set "PYTHON_CMD="
 where python.exe >nul 2>&1 && set "PYTHON_CMD=python.exe"
 if "!PYTHON_CMD!"=="" (
@@ -71,8 +73,8 @@ if "!MAJOR!" lss "3" (
         exit /b 1
     )
 )
-goto :eof''',
-            'check_prerequisites': ''':check_prerequisites
+goto :eof""",
+            "check_prerequisites": """:check_prerequisites
 call :detect_os
 if "!OS!"=="Windows" (
     echo Checking Windows prerequisites...
@@ -107,8 +109,8 @@ if "!OS!"=="Windows" (
         )
     )
 )
-goto :eof''',
-            'install_uv': ''':install_uv
+goto :eof""",
+            "install_uv": """:install_uv
 echo Installing uv package manager...
 if "!OS!"=="Windows" (
     winget install --id=astral-sh.uv -e
@@ -128,8 +130,8 @@ where uv.exe >nul 2>&1 || (
 
 echo Installation complete!
 echo You can now run: uv run watcher.py
-goto :eof''',
-            'setup_env': ''':setup_env
+goto :eof""",
+            "setup_env": """:setup_env
 echo Creating environment files...
 
 :: Create .env.example
@@ -151,8 +153,8 @@ echo OPENAI_API_KEY=
 ) > .env
 
 echo Environment files created successfully
-goto :eof''',
-            'init_watcher': ''':init_watcher
+goto :eof""",
+            "init_watcher": """:init_watcher
 echo Initializing watcher...
 
 :: Check for compressed watcher script
@@ -168,7 +170,7 @@ if exist watcher.py (
     echo Error: watcher.py not found
     exit /b 1
 )
-goto :eof''',
+goto :eof""",
         }
 
     def convert_function(self, func_name: str, content: str) -> str:
@@ -177,7 +179,7 @@ goto :eof''',
             return self.function_templates[func_name]
 
         # Convert the function content
-        converted = self._convert_lines(content.split('\n'))
+        converted = self._convert_lines(content.split("\n"))
         return f":{func_name}\n{converted}\ngoto :eof\n"
 
     def _convert_lines(self, lines: list[str]) -> str:
@@ -185,7 +187,7 @@ goto :eof''',
         converted_lines = []
         for line in lines:
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Replace known commands
@@ -198,17 +200,24 @@ goto :eof''',
 
             converted_lines.append(line)
 
-        return '\n'.join(converted_lines)
+        return "\n".join(converted_lines)
 
     def convert_script(self, shell_script: str) -> str:
         """Convert a shell script to a batch script."""
         import sys
 
         # Start with initialization
-        batch_lines = ['@echo off', 'setlocal enabledelayedexpansion', '']
+        batch_lines = ["@echo off", "setlocal enabledelayedexpansion", ""]
 
         # Add all function templates in order
-        functions_order = ['detect_os', 'check_python', 'check_prerequisites', 'install_uv', 'setup_env', 'init_watcher']
+        functions_order = [
+            "detect_os",
+            "check_python",
+            "check_prerequisites",
+            "install_uv",
+            "setup_env",
+            "init_watcher",
+        ]
         sys.stderr.write(f"Available functions: {list(self.function_templates.keys())}\n")
         sys.stderr.flush()
 
@@ -217,32 +226,34 @@ goto :eof''',
                 sys.stderr.write(f"Adding function: {func_name}\n")
                 sys.stderr.flush()
                 # Remove leading newlines from template
-                template = self.function_templates[func_name].lstrip('\n')
-                batch_lines.extend(['', template, ''])
+                template = self.function_templates[func_name].lstrip("\n")
+                batch_lines.extend(["", template, ""])
             else:
                 sys.stderr.write(f"Missing function: {func_name}\n")
                 sys.stderr.flush()
 
         # Add main section
-        batch_lines.extend([
-            '',
-            ':main',
-            'call :detect_os',
-            'call :check_prerequisites',
-            'call :check_python',
-            'call :install_uv',
-            'call :setup_env',
-            'call :init_watcher',
-            'echo Installation complete!',
-            'echo Watcher has been initialized with your IDE environment: !IDE_ENV!',
-            'exit /b %ERRORLEVEL%',
-            '',
-            ':start',
-            'call :main',
-            'exit /b %ERRORLEVEL%',
-        ])
+        batch_lines.extend(
+            [
+                "",
+                ":main",
+                "call :detect_os",
+                "call :check_prerequisites",
+                "call :check_python",
+                "call :install_uv",
+                "call :setup_env",
+                "call :init_watcher",
+                "echo Installation complete!",
+                "echo Watcher has been initialized with your IDE environment: !IDE_ENV!",
+                "exit /b %ERRORLEVEL%",
+                "",
+                ":start",
+                "call :main",
+                "exit /b %ERRORLEVEL%",
+            ]
+        )
 
-        return '\n'.join(batch_lines)
+        return "\n".join(batch_lines)
 
     def convert_file(self, shell_path: Path, batch_path: Path | None = None) -> Path:
         """Convert a shell script file to a batch script file."""
@@ -252,19 +263,20 @@ goto :eof''',
         if batch_path is None:
             batch_path = shell_path.parent / f"{shell_path.stem}.bat"
 
-        shell_content = shell_path.read_text(encoding='utf-8')
+        shell_content = shell_path.read_text(encoding="utf-8")
         batch_content = self.convert_script(shell_content)
-        batch_path.write_text(batch_content, encoding='utf-8')
+        batch_path.write_text(batch_content, encoding="utf-8")
 
         return batch_path
+
 
 def main():
     """Test the converter."""
     print("Starting script converter...")
     converter = ScriptConverter()
     script_dir = Path(__file__).parent.parent
-    shell_path = script_dir / 'install.sh'
-    batch_path = script_dir / 'release' / 'erasmus_v0.0.1.bat'
+    shell_path = script_dir / "install.sh"
+    batch_path = script_dir / "release" / "erasmus_v0.0.1.bat"
 
     print(f"Script dir: {script_dir}")
     print(f"Shell path: {shell_path}")
@@ -282,8 +294,10 @@ def main():
     except Exception as e:
         print(f"Error converting script: {e!s}")
         import traceback
+
         traceback.print_exc()
         return 1
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

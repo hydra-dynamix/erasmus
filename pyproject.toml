@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "erasmus"
+name = "erasmus-workspace"
 version = "0.1.0"
 description = "AI Context Watcher for Development"
 readme = "README.md"
@@ -73,7 +73,7 @@ src = ["erasmus"]
 ignore = ["G004", "TRY003", "TRY002"]
 
 # Enable Pyflakes (`F`), isort (`I`), and many other linters
-select = ["E", "F", "I", "W", "N", "B", "A", "COM", "C4", "DTZ", "T10", "ISC", "ICN", "G", "PIE", "PYI", "PT", "RET", "SIM", "TID", "TCH", "ARG", "PTH", "ERA", "PD", "PL", "TRY", "UP", "RUF"]
+select = ["E", "F", "I", "W", "N", "B", "A", "COM", "C4", "DTZ", "T10", "ISC", "ICN", "G", "PIE", "PYI", "PT", "RET", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PL", "TRY", "UP", "RUF"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided
 fixable = ["ALL"]
@@ -147,15 +147,18 @@ module = "tests.*"
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 no_implicit_optional = true
-warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 
 [tool.uv.workspace]
-members = ["gamesync_demo"]
+members = [
+    "erasmus",
+    "packager"
+    ]
 
 [dependency-groups]
 dev = [
     "erasmus",
+    "packager"
 ]

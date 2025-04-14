@@ -7,6 +7,7 @@ It uses Click for command parsing and handling.
 import signal
 import subprocess
 import time
+from subprocess import PIPE
 from functools import wraps
 from pathlib import Path
 
