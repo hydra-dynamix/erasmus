@@ -5,7 +5,8 @@ from unittest.mock import patch
 import pytest
 from click.testing import CliRunner
 
-from erasmus.cli.setup import setup, validate_base_url, validate_ide_env
+from erasmus.cli.setup import validate_base_url, validate_ide_env
+from erasmus.cli.commands import setup
 
 
 @pytest.fixture
@@ -79,6 +80,8 @@ def test_setup_command(runner, env_example_content, env_exists, tmp_path):
         with patch("rich.prompt.Prompt.ask", side_effect=input_values):
             result = runner.invoke(setup)
 
+        if result.exit_code != 0:
+            print("\n--- CLI OUTPUT ---\n" + result.output + "\n--- END CLI OUTPUT ---\n")
         assert result.exit_code == 0
         assert Path(".env").exists()
 
@@ -124,10 +127,20 @@ def test_setup_invalid_inputs(runner, env_example_content, tmp_path):
 def test_setup_missing_env_example(runner, env_example_content, tmp_path):
     """Test setup behavior when .env.example is missing."""
     with runner.isolated_filesystem(temp_dir=tmp_path):
-        # Mock user choosing to create default .env.example
+        # Mock user choosing to create default .env.example and providing prompt responses
         with patch("click.confirm", return_value=True):
-            result = runner.invoke(setup)
+            input_values = [
+                "c",  # IDE_ENV
+                "",   # GIT_TOKEN
+                "sk-1234",  # OPENAI_API_KEY
+                "https://api.openai.com/v1",  # OPENAI_BASE_URL
+                "gpt-4",  # OPENAI_MODEL
+            ]
+            with patch("rich.prompt.Prompt.ask", side_effect=input_values):
+                result = runner.invoke(setup)
 
+        if result.exit_code != 0:
+            print("\n--- CLI OUTPUT (missing env example) ---\n" + result.output + "\n--- END CLI OUTPUT ---\n")
         assert result.exit_code == 0
         assert Path(".env.example").exists()
 

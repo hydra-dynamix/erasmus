@@ -8,7 +8,7 @@ from typing import List
 import pytest
 from typer.testing import CliRunner
 
-from src.__main__ import app
+from packager.__main__ import app
 
 runner = CliRunner()
 
@@ -83,11 +83,16 @@ def test_package_single_file(sample_py_file):
     result = runner.invoke(app, ["package", str(sample_py_file)])
     assert result.exit_code == 0
 
+    # Check that output file was created
+    output_file = sample_py_file.parent / f"{sample_py_file.stem}_packed.py"
+    assert output_file.exists()
+
     # Check that output contains expected content
-    assert "numpy" in result.stdout
-    assert "pandas" in result.stdout
-    assert "matplotlib" in result.stdout
-    assert "def main():" in result.stdout
+    content = output_file.read_text()
+    assert "numpy" in content
+    assert "pandas" in content
+    assert "matplotlib" in content
+    assert "def main():" in content
 
 
 def test_package_project(sample_project):
@@ -95,12 +100,17 @@ def test_package_project(sample_project):
     result = runner.invoke(app, ["package", str(sample_project)])
     assert result.exit_code == 0
 
+    # Check that output file was created
+    output_file = sample_project.parent / f"{sample_project.name}_packed.py"
+    assert output_file.exists()
+
     # Check that output contains expected content
-    assert "pandas" in result.stdout
-    assert "numpy" in result.stdout
-    assert "scipy" in result.stdout
-    assert "def process_data" in result.stdout
-    assert "def main():" in result.stdout
+    content = output_file.read_text()
+    assert "pandas" in content
+    assert "numpy" in content
+    assert "scipy" in content
+    assert "def process_data" in content
+    assert "def main():" in content
 
 
 def test_package_with_output(sample_py_file, tmp_path):
@@ -308,3 +318,118 @@ def test_list_files_invalid_dir():
 
     assert result.exit_code == 2
     assert "does not exist" in result.stdout.lower()
+
+
+@pytest.fixture
+def temp_dir(tmp_path):
+    return tmp_path
+
+
+@pytest.fixture
+def sample_file(temp_dir):
+    file_path = temp_dir / "sample.py"
+    file_path.write_text("""
+def hello():
+    print("Hello, World!")
+""")
+    return file_path
+
+
+@pytest.fixture
+def sample_project(temp_dir):
+    # Create a simple project structure
+    project_dir = temp_dir / "project"
+    project_dir.mkdir()
+
+    # Main file
+    (project_dir / "main.py").write_text("""
+from .utils import helper
+from .config import settings
+
+def main():
+    helper()
+    print(settings.VERSION)
+""")
+
+    # Utils module
+    utils_dir = project_dir / "utils"
+    utils_dir.mkdir()
+    (utils_dir / "__init__.py").write_text("")
+    (utils_dir / "helper.py").write_text("""
+def helper():
+    print("Helper function")
+""")
+
+    # Config module
+    config_dir = project_dir / "config"
+    config_dir.mkdir()
+    (config_dir / "__init__.py").write_text("")
+    (config_dir / "settings.py").write_text("""
+class Settings:
+    VERSION = "1.0.0"
+
+settings = Settings()
+""")
+
+    return project_dir
+
+
+def test_package_single_file(temp_dir, sample_file):
+    output_path = temp_dir / "output.py"
+    result = runner.invoke(app, ["package", str(sample_file), "--output-path", str(output_path)])
+    assert result.exit_code == 0
+    assert output_path.exists()
+    content = output_path.read_text()
+    assert "def hello():" in content
+    assert 'print("Hello, World!")' in content
+
+
+def test_package_project(temp_dir, sample_project):
+    output_path = temp_dir / "output.py"
+    result = runner.invoke(app, ["package", str(sample_project), "--output-path", str(output_path)])
+    assert result.exit_code == 0
+    assert output_path.exists()
+    content = output_path.read_text()
+    assert "def main():" in content
+    assert "def helper():" in content
+    assert "class Settings:" in content
+
+
+def test_package_output_files(temp_dir, sample_project):
+    # Test with custom output path
+    output_path = temp_dir / "custom_output.py"
+    result = runner.invoke(app, ["package", str(sample_project), "--output-path", str(output_path)])
+    assert result.exit_code == 0
+    assert output_path.exists()
+
+    # Test default output path
+    result = runner.invoke(app, ["package", str(sample_project)])
+    assert result.exit_code == 0
+    default_output = sample_project / "project.packaged.py"
+    assert default_output.exists()
+
+
+def test_package_nonexistent_path(temp_dir):
+    result = runner.invoke(app, ["package", str(temp_dir / "nonexistent")])
+    assert result.exit_code == 1
+    assert "does not exist" in result.stdout
+
+
+def test_package_empty_directory(temp_dir):
+    empty_dir = temp_dir / "empty"
+    empty_dir.mkdir()
+    result = runner.invoke(app, ["package", str(empty_dir)])
+    assert result.exit_code == 1
+    assert "No Python files found" in result.stdout
+
+
+def test_package_verbose_output(temp_dir, sample_file):
+    output_path = temp_dir / "output.py"
+    result = runner.invoke(
+        app, ["package", str(sample_file), "--output-path", str(output_path), "--verbose"]
+    )
+    assert result.exit_code == 0
+    assert "Found" in result.stdout
+    assert "Generating script content" in result.stdout
+    assert "Writing script to" in result.stdout
+    assert output_path.exists()

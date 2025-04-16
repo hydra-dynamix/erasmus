@@ -1,16 +1,7 @@
 """Tests for the uv_wrapper module."""
-
-import os
 import platform
 import pytest
-from pathlib import Path
-
-from src.uv_wrapper import (
-    generate_unix_script,
-    generate_windows_script,
-    generate_script,
-)
-
+from packager.uv_wrapper import generate_unix_bootstrap, generate_windows_bootstrap
 
 @pytest.fixture
 def sample_imports():
@@ -29,9 +20,9 @@ if __name__ == "__main__":
 """
 
 
-def test_generate_unix_script(sample_imports, sample_code):
+def test_generate_unix_script(sample_imports):
     """Test Unix script generation."""
-    script = generate_unix_script(sample_imports, sample_code)
+    script = generate_unix_bootstrap(sample_imports)
 
     # Check script header
     assert script.startswith("#!/bin/bash")
@@ -50,7 +41,7 @@ def test_generate_unix_script(sample_imports, sample_code):
 
 def test_generate_windows_script(sample_imports, sample_code):
     """Test Windows script generation."""
-    script = generate_windows_script(sample_imports, sample_code)
+    script = generate_windows_bootstrap(sample_imports)
 
     # Check script header
     assert script.startswith("@echo off")
@@ -67,10 +58,10 @@ def test_generate_windows_script(sample_imports, sample_code):
     assert sample_code in script
 
 
-def test_generate_script_with_entry_point(sample_imports, sample_code):
+def test_generate_script_with_entry_point(sample_imports):
     """Test script generation with entry point."""
     entry_point = "main"
-    script = generate_script(sample_imports, sample_code, entry_point)
+    script = generate_unix_bootstrap(sample_imports, entry_point)
 
     # Check entry point
     assert 'if __name__ == "__main__":' in script
@@ -79,7 +70,7 @@ def test_generate_script_with_entry_point(sample_imports, sample_code):
 
 def test_generate_script_os_detection(sample_imports, sample_code):
     """Test OS detection in script generation."""
-    script = generate_script(sample_imports, sample_code)
+    script = generate_unix_bootstrap(sample_imports)
 
     if platform.system().lower() in ("linux", "darwin"):
         assert script.startswith("#!/bin/bash")
@@ -89,17 +80,17 @@ def test_generate_script_os_detection(sample_imports, sample_code):
         pytest.skip("Unsupported operating system")
 
 
-def test_generate_script_invalid_os(monkeypatch, sample_imports, sample_code):
+def test_generate_script_invalid_os(monkeypatch, sample_imports):
     """Test script generation with invalid OS."""
     monkeypatch.setattr(platform, "system", lambda: "InvalidOS")
 
     with pytest.raises(OSError, match="Unsupported operating system"):
-        generate_script(sample_imports, sample_code)
+        generate_unix_bootstrap(sample_imports)
 
 
-def test_script_execution_order(sample_imports, sample_code):
+def test_script_execution_order(sample_imports):
     """Test that script components are in the correct order."""
-    script = generate_script(sample_imports, sample_code)
+    script = generate_unix_bootstrap(sample_imports)
     lines = script.split("\n")
 
     # Find key components

@@ -13,9 +13,13 @@ from erasmus.utils.env_manager import EnvironmentManager
 
 console = Console()
 
+# Export validators for external import (tests)
+__all__ = ["validate_base_url", "validate_ide_env"]
+
 
 def validate_base_url(value: str) -> str:
     """Validate and transform OPENAI_BASE_URL value."""
+    import re
     if not value:
         return "https://api.openai.com/v1"
 
@@ -24,24 +28,56 @@ def validate_base_url(value: str) -> str:
         value = "https://" + value
 
     # Remove trailing slash
-    return value.rstrip("/")
+    value = value.rstrip("/")
 
+    # Strict validation: must start with http(s):// and host must contain a dot (.) or be localhost
+    url_pattern = re.compile(r"^https?://((localhost)(:\d+)?|([\w\-]+\.)+[\w\-]+(:\d+)?)(/.*)?$", re.IGNORECASE)
+    if not url_pattern.match(value):
+        raise ValueError(f"Invalid OPENAI_BASE_URL: {value}")
+    return value
+
+
+def validate_ide_env(value: str) -> str:
+    """Validate and normalize IDE_ENV value ('windsurf' or 'cursor')."""
+    if not value:
+        raise ValueError("IDE_ENV cannot be empty")
+    v = value.lower()
+    if v == "windsurf" or v.startswith("w"):
+        return "windsurf"
+    if v == "cursor" or v.startswith("c"):
+        return "cursor"
+    raise ValueError(f"Invalid IDE_ENV: {value}. Must be 'windsurf' or 'cursor'.")
 
 # Validation rules for specific fields
 FIELD_VALIDATORS: dict[str, Callable[[str], str]] = {
     "OPENAI_BASE_URL": validate_base_url,
+    "IDE_ENV": validate_ide_env,
 }
 
 
 def read_env_example() -> dict[str, str]:
-    """Read default values from .env.example file."""
+    """Read default values from .env.example file. If missing, prompt to create a default."""
+    import click
     defaults = {}
     example_path = Path(".env.example")
 
     if not example_path.exists():
-        raise FileNotFoundError(
-            ".env.example not found. Please ensure it exists in the project root."
-        )
+        if click.confirm(".env.example not found. Would you like to create a default .env.example file?", default=True):
+            # Provide sensible defaults
+            defaults = {
+                "IDE_ENV": "cursor",
+                "GIT_TOKEN": "",
+                "OPENAI_API_KEY": "sk-1234",
+                "OPENAI_BASE_URL": "https://api.openai.com/v1",
+                "OPENAI_MODEL": "gpt-4",
+            }
+            content = "\n".join(f"{k}={v}" for k, v in defaults.items()) + "\n"
+            example_path.write_text(content)
+            # Do NOT exit; allow setup to continue
+            return defaults
+        else:
+            click.echo("Setup cancelled. .env.example is required.")
+            raise SystemExit(1)
 
     with example_path.open() as f:
         for line in f:
@@ -57,6 +93,7 @@ def get_default_prompts(defaults: dict[str, str]) -> dict[str, str]:
     """Get prompts for each environment variable."""
     return {
         "IDE_ENV": f"Select IDE environment (C)ursor or (W)indsurf (enter 'C' or 'W') [{defaults.get('IDE_ENV', 'C')}]: ",
+        "GIT_TOKEN": f"Enter Git token [{defaults.get('GIT_TOKEN', '')}]: ",
         "OPENAI_API_KEY": f"Enter OpenAI API key [{defaults.get('OPENAI_API_KEY', '')}]: ",
         "OPENAI_BASE_URL": f"Enter OpenAI base URL [{defaults.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')}]: ",
         "OPENAI_MODEL": f"Enter OpenAI model [{defaults.get('OPENAI_MODEL', 'gpt-4')}]: ",
@@ -96,38 +133,10 @@ def prompt_for_values(prompts: dict[str, str], defaults: dict[str, str]) -> dict
 
 
 def write_env_file(values: dict[str, str]) -> None:
-    """Write environment variables to .env file."""
+    """Write environment variables to .env file, always overwriting with provided values."""
     env_path = Path(".env")
-
-    # Read existing content if file exists
-    existing_content = ""
-    if env_path.exists():
-        existing_content = env_path.read_text()
-
-    # Prepare new content
-    new_lines = []
-    existing_vars = set()
-
-    # Process existing content
-    for line in existing_content.splitlines():
-        if line.strip() and not line.startswith("#"):
-            key = line.split("=", 1)[0].strip()
-            existing_vars.add(key)
-            if key in values:
-                new_lines.append(f"{key}={values[key]}")
-                del values[key]
-            else:
-                new_lines.append(line)
-        else:
-            new_lines.append(line)
-
-    # Add remaining new variables
-    for key, value in values.items():
-        if key not in existing_vars:
-            new_lines.append(f"{key}={value}")
-
-    # Write to file
-    env_path.write_text("\n".join(new_lines))
+    content = "\n".join(f"{k}={v}" for k, v in values.items()) + "\n"
+    env_path.write_text(content)
 
 
 def setup_env() -> None:
@@ -184,7 +193,7 @@ def setup_env() -> None:
 
     except Exception as e:
         console.print(f"❌ Environment setup failed: {e}", style="red")
-        raise
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

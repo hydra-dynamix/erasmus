@@ -10,8 +10,7 @@
     "venv/",
     "__pycache__/"
   ],
-  "current_protocol": "# Code Review Agent\n\n## Role\ncode_quality_assessment\n\n## Triggers\ntests_passing, style_verified\n\n## Produces\nreview_comments, approval\n\n## Consumes\nimplementation_code, test_files, style_reports\n\n## Description\nThis is a protocol for the Code Review Agent role.\n",
-  "protocol_role": "",
+  "current_protocol": "# Testing Agent\n\n## Role\n\ntest_development\n\n## Triggers\n\ncode_implementation, code_changes\n\n## Produces\n\ntest_files, test_results\n\n## Consumes\n\nimplementation_code, .tasks.md, .erasmus/.architecture.md\n\n## Description\n\nThis is a protocol for the Testing Agent role.\n",
   "protocol_triggers": [],
   "protocol_produces": [],
   "protocol_consumes": [],

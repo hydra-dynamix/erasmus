@@ -20,9 +20,32 @@ class RuleValidationError(Exception):
 class Rule:
     """Represents a single rule."""
 
-    def __init__(self, category: str, description: str):
-        self.category = category
+    def __init__(self, description: str, category: str, subcategory: str | None = None, is_global: bool = False):
+        if not category or not category.strip():
+            raise RuleValidationError("Rule category must not be empty.")
         self.description = description
+        # If category contains a subcategory, split it unless subcategory is provided
+        if subcategory is None and "/" in category:
+            main_cat, subcat = category.split("/", 1)
+            self.category = main_cat.strip()
+            self.subcategory = subcat.strip()
+        else:
+            self.category = category
+            self.subcategory = subcategory
+        self.is_global = is_global
+
+    def __eq__(self, other):
+        if not isinstance(other, Rule):
+            return False
+        return (
+            self.description == other.description and
+            self.category == other.category and
+            self.subcategory == other.subcategory and
+            self.is_global == other.is_global
+        )
+
+    def __hash__(self):
+        return hash((self.description, self.category, self.subcategory, self.is_global))
 
 
 class RulesManager:
@@ -36,6 +59,9 @@ class RulesManager:
         """
         self.workspace_root = Path(workspace_root)
         self.setup_paths = SetupPaths.with_project_root(workspace_root)
+        self.rules_dir = self.workspace_root / ".erasmus"
+        self.project_rules_file = self.rules_dir / "rules.md"
+        self.global_rules_file = self.rules_dir / "global_rules.md"
         self.active_rules: set[Rule] = set()
         self._seen_rules: set[str] = set()  # Track rules by their unique key
         self._conflicting_patterns = [
@@ -68,6 +94,19 @@ class RulesManager:
         self._seen_rules.add(key)
         return True
 
+    def _check_conflicting_rules(self, rules: list[Rule]) -> None:
+        """Check for duplicate and conflicting rules in a list. Raises if conflicts found."""
+        seen = set()
+        for rule in rules:
+            key = (rule.category.lower(), rule.description.lower())
+            if key in seen:
+                raise RuleValidationError(f"Duplicate rule in category '{rule.category}': {rule.description}")
+            seen.add(key)
+        # Check for known conflicting patterns (e.g., indentation)
+        descriptions = [r.description.lower() for r in rules]
+        if any("spaces for indentation" in d for d in descriptions) and any("tabs for indentation" in d for d in descriptions):
+            raise RuleValidationError("Conflicting rules: 'spaces for indentation' and 'tabs for indentation'")
+
     def remove_rule(self, rule: Rule) -> bool:
         """Remove a rule if it exists."""
         key = self._rule_key(rule)
@@ -91,14 +130,14 @@ class RulesManager:
                     for r in self.active_rules
                 ]
             }
-            with open(self.setup_paths.rules_file, "w") as f:
+            with open(self.project_rules_file, "w") as f:
                 json.dump(rules_data, f, indent=2)
-            logger.info(f"Saved rules to {self.setup_paths.rules_file}")
+            logger.info(f"Saved rules to {self.project_rules_file}")
 
             # Save to global rules file
-            with open(self.setup_paths.global_rules_file, "w") as f:
+            with open(self.global_rules_file, "w") as f:
                 json.dump(rules_data, f, indent=2)
-            logger.info(f"Saved rules to {self.setup_paths.global_rules_file}")
+            logger.info(f"Saved rules to {self.global_rules_file}")
 
         except Exception as e:
             logger.exception(f"Failed to save rules: {e}")
@@ -106,22 +145,81 @@ class RulesManager:
 
     def load_rules(self) -> None:
         """Load rules from the appropriate files."""
+        self.active_rules.clear()
+        self._seen_rules.clear()
         try:
-            # Try to load from project rules file first
-            if self.setup_paths.rules_file.exists():
-                with open(self.setup_paths.rules_file) as f:
-                    data = json.load(f)
-                    self._load_rules_from_data(data)
-                return
+            loaded_any = False
+            # Load project rules first
+            if self.project_rules_file.exists():
+                with open(self.project_rules_file) as f:
+                    content = f.read()
+                    if not content.strip():
+                        data = {"rules": []}
+                        self._load_rules_from_data(data)
+                        loaded_any = True
+                    elif content.lstrip().startswith("{"):
+                        data = json.loads(content)
+                        self._load_rules_from_data(data)
+                        loaded_any = True
+                    elif content.lstrip().startswith("#"):
+                        rules = self.parse_rules(self.project_rules_file)
+                        for rule in rules:
+                            self.add_rule(rule)
+                        loaded_any = True
+                    else:
+                        raise RuleValidationError("Unknown rules file format.")
 
-            # Fall back to global rules file
-            if self.setup_paths.global_rules_file.exists():
-                with open(self.setup_paths.global_rules_file) as f:
-                    data = json.load(f)
-                    self._load_rules_from_data(data)
-                return
+            # Always try to merge in global rules if present
+            if self.global_rules_file.exists():
+                with open(self.global_rules_file) as f:
+                    content = f.read()
+                    if not content.strip():
+                        pass  # No global rules
+                    elif content.lstrip().startswith("{"):
+                        data = json.loads(content)
+                        for rule_data in data.get("rules", []):
+                            rule = Rule(category=rule_data["category"], description=rule_data["description"], is_global=True)
+                            # Only add if not already present as a project rule
+                            if not any(r.category == rule.category and r.description == rule.description and not r.is_global for r in self.active_rules):
+                                self.add_rule(rule)
+                    elif content.lstrip().startswith("#"):
+                        rules = self.parse_rules(self.global_rules_file, is_global=True)
+                        for rule in rules:
+                            if not any(r.category == rule.category and r.description == rule.description and not r.is_global for r in self.active_rules):
+                                self.add_rule(rule)
+                    else:
+                        raise RuleValidationError("Unknown rules file format.")
 
-            logger.warning("No rules files found")
+            if not loaded_any and not self.global_rules_file.exists():
+                logger.warning("No rules files found")
+
+            # Post-process: for each (category, description), keep only the project rule if present
+            unique = {}
+            for rule in self.active_rules:
+                key = (rule.category, rule.description)
+                if key not in unique or (unique[key].is_global and not rule.is_global):
+                    unique[key] = rule
+            filtered = set(unique.values())
+
+            # Remove global conflicting rules if a project rule for the other side exists
+            # Currently only handles indentation conflict
+            def is_spaces(rule):
+                return "spaces for indentation" in rule.description.lower()
+            def is_tabs(rule):
+                return "tabs for indentation" in rule.description.lower()
+            by_cat = {}
+            for rule in filtered:
+                by_cat.setdefault(rule.category, []).append(rule)
+            final = set(filtered)
+            for cat, rules in by_cat.items():
+                project_spaces = any(is_spaces(r) and not r.is_global for r in rules)
+                project_tabs = any(is_tabs(r) and not r.is_global for r in rules)
+                # If project rule for one side exists, remove global rule for the other
+                for r in rules:
+                    if r.is_global:
+                        if (is_spaces(r) and project_tabs) or (is_tabs(r) and project_spaces):
+                            final.discard(r)
+            self.active_rules = final
         except Exception as e:
             logger.exception(f"Failed to load rules: {e}")
             raise
@@ -158,10 +256,14 @@ class RulesManager:
 
             if line.startswith("## "):
                 # New category
-                current_category = line[3:].strip()
-                current_subcategory = None
-                if "/" in current_category:
-                    current_category, current_subcategory = current_category.split("/", 1)
+                cat_line = line[3:].strip()
+                if "/" in cat_line:
+                    current_category, current_subcategory = cat_line.split("/", 1)
+                    current_category = current_category.strip()
+                    current_subcategory = current_subcategory.strip()
+                else:
+                    current_category = cat_line
+                    current_subcategory = None
                 continue
 
             if line.startswith("- "):
@@ -170,7 +272,8 @@ class RulesManager:
                 # Remove any trailing comments
                 if "#" in description:
                     description = description.split("#")[0].strip()
-
+                if not current_category:
+                    raise RuleValidationError("Rule defined before any category heading.")
                 rule = Rule(description, current_category, current_subcategory, is_global)
                 rule_key = self._rule_key(rule)
 
@@ -182,7 +285,10 @@ class RulesManager:
                 rules.append(rule)
 
         # Check for conflicts
-        self._check_conflicting_rules(rules)
+        try:
+            self._check_conflicting_rules(rules)
+        except RuleValidationError as e:
+            raise RuleValidationError(f"Conflicting rules: {e}")
 
         return rules
 

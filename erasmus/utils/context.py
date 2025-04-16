@@ -138,7 +138,15 @@ def update_context(context: dict[str, Any]) -> dict[str, Any]:
     # Add tasks if available
     tasks_path = SETUP_PATHS.markdown_files["tasks"]
     if tasks_path.exists():
-        context["tasks"] = read_file(tasks_path)
+        tasks_content = read_file(tasks_path)
+        try:
+            parsed = json.loads(tasks_content)
+            if isinstance(parsed, dict):
+                context["tasks"] = parsed
+            else:
+                context["tasks"] = {}
+        except Exception:
+            context["tasks"] = {}
 
     # Handle protocol context if a protocol is active
     if "current_protocol" in context:
@@ -459,7 +467,7 @@ def store_context(setup_paths: SetupPaths) -> bool:
     """Store the current context.
 
     Args:
-        setup_paths: The setup paths object containing file paths
+    setup_paths: The setup paths object containing file paths
 
     Returns:
         bool: True if context was stored successfully
@@ -513,7 +521,7 @@ def restore_context(setup_paths: SetupPaths, context_path: Path | None = None) -
     """Restore the context from the context directory.
 
     Args:
-        setup_paths: The setup paths object containing file paths
+    setup_paths: The setup paths object containing file paths
         context_path: Optional path to the context directory to restore from.
                      If None, will use the default project_context directory.
 
@@ -594,7 +602,7 @@ def list_context_dirs(setup_paths: SetupPaths) -> list[str]:
     """List all context directories.
 
     Args:
-        setup_paths: The setup paths object containing file paths
+    setup_paths: The setup paths object containing file paths
 
     Returns:
         list[str]: List of context directory paths as strings
@@ -630,7 +638,7 @@ def print_context_dirs(setup_paths: SetupPaths) -> None:
     """Print all context directories.
 
     Args:
-        setup_paths: The setup paths object containing file paths
+    setup_paths: The setup paths object containing file paths
     """
     context_dirs = list_context_dirs(setup_paths)
     if not context_dirs:
@@ -661,7 +669,7 @@ def select_context_dir(setup_paths: SetupPaths) -> Path | None:
     """Select a context directory.
 
     Args:
-        setup_paths: The setup paths object containing file paths
+    setup_paths: The setup paths object containing file paths
 
     Returns:
         Path | None: The selected context directory path, or None if no selection was made
@@ -702,7 +710,7 @@ def handle_protocol_context(setup_paths: SetupPaths, protocol_name: str) -> bool
     automatically updating the context when protocols change state.
 
     Args:
-        setup_paths: The setup paths object containing file paths
+    setup_paths: The setup paths object containing file paths
         protocol_name: Name of the protocol being activated
 
     Returns:
@@ -764,153 +772,106 @@ def handle_protocol_context(setup_paths: SetupPaths, protocol_name: str) -> bool
 
 
 class ContextManager:
-    """Manages the global context for the application."""
+    """Manages context for the project."""
 
-    def __init__(self):
+    def __init__(self, workspace_root: Path = None):
         """Initialize the context manager."""
-        self.context = Context()
-        self.protocol_manager = None
+        self.workspace_root = workspace_root or Path.cwd()
+        self.setup_paths = SetupPaths.with_project_root(self.workspace_root)
+        self.rules_file = self.setup_paths.rules_file
+        self.file_synchronizer = None  # Will be initialized in initialize()
+        self._protocol_manager = None
+        self._pending_updates = {}
+        self._external_changes = {}
+        self._thread_queue = asyncio.Queue()
+        self._update_lock = asyncio.Lock()
+        self._last_update = {}
         self._setup_protocol_handlers()
 
     def _setup_protocol_handlers(self) -> None:
-        """Set up handlers for protocol events."""
-        if self.protocol_manager:
-            self.protocol_manager.register_event_handler(
-                "protocol_activated", self._handle_protocol_activated
-            )
-            self.protocol_manager.register_event_handler(
-                "protocol_completed", self._handle_protocol_completed
-            )
-            self.protocol_manager.register_event_handler(
-                "transition_triggered", self._handle_transition
-            )
-            self.protocol_manager.register_event_handler("artifact_produced", self._handle_artifact)
+        """Set up protocol handlers."""
+        self._protocol_manager = ProtocolManager(
+            self.setup_paths.protocols_dir,
+            self.setup_paths.stored_protocols_dir,
+            self.setup_paths.registry_file,
+        )
+        self._protocol_manager.on_protocol_activated = self._handle_protocol_activated
+        self._protocol_manager.on_protocol_completed = self._handle_protocol_completed
+        self._protocol_manager.on_transition = self._handle_transition
+        self._protocol_manager.on_artifact = self._handle_artifact
 
     async def initialize(self) -> None:
         """Initialize the context manager."""
-        self.protocol_manager = await ProtocolManager.create()
-        self._setup_protocol_handlers()
+        from erasmus.sync.file_sync import FileSynchronizer
+
+        # Initialize file synchronizer
+        self.file_synchronizer = FileSynchronizer(self.workspace_root, self.rules_file.parent)
+        await self.file_synchronizer.start()
 
     def _handle_protocol_activated(self, protocol: Protocol) -> None:
-        """Handle protocol activation event."""
-        self.context.active_protocol = protocol.name
-        self.context.protocol_state = protocol.initial_state
-        logger.info(f"Activated protocol: {protocol.name}")
+        """Handle protocol activation."""
+        logger.info(f"Protocol activated: {protocol.name}")
 
     def _handle_protocol_completed(self, protocol: Protocol, artifacts: Dict[str, Any]) -> None:
-        """Handle protocol completion event."""
-        self.context.protocol_artifacts.update(artifacts)
-        logger.info(f"Completed protocol: {protocol.name}")
+        """Handle protocol completion."""
+        logger.info(f"Protocol completed: {protocol.name}")
 
     def _handle_transition(
         self, from_protocol: Protocol, to_protocol: Protocol, trigger: str, artifact: str
     ) -> None:
-        """Handle protocol transition event."""
-        logger.info(f"Transitioning from {from_protocol.name} to {to_protocol.name}")
-        logger.info(f"Trigger: {trigger}, Artifact: {artifact}")
-
-        # Update context for new protocol
-        self.context.active_protocol = to_protocol.name
-        self.context.protocol_state = to_protocol.initial_state
+        """Handle protocol transition."""
+        logger.info(
+            f"Transition: {from_protocol.name} -> {to_protocol.name} ({trigger}, {artifact})"
+        )
 
     def _handle_artifact(self, protocol: Protocol, artifact_name: str, artifact_value: Any) -> None:
-        """Handle artifact production event."""
-        self.context.protocol_artifacts[artifact_name] = artifact_value
-        logger.info(f"Produced artifact {artifact_name} in protocol {protocol.name}")
+        """Handle protocol artifact."""
+        logger.info(f"Artifact from {protocol.name}: {artifact_name}")
 
-    async def update_context(self, updates: Dict[str, Any]) -> None:
-        """Update the context with new values.
+    async def update_context(self, updates: Dict[str, Any], partial: bool = True) -> None:
+        """Update the context with new values."""
+        async with self._update_lock:
+            try:
+                # Read current context
+                current = self.read_context()
 
-        Args:
-            updates: Dictionary of context updates
-        """
-        # Update context values
-        for key, value in updates.items():
-            if hasattr(self.context, key):
-                setattr(self.context, key, value)
-            else:
-                logger.warning(f"Unknown context key: {key}")
+                # Update with new values
+                if partial:
+                    current.update(updates)
+                else:
+                    current = updates
 
-        # If we have an active protocol, check for completion
-        if self.context.active_protocol and self.protocol_manager:
-            protocol = self.protocol_manager.get_protocol(self.context.active_protocol)
-            if protocol and protocol.is_complete(self.context.protocol_state):
-                await self.protocol_manager.complete_protocol(
-                    protocol.name, self.context.protocol_artifacts
-                )
+                # Write updated context
+                self.rules_file.parent.mkdir(parents=True, exist_ok=True)
+                self.rules_file.write_text(json.dumps(current, indent=2))
+
+            except Exception as e:
+                logger.exception(f"Error updating context: {e}")
+                raise
 
     def get_context(self) -> Context:
         """Get the current context."""
-        return self.context
+        return Context(self.read_context())
 
     async def select_protocol(self, protocol_name: str) -> bool:
-        """Select and activate a protocol.
-
-        Args:
-            protocol_name: Name of the protocol to activate
-
-        Returns:
-            bool: True if protocol was activated successfully
-        """
-        if not self.protocol_manager:
-            logger.error("Protocol manager not initialized")
+        """Select and activate a protocol."""
+        try:
+            protocol = await self._protocol_manager.select_protocol(protocol_name)
+            if protocol:
+                await self.update_context({"current_protocol": protocol_name})
+                return True
+            return False
+        except Exception as e:
+            logger.exception(f"Error selecting protocol: {e}")
             return False
 
-        return await self.protocol_manager.activate_protocol(protocol_name)
-
     def read_context(self) -> dict[str, Any]:
-        """Read and parse the context file.
-
-        Returns:
-            Dict containing context configuration
-        """
+        """Read the current context from the rules file."""
         try:
-            if not self.context_file.exists():
-                return {
-                    "project_root": str(self.workspace_root),
-                    "active_rules": [],
-                    "global_rules": [],
-                    "file_patterns": ["*.py", "*.md"],
-                    "excluded_paths": ["venv/", "__pycache__/"],
-                }
-
-            content = self.context_file.read_text()
-            context = json.loads(content)
-            return context
-
-        except json.JSONDecodeError:
-            # If JSON is invalid, return default context
-            return {
-                "project_root": str(self.workspace_root),
-                "active_rules": [],
-                "global_rules": [],
-                "file_patterns": ["*.py", "*.md"],
-                "excluded_paths": ["venv/", "__pycache__/"],
-            }
+            if self.rules_file.exists():
+                content = self.rules_file.read_text()
+                return json.loads(content) if content else {}
+            return {}
         except Exception as e:
-            logger.error(f"Failed to read context file: {e}")
-            return {
-                "project_root": str(self.workspace_root),
-                "active_rules": [],
-                "global_rules": [],
-                "file_patterns": ["*.py", "*.md"],
-                "excluded_paths": ["venv/", "__pycache__/"],
-            }
-
-    def update_context(self, new_context: dict[str, Any], partial: bool = False) -> None:
-        """Update the context file.
-
-        Args:
-            new_context: New context configuration
-            partial: If True, only update specified fields
-        """
-        try:
-            if partial:
-                current_context = self.read_context()
-                current_context.update(new_context)
-                new_context = current_context
-
-            # Write the updated context
-            self.context_file.write_text(json.dumps(new_context, indent=2))
-        except Exception as e:
-            logger.error(f"Failed to update context: {e}")
+            logger.exception(f"Error reading context: {e}")
+            return {}

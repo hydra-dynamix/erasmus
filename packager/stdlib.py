@@ -235,16 +235,13 @@ class StdlibDetector:
         if not self._initialized:
             self.initialize()
 
-        # Normalize the module name to lowercase
-        name = name.lower()
-
         # Direct match in the standard library modules set
-        if name in {m.lower() for m in self._stdlib_modules}:
+        if name in self._stdlib_modules:
             return True
 
         # Check if it's a submodule of a standard library module
         for prefix in self._stdlib_prefixes:
-            if name.startswith(prefix.lower()):
+            if name.startswith(prefix):
                 return True
 
         # Check if it's importable without installing anything
@@ -288,7 +285,7 @@ def is_stdlib_module(name: str) -> bool:
     Returns:
         True if the module is part of the standard library, False otherwise.
     """
-    return _detector.is_stdlib_module(name)
+    return _detector.is_stdlib_module(name.lower())
 
 
 def filter_stdlib_imports(imports: set[str]) -> set[str]:

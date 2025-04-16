@@ -1,5 +1,3 @@
-"""Performance benchmarks for file synchronization."""
-
 import asyncio
 import time
 from pathlib import Path
@@ -9,6 +7,10 @@ import pytest_asyncio
 
 from erasmus.sync.file_sync import FileSynchronizer
 
+SYNC_ALL_THRESHOLD = 2.0
+CONCURRENT_SYNC_THRESHOLD = 3.0
+CONCURRENT_SYNC_PER_FILE_THRESHOLD = 0.5
+STATUS_CHECK_THRESHOLD = 0.5
 
 @pytest_asyncio.fixture
 async def bench_env(tmp_path) -> tuple[Path, Path, FileSynchronizer]:
@@ -16,6 +18,12 @@ async def bench_env(tmp_path) -> tuple[Path, Path, FileSynchronizer]:
     workspace = tmp_path / "workspace"
     rules_dir = workspace / ".cursorrules"
     workspace.mkdir()
+    # Add required context files
+    erasmus_dir = workspace / ".erasmus"
+    erasmus_dir.mkdir(exist_ok=True)
+    (erasmus_dir / ".architecture.md").write_text("# architecture\nTest content")
+    (erasmus_dir / ".progress.md").write_text("# progress\nTest content")
+    (erasmus_dir / ".tasks.md").write_text("# tasks\nTest content")
 
     # Create test files
     for filename in FileSynchronizer.TRACKED_FILES:
@@ -88,8 +96,8 @@ async def test_sync_all_files_performance(bench_env):
     print(f"Average time per file: {modified_sync_time / len(FileSynchronizer.TRACKED_FILES):.4f}s")
 
     # Verify reasonable performance
-    assert sync_time < 2.0, "Initial sync_all took too long"
-    assert modified_sync_time < 2.0, "Modified sync_all took too long"
+    assert sync_time < SYNC_ALL_THRESHOLD, "Initial sync_all took too long"
+    assert modified_sync_time < SYNC_ALL_THRESHOLD, "Modified sync_all took too long"
 
 
 @pytest.mark.asyncio
@@ -118,8 +126,8 @@ async def test_concurrent_sync_performance(bench_env):
     print(f"Average time per file: {concurrent_sync_time / len(test_files):.4f}s")
 
     # Verify reasonable performance
-    assert concurrent_sync_time < 3.0, "Concurrent sync took too long"
-    assert concurrent_sync_time / len(test_files) < 0.5, (
+    assert concurrent_sync_time < CONCURRENT_SYNC_THRESHOLD, "Concurrent sync took too long"
+    assert concurrent_sync_time / len(test_files) < CONCURRENT_SYNC_PER_FILE_THRESHOLD, (
         "Average concurrent sync time per file too high"
     )
 
@@ -140,4 +148,4 @@ async def test_status_check_performance(bench_env):
     print(f"Status check time: {status_time:.4f}s")
 
     # Verify reasonable performance
-    assert status_time < 0.5, "Status check took too long"
+    assert status_time < STATUS_CHECK_THRESHOLD, "Status check took too long"

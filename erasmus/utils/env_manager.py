@@ -133,8 +133,9 @@ class EnvironmentManager:
         self._base_url = Prompt.ask("Enter your OpenAI base URL")
         self._model = Prompt.ask("Enter your OpenAI model")
 
-    def get_openai_credentials():
+    def get_openai_credentials(self) -> tuple[str, str, str]:
         """Get OpenAI credentials from environment variables."""
+        load_dotenv()
         api_key = os.environ.get("OPENAI_API_KEY", "sk-1234")
         base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
         model = os.environ.get("OPENAI_MODEL", "gpt-4o")

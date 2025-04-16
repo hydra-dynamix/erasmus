@@ -373,12 +373,12 @@ def detect_ide_environment() -> str:
     # windsurf-specific detection
     windsurf_markers = [
         Path.home() / ".codeium" / "windsurf",
-        setup_paths.rules_file if ide_env.startswith("w") else None,
+    setup_paths.rules_file if ide_env.startswith("w") else None,
     ]
 
     # cursor-specific detection
     cursor_markers = [
-        setup_paths.rules_file if ide_env.startswith("c") else None,
+    setup_paths.rules_file if ide_env.startswith("c") else None,
         Path.home() / ".cursor",
     ]
 

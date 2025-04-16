@@ -1,21 +1,17 @@
 """Tests for the collector module."""
-
 import os
 import pytest
-from pathlib import Path
-from typing import Generator
-
-from src.collector import (
-    collect_py_files,
+from packager.collector import (
+    DEFAULT_EXCLUDE_PATTERNS,
     collect_files_with_extensions,
     collect_files_with_filter,
-    get_relative_paths,
-    DEFAULT_EXCLUDE_PATTERNS,
+    collect_py_files,
+    get_relative_paths
 )
 
 
 @pytest.fixture
-def temp_project(tmp_path) -> Generator[Path, None, None]:
+def temp_project(tmp_path):
     """Create a temporary project structure for testing."""
     # Create main project directory
     project_dir = tmp_path / "test_project"
@@ -56,7 +52,7 @@ def test_collect_py_files_basic(temp_project):
     """Test basic Python file collection."""
     files = collect_py_files(str(temp_project))
 
-    # Should find 4 .py files (main.py, utils.py, src/core.py, src/helpers.py)
+    # Should find 4 .py files (main.py, utils.py, src/core.py, src/helpers.py
     assert len(files) == 4
 
     # Check specific files
@@ -70,7 +66,7 @@ def test_collect_py_files_with_custom_exclude(temp_project):
     exclude_patterns = DEFAULT_EXCLUDE_PATTERNS + ["src/**/*"]
     files = collect_py_files(str(temp_project), exclude_patterns=exclude_patterns)
 
-    # Should only find 2 .py files (main.py, utils.py)
+    # Should only find 2 .py files (main.py, utils.py
     assert len(files) == 2
 
     # Check specific files
@@ -90,7 +86,7 @@ def test_collect_files_with_extensions(temp_project):
     extensions = [".md", ".json"]
     files = collect_files_with_extensions(str(temp_project), extensions=extensions)
 
-    # Should find 2 files (README.md, config.json)
+    # Should find 2 files (README.md, config.json
     assert len(files) == 2
 
     # Check specific files
@@ -170,7 +166,7 @@ def test_symlink_handling(temp_project):
 
     files = collect_py_files(str(symlink_dir))
 
-    # Should find 2 .py files (core.py, helpers.py)
+    # Should find 2 .py files (core.py, helpers.py
     assert len(files) == 2
     filenames = {os.path.basename(f) for f in files}
     assert filenames == {"core.py", "helpers.py"}

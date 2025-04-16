@@ -3,7 +3,7 @@
 import json
 import pytest
 from pathlib import Path
-from src.mapping import (
+from packager.mapping import (
     get_package_name,
     register_mapping,
     map_imports_to_packages,

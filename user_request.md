@@ -1,82 +1,23 @@
-### 🧠 Codebase Review
-
-You're tasked with a **comprehensive, structured codebase review**, performed one file at a time, to track progress and align the implementation with expected functionality.
-
-#### 🎯 Objectives
-
-1. **Extract Functionality from `watcher.py`** (on `main` branch)
-
-   - Record its intended functionality in: `.erasmus/review/target_functionality.md`
-
-2. **Generate Directory Structure**
-
-   - Use `uv run scripts/walk.py ./ .erasmus/review/draft.md` to create a full directory tree of the project.
-   - This tree becomes your **review checklist** — check off files as you complete them.
-
-3. **Perform a File-by-File Review**
-
-- For each file:
-  - errors
-  - missing functionality
-  - dead code
-  - repeated code or functionality
-- Record notes inline in `.erasmus/review/draft.md` under that file's entry
-
-1. **Build a Dependency Graph**
-
-   - Record all imports and usage relationships in the codebase
-   - Output to `.erasmus/review/dependencies.md`
-
-2. **Final Comparison**
-
-   - Compare `.erasmus/review/draft.md` (what’s implemented) with `.erasmus/review/target_functionality.md` (what should be implemented)
-   - Highlight:
-     - Features present and missing
-     - Redundancies or inefficiencies
-     - Misalignments in architecture or functionality
-
-3. **Write the Final Report**
-
-   - Summarize findings in `.erasmus/review/final_report.md`
-     - What’s working and what’s broken
-     - Deviations from the intended functionality
-     - Areas for refactoring
-     - High-priority and low-priority issues
-
-4. **Propose an Action Plan**
-   - Output a task list in `.erasmus/review/action_plan.md`
-     - Organized into phases or sprints
-     - Assignable and traceable tasks
-     - Include suggestions for testing and documentation
-
----
-
-### ⚙️ One-File-at-a-Time Review Workflow
-
-```mermaid
-flowchart TD
-    A[Start: Checkout main branch] --> B[Extract functionality from watcher.py]
-    B --> C[Save to .erasmus/review/target_functionality.md]
-    C --> D[Run: uv run scripts/walk.py ./ .erasmus/review/draft.md]
-    D --> E[Begin File-by-File Review]
-    E --> F{File in tree?}
-    F -- Yes --> G[Analyze file]
-    G --> H[Log issues & findings in draft.md]
-    H --> I[Update dependency graph]
-    I --> F
-    F -- No more files --> J[Compare draft.md with target_functionality.md]
-    J --> K[Write final_report.md]
-    K --> L[Generate action_plan.md]
-    L --> M[✅ Done]
-```
-
----
-
-### 📝 Execution Notes
-
-- **One file at a time only**: never batch process unless comparing in the final report
-- Record **inline notes per file** in `draft.md`
-- Use **clear headings** per file
-- Reuse parsed file relationships in `dependencies.md`
-- Use Markdown formatting in all review artifacts
-- Maintain consistent formatting and audit trails across review files
+Integration Plan: CLI for Humans, MCP for Agents
+1. CLI for Human Operations
+Continue to use the existing Erasmus CLI for all human-initiated actions (add/update tasks, manage context, etc.).
+CLI commands will trigger the sync logic to update GitHub Projects as the source of truth.
+2. MCP (Machine Control Protocol) for Agent Operations
+Implement an MCP server/module that exposes the same operations as the CLI, but via an API (HTTP, gRPC, or even a simple socket protocol).
+Agents (models, automations, other services) interact with Erasmus exclusively through the MCP interface.
+The MCP server will call the same internal logic as the CLI, ensuring all actions (human or agent) are mirrored and consistent.
+3. Unified Sync Logic
+Both the CLI and MCP routes call a shared backend/service layer that handles:
+Local context file updates (if needed)
+GitHub Projects sync (source of truth)
+Summary/context injection for the model
+4. Benefits
+Separation of concerns: Humans use CLI, agents use MCP.
+Consistency: All operations, regardless of origin, are reflected in GitHub Projects.
+Extensibility: You can add more agent types or automation without changing the human workflow.
+Implementation Steps
+Refactor Erasmus core logic so that both CLI and MCP routes call the same functions for task/context management.
+Implement the MCP server (could be Flask/FastAPI for HTTP, or a lightweight socket server).
+Add authentication/authorization to MCP if needed (to prevent rogue agents).
+Document the MCP API so agents know how to interact with it.
+Test: Ensure that actions via CLI and MCP both update GitHub Projects and local context as expected.

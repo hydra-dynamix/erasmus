@@ -14,7 +14,7 @@ import logging
 import time
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -28,304 +28,166 @@ logger = logging.getLogger(__name__)
 
 
 class CursorContextManager:
-    """Manages context updates for the cursor IDE."""
+    """Manages context for Cursor IDE integration."""
 
-    def __init__(self, workspace_path: Path):
-        """Initialize the CursorContextManager."""
-        self.workspace_path = workspace_path
+    def __init__(self, project_root: Path):
+        """Initialize the context manager.
 
-        # Use SetupPaths to get the correct rules file path based on IDE environment
-        setup_paths = SetupPaths.with_project_root(workspace_path)
-        rules_dir = setup_paths.rules_file
-        self.rules_file = rules_dir / "rules.json"
-
-        self.batch_delay = 0.1  # seconds
+        Args:
+            project_root: Path to the project root directory
+        """
+        self.setup_paths = SetupPaths.with_project_root(project_root)
+        self.rules_file = self.setup_paths.rules_file
         self._update_queue = asyncio.Queue()
-        self._current_rules = {}
-        self._update_task = None
         self._running = False
-        self._error_counts = defaultdict(int)
+        self._task = None
         self._lock = asyncio.Lock()
-        self._watcher = None
-        self._processing = False
-        self._last_write_time = 0
-        self._write_event = asyncio.Event()
-        self._update_complete = asyncio.Event()
-        self._pending_updates = {}
-        self._external_changes = {}
-        self._sync_integration = None
-        self._observer = None
-        self._recovery_task = None
-        self._update_events = {}
-        self._file_change_queue = asyncio.Queue()
-        self._file_change_task = None
-        self._thread_queue = asyncio.Queue()  # Queue for thread-safe communication
-        self._thread_task = None
+        self._errors = []
+        self._last_update = {}
+        self._pending_updates = set()
 
     async def start(self):
         """Start the context manager."""
-        if self._running:
-            return
-
-        try:
-            # Create rules directory if it doesn't exist
-            rules_dir = self.rules_file.parent
-            rules_dir.mkdir(parents=True, exist_ok=True)
-
-            # Initialize rules file if it doesn't exist
-            try:
-                if not self.rules_file.exists():
-                    # Write empty JSON object to file
-                    safe_write_file(self.rules_file, "{}")
-
-                # Load current rules
-                content = safe_read_file(self.rules_file)
-                self._current_rules = json.loads(content) if content else {}
-            except (json.JSONDecodeError, FileNotFoundError) as e:
-                logger.exception(f"Error loading rules file: {e}")
-                self._current_rules = {}
-                # Ensure we have a valid rules file
-                safe_write_file(self.rules_file, "{}")
-
-            # Set running flag before starting tasks
+        if not self._running:
             self._running = True
-
-            # Start the update processing loop
-            self._update_task = asyncio.create_task(self._process_updates())
-
-            # Start the file change processing loop
-            self._file_change_task = asyncio.create_task(self._process_file_changes())
-
-            # Start the thread queue processing loop
-            self._thread_task = asyncio.create_task(self._process_thread_queue())
-
-            # Initialize file watcher
-            self._watcher = CursorRulesHandler(self)
-            self._observer = Observer()
-            self._observer.schedule(self._watcher, str(self.workspace_path), recursive=False)
-            self._observer.daemon = True
-            self._observer.start()
-
-            # Start recovery task
-            self._recovery_task = asyncio.create_task(self._monitor_and_recover())
-
-            # Initialize sync integration
-            self._sync_integration = SyncIntegration(self, self.workspace_path)
-
-            # Wait for tasks to be ready
-            await asyncio.sleep(0.2)
-
-            # Start sync integration and perform initial sync
-            await self._sync_integration.start()
-
-            # Wait for initial sync to complete
-            await asyncio.sleep(0.5)
-
-        except Exception as e:
-            logger.exception(f"Error starting context manager: {e}")
-            # Clean up on error
-            await self.stop()
-            raise
+            self._task = asyncio.create_task(self._process_updates())
+            # Initialize rules file if it doesn't exist
+            if not self.rules_file.exists():
+                self.rules_file.write_text("{}")
 
     async def stop(self):
         """Stop the context manager."""
-        if not self._running:
-            return
+        if self._running:
+            self._running = False
+            if self._task:
+                self._task.cancel()
+                try:
+                    await self._task
+                except asyncio.CancelledError:
+                    pass
+                self._task = None
 
-        self._running = False
+    async def queue_update(self, key: str, value: str):
+        """Queue an update to the rules file.
 
-        # Stop the observer
-        if self._observer:
-            self._observer.stop()
-            self._observer.join()
-            self._observer = None
-
-        # Stop sync integration
-        if self._sync_integration:
-            await self._sync_integration.stop()
-
-        # Cancel tasks
-        for task in [
-            self._update_task,
-            self._recovery_task,
-            self._file_change_task,
-            self._thread_task,
-        ]:
-            if task and not task.done():
-                task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await task
-
-        # Clear state
-        self._watcher = None
-        self._current_rules = {}
-        self._pending_updates.clear()
-        self._external_changes.clear()
-        self._update_task = None
-        self._recovery_task = None
-        self._update_events.clear()
-        self._file_change_task = None
-        self._thread_task = None
-
-    async def queue_update(self, component: str, content: Any) -> bool:
-        """Queue an update for processing."""
+        Args:
+            key: Key to update
+            value: New value
+        """
         if not self._running:
             logger.warning("CursorContextManager is not running")
             return False
 
+        update_event = asyncio.Event()
+        await self._update_queue.put((key, value, update_event))
+
         try:
-            # Create an event for this update
-            update_event = asyncio.Event()
-            self._update_events[component] = update_event
+            # Wait for update to complete
+            await asyncio.wait_for(update_event.wait(), timeout=5.0)
 
-            # Queue the update
-            self._pending_updates[component] = content
-            await self._update_queue.put((component, content))
+            # Verify update was written
+            if self.rules_file.exists():
+                content = self.rules_file.read_text()
+                current = json.loads(content)
+                if key not in current or current[key] != value:
+                    logger.error(f"Update verification failed for {key}")
+                    return False
+            return True
 
-            try:
-                # Wait for update to be processed
-                await asyncio.wait_for(update_event.wait(), timeout=5.0)
-
-                # Wait briefly for file system sync
-                await asyncio.sleep(0.1)
-
-                # Verify the update was written correctly
-                verify_content = safe_read_file(self.rules_file)
-                verify_rules = json.loads(verify_content) if verify_content else {}
-
-                if component in verify_rules and verify_rules[component] == content:
-                    return True
-
-                logger.error(f"Update verification failed for {component}")
-                return False
-
-            except asyncio.TimeoutError:
-                logger.exception(f"Timeout waiting for update to complete: {component}")
-                return False
-
+        except asyncio.TimeoutError:
+            logger.error(f"Timeout waiting for update to complete: {key}")
+            return False
         except Exception as e:
-            logger.exception(f"Error queueing update: {e}")
+            logger.error(f"Error in queue_update: {str(e)}", exc_info=True)
             return False
 
-        finally:
-            # Clean up
-            if component in self._update_events:
-                del self._update_events[component]
-            if component in self._pending_updates:
-                del self._pending_updates[component]
+    async def process_updates(self):
+        """Process all pending updates."""
+        if not self._running:
+            return
+
+        # Wait for all queued items to be processed
+        await self._update_queue.join()
+
+    async def handle_file_change(self, file_path: str):
+        """Handle a file change event.
+
+        Args:
+            file_path: Path to the changed file
+        """
+        # Get absolute path for the file
+        abs_path = self.setup_paths.project_root / file_path
+        if not abs_path.exists():
+            logger.error(f"File not found: {abs_path}")
+            return
+
+        try:
+            content = abs_path.read_text()
+            await self.queue_update(file_path, content)
+        except Exception as e:
+            logger.error(f"Error reading file {abs_path}: {str(e)}", exc_info=True)
+
+    def get_status(self) -> Dict[str, Any]:
+        """Get the current status of the context manager.
+
+        Returns:
+            Dict containing status information
+        """
+        return {
+            "is_running": self._running,
+            "has_errors": bool(self._errors),
+            "pending_updates": list(self._pending_updates),
+            "errors": self._errors.copy(),
+            "last_update": self._last_update.copy(),
+        }
 
     async def _process_updates(self):
-        """Process queued updates."""
+        """Process updates from the queue."""
         while self._running:
             try:
-                # Get the next update
-                component, content = await self._update_queue.get()
+                key, value, update_event = await self._update_queue.get()
+                self._pending_updates.add(key)
 
-                # Process update immediately
-                async with self._lock:
-                    try:
-                        # Read current rules
-                        rules_content = safe_read_file(self.rules_file)
-                        current = json.loads(rules_content) if rules_content else {}
-
-                        # Store external changes that aren't being updated
-                        new_external_changes = {}
-                        for comp, cont in self._external_changes.items():
-                            if comp not in self._pending_updates:
-                                current[comp] = cont
-                            else:
-                                new_external_changes[comp] = cont
-                        self._external_changes = new_external_changes
-
-                        # Apply update
-                        current[component] = content
-
-                        # Write update atomically
-                        temp_file = self.rules_file.with_suffix(".tmp")
-                        try:
-                            safe_write_file(temp_file, json.dumps(current, indent=2))
-                            temp_file.replace(self.rules_file)
-
-                            # Update current rules
-                            self._current_rules = current.copy()
-
-                            # Notify waiters
-                            if component in self._update_events:
-                                self._update_events[component].set()
-                            if component in self._pending_updates:
-                                del self._pending_updates[component]
-
-                            # Notify sync integration of context change
-                            if self._sync_integration:
-                                try:
-                                    await self._sync_integration.handle_context_change(
-                                        component, content
-                                    )
-                                except Exception as e:
-                                    logger.exception(f"Error in sync integration: {e}")
-
-                        finally:
-                            if temp_file.exists():
-                                temp_file.unlink()
-
-                    except Exception as e:
-                        logger.exception(f"Error processing update for {component}: {e}")
-                        # Set event even on error to prevent timeouts
-                        if component in self._update_events:
-                            self._update_events[component].set()
-                        if component in self._pending_updates:
-                            del self._pending_updates[component]
-
-            except Exception as e:
-                logger.exception(f"Error in update loop: {e}")
-                await asyncio.sleep(0.1)
-
-    async def _process_file_changes(self):
-        """Process file change events."""
-        while self._running:
-            try:
-                # Get the next file change
-                file_path = await self._file_change_queue.get()
-
-                # Process the file change
-                if self._sync_integration:
-                    await self._sync_integration.handle_file_change(file_path)
-
-            except Exception as e:
-                logger.exception(f"Error processing file change: {e}")
-                await asyncio.sleep(0.1)
-
-    async def _process_thread_queue(self):
-        """Process items from the thread-safe queue."""
-        while self._running:
-            try:
-                # Get the next item from the thread queue
-                file_path = await self._thread_queue.get()
-
-                # Queue it for file change processing
-                await self._file_change_queue.put(file_path)
-
-            except Exception as e:
-                logger.exception(f"Error processing thread queue: {e}")
-                await asyncio.sleep(0.1)
-
-    async def _monitor_and_recover(self):
-        """Monitor the rules file and recover from errors."""
-        while self._running:
-            try:
-                # Check if rules file is valid
-                content = safe_read_file(self.rules_file)
                 try:
-                    json.loads(content) if content else {}
-                except json.JSONDecodeError:
-                    logger.warning("Rules file corrupted, restoring from current state")
+                    async with self._lock:
+                        # Read current rules, handle invalid JSON
+                        try:
+                            rules_content = (
+                                self.rules_file.read_text() if self.rules_file.exists() else None
+                            )
+                            current = json.loads(rules_content) if rules_content else {}
+                        except json.JSONDecodeError:
+                            logger.warning("Invalid JSON in rules file, resetting to empty state")
+                            current = {}
 
-                # Brief wait before next check
-                await asyncio.sleep(1.0)
+                        # Update rules
+                        current[key] = value
 
+                        # Write back
+                        self.rules_file.write_text(json.dumps(current, indent=2))
+
+                        # Update status
+                        self._last_update = {"key": key, "timestamp": time.time()}
+                        self._pending_updates.remove(key)
+
+                    # Set event after lock is released
+                    update_event.set()
+
+                except Exception as e:
+                    logger.error(f"Error processing update for {key}: {str(e)}", exc_info=True)
+                    self._errors.append({"key": key, "error": str(e), "timestamp": time.time()})
+                    update_event.set()  # Still set the event to unblock waiting code
+
+                finally:
+                    self._update_queue.task_done()
+
+            except asyncio.CancelledError:
+                break
             except Exception as e:
-                logger.exception(f"Error in recovery monitor: {e}")
-                await asyncio.sleep(1.0)
+                logger.error(f"Unexpected error in update processor: {str(e)}", exc_info=True)
+                if self._update_queue.qsize() > 0:
+                    self._update_queue.task_done()  # Ensure we don't deadlock
+                continue
 
 
 class CursorRulesHandler(FileSystemEventHandler):

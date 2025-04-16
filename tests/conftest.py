@@ -12,6 +12,8 @@ from pathlib import Path
 
 import pytest
 
+from erasmus.utils.paths import SetupPaths
+
 # Add the src directory to the Python path
 src_path = str(Path(__file__).parent.parent / "src")
 if src_path not in sys.path:
@@ -34,24 +36,41 @@ def temp_dir() -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def setup_files(temp_dir: Path) -> dict[str, Path]:
+def setup_paths(temp_dir: Path) -> SetupPaths:
     """
-    Create a dictionary of test setup files.
+    Create a SetupPaths instance for testing.
 
     Args:
         temp_dir: Temporary directory fixture
 
     Returns:
+        SetupPaths: Configured SetupPaths instance
+    """
+    return SetupPaths.with_project_root(temp_dir)
+
+
+@pytest.fixture
+def setup_files(temp_dir: Path, setup_paths: SetupPaths) -> dict[str, Path]:
+    """
+    Create a dictionary of test setup files.
+
+    Args:
+        temp_dir: Temporary directory fixture
+        setup_paths: SetupPaths fixture
+
+    Returns:
         Dict[str, Path]: Dictionary mapping file keys to their paths
     """
+    # Use SetupPaths for file paths
     files = {
-        "architecture": temp_dir / ".erasmus/.architecture.md",
-        "progress": temp_dir / ".progress.md",
-        "tasks": temp_dir / ".tasks.md",
+        "architecture": setup_paths.markdown_files["architecture"],
+        "progress": setup_paths.markdown_files["progress"],
+        "tasks": setup_paths.markdown_files["tasks"],
     }
 
     # Create empty files
     for path in files.values():
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.touch()
 
     return files

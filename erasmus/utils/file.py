@@ -43,8 +43,11 @@ def safe_write_file(file_path: str | Path, content: str) -> bool:
     try:
         path = Path(file_path)
 
-        # Create parent directories if they don't exist
-        path.parent.mkdir(parents=True, exist_ok=True)
+        # Ensure parent directory is a directory, not a file
+        parent = path.parent
+        if parent.exists() and not parent.is_dir():
+            parent.unlink()
+        parent.mkdir(parents=True, exist_ok=True)
 
         # Write the new content
         path.write_text(content)

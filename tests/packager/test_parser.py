@@ -2,7 +2,7 @@
 
 import pytest
 from pathlib import Path
-from src.parser import (
+from packager.parser import (
     normalize_import_name,
     extract_imports,
     strip_imports,
@@ -21,43 +21,79 @@ def test_normalize_import_name():
 
 def test_extract_imports():
     """Test import extraction from source code."""
-    source = """
-    import os
-    from sys import version
-    from pathlib import Path as P
-    from .utils import helper
-    import numpy as np
-    from pandas import DataFrame
-    """
+    source = """import os
+from sys import version
+from pathlib import Path as P
+from .utils import helper
+from ..parent import thing
+from . import local
+import numpy as np
+from pandas import DataFrame
+from module import *"""
 
     imports = extract_imports(source)
-    expected = {"os", "sys", "pathlib", "numpy", "pandas"}
-    assert imports == expected
+
+    # Check stdlib imports
+    assert "os" in imports.stdlib
+    assert "sys.version" in imports.stdlib
+    assert "pathlib.Path" in imports.stdlib
+
+    # Check third-party imports
+    assert "numpy" in imports.third_party
+    assert "pandas.DataFrame" in imports.third_party
+    assert "module" in imports.third_party  # Star import adds just the module
+
+    # Check relative imports
+    assert ".utils.helper" in imports.relative
+    assert "..parent.thing" in imports.relative
+    assert ".local" in imports.relative
+
+    # Test the full set behavior
+    all_imports = imports.get_all_imports()
+    expected = {
+        "os",
+        "sys.version",
+        "pathlib.Path",  # stdlib
+        "numpy",
+        "pandas.DataFrame",
+        "module",  # third-party
+        ".utils.helper",
+        "..parent.thing",
+        ".local",  # relative
+    }
+    assert all_imports == expected
 
 
 def test_extract_imports_with_errors():
     """Test import extraction with syntax errors."""
-    source = """
-    import os
-    from sys import version
-    def broken_function(
-    """
+    # Valid imports mixed with syntax errors
+    source = """import os
+from sys import version
+from broken import  # Syntax error
+import pandas as pd
+from .utils import  # Another error
+import numpy as np"""
 
     imports = extract_imports(source)
-    assert "os" in imports
-    assert "sys" in imports
+
+    # Should still extract valid imports
+    assert "os" in imports.stdlib
+    assert "sys.version" in imports.stdlib
+    assert "pandas" in imports.third_party
+    assert "numpy" in imports.third_party
+
+    # The total number of imports should match valid ones
+    assert len(imports.get_all_imports()) == 4
 
 
 def test_strip_imports():
     """Test stripping imports from source code."""
-    source = """
-    import os
-    from sys import version
-    
-    def main():
-        print(os.getcwd())
-        print(version)
-    """
+    source = """import os
+from sys import version
+
+def main():
+    print(os.getcwd())
+    print(version)"""
 
     stripped = strip_imports(source)
     assert "import os" not in stripped
@@ -69,15 +105,13 @@ def test_strip_imports():
 
 def test_strip_imports_preserve_comments():
     """Test stripping imports while preserving comments."""
-    source = """
-    # This is a comment
-    import os
-    from sys import version
-    
-    def main():
-        # Another comment
-        print(os.getcwd())
-    """
+    source = """# This is a comment
+import os
+from sys import version
+
+def main():
+    # Another comment
+    print(os.getcwd())"""
 
     stripped = strip_imports(source, preserve_comments=True)
     assert "# This is a comment" in stripped
@@ -89,13 +123,11 @@ def test_parse_file(tmp_path):
     """Test parsing a Python file."""
     # Create a temporary Python file
     file_path = tmp_path / "test.py"
-    file_path.write_text("""
-    import os
-    from sys import version
-    
-    def main():
-        print(os.getcwd())
-    """)
+    file_path.write_text("""import os
+from sys import version
+
+def main():
+    print(os.getcwd())""")
 
     imports, stripped = parse_file(file_path)
     assert "os" in imports
@@ -109,15 +141,11 @@ def test_parse_multiple_files(tmp_path):
     file1 = tmp_path / "test1.py"
     file2 = tmp_path / "test2.py"
 
-    file1.write_text("""
-    import os
-    from sys import version
-    """)
+    file1.write_text("""import os
+from sys import version""")
 
-    file2.write_text("""
-    import numpy as np
-    from pandas import DataFrame
-    """)
+    file2.write_text("""import numpy as np
+from pandas import DataFrame""")
 
     imports, stripped_files = parse_multiple_files([file1, file2])
     expected = {"os", "sys", "numpy", "pandas"}

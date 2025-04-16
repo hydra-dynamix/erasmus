@@ -45,7 +45,7 @@ class BaseWatcher(FileSystemEventHandler):
         self.callback = callback  # Store the callback
         self._path_mapping = {}
         for key, path in file_paths.items():
-            resolved = str(path.resolve())
+            resolved = str(Path(path).resolve(strict=False))
             self._path_mapping[resolved] = key
             logger.debug(f"Watching {key}: {resolved}")
         self._event_lock = Lock()
@@ -81,10 +81,12 @@ class BaseWatcher(FileSystemEventHandler):
             File key if found, None otherwise
         """
         try:
-            resolved_path = str(Path(file_path).resolve())
-            logger.debug(f"Looking up file key for: {resolved_path}")
-            logger.debug(f"Known paths: {list(self._path_mapping.keys())}")
-            return self._path_mapping.get(resolved_path)
+            resolved_path = str(Path(file_path).resolve(strict=False))
+            logger.debug(f"[DEBUG] Looking up file key for: {resolved_path}")
+            logger.debug(f"[DEBUG] Known path mapping: {self._path_mapping}")
+            file_key = self._path_mapping.get(resolved_path)
+            logger.debug(f"[DEBUG] Resulting file key: {file_key}")
+            return file_key
         except Exception as e:
             logger.exception(f"Error getting file key: {e}")
             return None
@@ -117,7 +119,7 @@ class BaseWatcher(FileSystemEventHandler):
                         content = f.read()
                     # Always accept the content since validation is disabled
                     logger.info(f"📝 Detected changes in {file_key}")
-                    self.callback(file_key, content)
+                    self.callback(file_key)
                 else:
                     # For deletion events, we still want to notify with empty content
                     logger.info(f"File deleted: {file_key}")
@@ -186,13 +188,20 @@ class ScriptWatcher(BaseWatcher):
     - Add dynamic unit test runner
     - Add context section for focus=path/to/script.py to track active development
     """
-    def __init__(self, file_paths: dict[str, Path | str], callback: Callable[[str], None]):
+    def __init__(self, file_paths, callback: Callable[[str], None]):
         """Initialize the script watcher.
 
         Args:
-            file_paths: Dictionary mapping script keys to paths
+            file_paths: Dictionary mapping script keys to paths, or a single Path/str
             callback: Function to call when scripts change
         """
+        # Accept either dict or Path/str
+        if isinstance(file_paths, (str, Path)):
+            file_paths = {"test_script": Path(file_paths)}
+        elif isinstance(file_paths, dict):
+            file_paths = {k: Path(v) for k, v in file_paths.items()}
+        else:
+            raise TypeError("file_paths must be a dict, Path, or str")
         # Validate all paths
         normalized_paths = {}
         for key, path in file_paths.items():
@@ -280,11 +289,11 @@ class WatcherFactory:
         """
         return MarkdownWatcher(file_paths, callback)
 
-    def create_script_watcher(self, file_paths: dict[str, Path], callback: Callable[[str], None]) -> ScriptWatcher:
+    def create_script_watcher(self, file_paths, callback: Callable[[str], None]) -> ScriptWatcher:
         """Create a script watcher.
 
         Args:
-            file_paths: Dictionary mapping script keys to paths
+            file_paths: Dictionary mapping script keys to paths, or a single Path/str
             callback: Function to call when scripts change
 
         Returns:
@@ -303,7 +312,7 @@ class WatcherFactory:
             Configured Observer
         """
         observer = Observer()
-        observer.schedule(watcher, directory, recursive=False)
+        observer.schedule(watcher, directory, recursive=True)
         self.observers.append(observer)
         return observer
 

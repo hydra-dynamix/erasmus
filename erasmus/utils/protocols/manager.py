@@ -34,10 +34,36 @@ class ProtocolManager(BaseModel):
     transitions: List[ProtocolTransition] = Field(default_factory=list)
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __init__(self, **data):
-        """Initialize the ProtocolManager."""
-        if "path_manager" not in data:
-            data["path_manager"] = PathManager()
+    def __init__(
+        self,
+        protocols_dir: Optional[Path] = None,
+        stored_protocols_dir: Optional[Path] = None,
+        registry_file: Optional[Path] = None,
+        path_manager: Optional[PathManager] = None,
+        **data,
+    ):
+        """Initialize the ProtocolManager.
+
+        Args:
+            protocols_dir: Optional path to protocols directory
+            stored_protocols_dir: Optional path to stored protocols directory
+            registry_file: Optional path to registry file
+            path_manager: Optional PathManager instance
+            **data: Additional data for BaseModel
+        """
+        if path_manager:
+            data["path_manager"] = path_manager
+        elif protocols_dir and stored_protocols_dir and registry_file:
+            # Create a custom PathManager with the provided paths
+            project_root = protocols_dir.parent.parent
+            data["path_manager"] = PathManager(project_root=project_root)
+            data["path_manager"].protocols_dir = protocols_dir
+            data["path_manager"].stored_protocols_dir = stored_protocols_dir
+            data["path_manager"].registry_file = registry_file
+        else:
+            # Create a default PathManager with current directory
+            data["path_manager"] = PathManager(project_root=Path.cwd())
+
         super().__init__(**data)
 
     @classmethod

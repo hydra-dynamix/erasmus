@@ -1,13 +1,13 @@
 """Erasmus CLI entry point."""
 
-import click
-import logging
-import os
 from pathlib import Path
 
 from erasmus.utils.paths import SetupPaths
 from erasmus.utils.logging import get_logger
 from erasmus.cli.commands import cli
+from erasmus.inference import ErasmusInference
+import click
+import asyncio
 
 logger = get_logger(__name__)
 
@@ -23,18 +23,25 @@ def get_setup_paths(project_root: Path = None) -> SetupPaths:
     """
     return SetupPaths.with_project_root(project_root or Path.cwd())
 
-
+@click.group()
 def main():
     """Main entry point for the Erasmus CLI."""
     # Initialize setup paths
     setup_paths = get_setup_paths()
-
-    # Ensure directories exist
     setup_paths.ensure_directories()
 
-    # Run the CLI
-    cli()
+@main.command()
+@click.option('--message', '-m', multiple=True, help='Message(s) for chat.')
+def inference(message):
+    """Run a chat/inference session with tool call support."""
+    ei = ErasmusInference()
+    messages = [{"role": "user", "content": m} for m in message]
+    async def run():
+        result = await ei.chat(messages)
+        print(result)
+    asyncio.run(run())
 
+main.add_command(cli)
 
 if __name__ == "__main__":
     main()

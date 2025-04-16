@@ -1,22 +1,17 @@
-"""Memory usage analysis for file synchronization."""
-
 import os
-import tracemalloc
-from pathlib import Path
-
 import pytest
 import pytest_asyncio
-
+import tracemalloc
+from pathlib import Path
 from erasmus.sync.file_sync import FileSynchronizer
+from erasmus.utils.paths import PathManager
 
 
 @pytest_asyncio.fixture
-async def memory_test_env(tmp_path) -> tuple[Path, Path, FileSynchronizer]:
+async def memory_test_env(tmp_path) -> tuple[Path, FileSynchronizer]:
     """Create a test environment with workspace and rules directories."""
     workspace = tmp_path / "workspace"
-    rules_dir = workspace / ".cursorrules"
     workspace.mkdir()
-    rules_dir.mkdir()
 
     # Create test files with varying sizes
     file_sizes = {
@@ -27,25 +22,33 @@ async def memory_test_env(tmp_path) -> tuple[Path, Path, FileSynchronizer]:
 
     for filename, size in file_sizes.items():
         file_path = workspace / filename
-        file_path.write_text('x' * size)
+        file_path.write_text("x" * size)
+
+    # Create PathManager and initialize rules file
+    path_manager = PathManager(project_root=workspace)
+    path_manager.rules_file = workspace / ".cursorrules" / "rules.json"
 
     # Create rules file with tracked files
-    rules_file = rules_dir / "rules.json"
-    rules_file.write_text('{' + ', '.join([f'"{filename}": "test_component"' for filename in file_sizes]) + '}')
+    os.makedirs(os.path.dirname(str(path_manager.rules_file)), exist_ok=True)
+    with open(path_manager.rules_file, "w") as f:
+        f.write(
+            "{" + ", ".join([f'"{filename}": "test_component"' for filename in file_sizes]) + "}"
+        )
 
     # Create synchronizer
-    syncer = FileSynchronizer(workspace, rules_dir)
+    syncer = FileSynchronizer(path_manager)
     await syncer.start()
 
-    yield workspace, rules_dir, syncer
+    yield workspace, syncer
 
     # Cleanup
     await syncer.stop()
 
+
 @pytest.mark.asyncio
 async def test_initial_sync_memory(memory_test_env):
     """Test memory usage during initial file synchronization."""
-    workspace, rules_dir, syncer = memory_test_env
+    workspace, syncer = memory_test_env
 
     # Start memory tracing
     tracemalloc.start()
@@ -65,10 +68,11 @@ async def test_initial_sync_memory(memory_test_env):
     # Assert memory usage is within reasonable limits
     assert peak < 50 * 10**6, f"Memory usage spike too high: {peak / 10**6} MB"
 
+
 @pytest.mark.asyncio
 async def test_repeated_sync_memory(memory_test_env):
     """Test memory usage during repeated file synchronizations."""
-    workspace, rules_dir, syncer = memory_test_env
+    workspace, syncer = memory_test_env
 
     # Initial sync
     await syncer.sync_all()
@@ -97,10 +101,11 @@ async def test_repeated_sync_memory(memory_test_env):
     # Assert memory usage is within reasonable limits
     assert peak < 50 * 10**6, f"Memory usage spike too high: {peak / 10**6} MB"
 
+
 @pytest.mark.asyncio
 async def test_status_check_memory(memory_test_env):
     """Test memory usage during sync status checks."""
-    workspace, rules_dir, syncer = memory_test_env
+    workspace, syncer = memory_test_env
 
     # Initial sync
     await syncer.sync_all()
@@ -110,7 +115,7 @@ async def test_status_check_memory(memory_test_env):
 
     # Multiple status checks
     for _ in range(10):
-        await syncer.get_sync_status()
+        status = syncer.get_status()
 
     # Get memory usage
     current, peak = tracemalloc.get_traced_memory()
@@ -124,13 +129,12 @@ async def test_status_check_memory(memory_test_env):
     # Assert memory usage is within reasonable limits
     assert peak < 50 * 10**6, f"Memory usage spike too high: {peak / 10**6} MB"
 
+
 @pytest.mark.asyncio
 async def test_large_number_of_files_memory(tmp_path):
     """Test memory usage when handling a large number of files."""
     workspace = tmp_path / "workspace"
-    rules_dir = workspace / ".cursorrules"
     workspace.mkdir()
-    rules_dir.mkdir()
 
     # Create many small files
     num_files = 1000
@@ -138,12 +142,19 @@ async def test_large_number_of_files_memory(tmp_path):
         file_path = workspace / f"file_{i}.txt"
         file_path.write_text(f"Content for file {i}")
 
+    # Create PathManager and initialize rules file
+    path_manager = PathManager(project_root=workspace)
+    path_manager.rules_file = workspace / ".cursorrules" / "rules.json"
+
     # Create rules file with tracked files
-    rules_file = rules_dir / "rules.json"
-    rules_file.write_text('{' + ', '.join([f'"file_{i}.txt": "test_component"' for i in range(num_files)]) + '}')
+    os.makedirs(os.path.dirname(str(path_manager.rules_file)), exist_ok=True)
+    with open(path_manager.rules_file, "w") as f:
+        f.write(
+            "{" + ", ".join([f'"file_{i}.txt": "test_component"' for i in range(num_files)]) + "}"
+        )
 
     # Create synchronizer
-    syncer = FileSynchronizer(workspace, rules_dir)
+    syncer = FileSynchronizer(path_manager)
     await syncer.start()
 
     # Start memory tracing

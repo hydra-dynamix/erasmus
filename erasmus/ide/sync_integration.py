@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 
 from erasmus.utils.file import safe_read_file, safe_write_file
+from erasmus.utils.paths import SetupPaths
 
 logger = logging.getLogger(__name__)
 
@@ -29,10 +30,15 @@ class SyncIntegration:
         self._sync_tasks = []
         self._last_sync = {}
         self._update_retries = {}
+
+        # Initialize SetupPaths
+        self.setup_paths = SetupPaths.with_project_root(workspace_path)
+
+        # Use SetupPaths for file paths
         self.source_files = {
-            "architecture": workspace_path / ".erasmus/.architecture.md",
-            "progress": workspace_path / ".progress.md",
-            "tasks": workspace_path / ".tasks.md",
+            "architecture": self.setup_paths.markdown_files["architecture"],
+            "progress": self.setup_paths.markdown_files["progress"],
+            "tasks": self.setup_paths.markdown_files["tasks"],
         }
 
     async def start(self):

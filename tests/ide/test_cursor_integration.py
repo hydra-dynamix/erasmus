@@ -1,154 +1,118 @@
-"""Test module for cursor IDE integration."""
-
-import asyncio
-import json
+"""Test cursor integration functionality."""
 
 import pytest
 import pytest_asyncio
-
+import json
+from pathlib import Path
 from erasmus.ide.cursor_integration import CursorContextManager
+from erasmus.utils.paths import SetupPaths
+import asyncio
+
+
+@pytest.fixture
+def setup_paths(tmp_path):
+    """Create a test environment with SetupPaths."""
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    return SetupPaths.with_project_root(workspace)
 
 
 @pytest_asyncio.fixture
-async def cursor_manager(tmp_path):
-    """Create a CursorContextManager instance for testing."""
-    workspace = tmp_path / "workspace"
-    workspace.mkdir()
-    manager = CursorContextManager(workspace)
+async def context_manager(setup_paths):
+    """Create a test environment with a CursorContextManager."""
+    # Create test files
+    for file in [".architecture.md", ".progress.md", ".tasks.md"]:
+        path = setup_paths.project_root / file
+        path.write_text(f"Test content for {file}")
 
-    # Start the manager
+    # Initialize context manager
+    manager = CursorContextManager(setup_paths.project_root)
     await manager.start()
+    try:
+        yield manager
+    finally:
+        await manager.stop()
 
-    # Wait for initialization
-    await asyncio.sleep(0.2)
-
-    yield manager
-
-    # Stop the manager
-    await manager.stop()
-
-    # Wait for cleanup
-    await asyncio.sleep(0.2)
 
 @pytest.mark.asyncio
-async def test_initialization(cursor_manager, tmp_path):
-    """Test initialization of CursorContextManager."""
-    await cursor_manager.start()
+async def test_initialization(context_manager, setup_paths):
+    """Test context manager initialization."""
+    assert setup_paths.rules_file.exists()
+    rules = json.loads(setup_paths.rules_file.read_text())
+    assert rules == {}  # Initial state should be empty
 
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    assert rules_file.exists()
-    assert rules_file.read_text() == "{}"
-
-@pytest.mark.asyncio
-async def test_queue_and_process_updates(cursor_manager, tmp_path):
-    """Test queuing and processing updates."""
-    # Queue some updates
-    await cursor_manager.queue_update("architecture", "Test architecture")
-    await asyncio.sleep(0.1)  # Wait for first update
-
-    await cursor_manager.queue_update("progress", "Test progress")
-    await asyncio.sleep(0.1)  # Wait for second update
-
-    await cursor_manager.queue_update("tasks", {"1": {"description": "Test Task"}})
-    await asyncio.sleep(0.1)  # Wait for third update
-
-    # Check that updates were written to file
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    rules = json.loads(rules_file.read_text())
-
-    assert rules["architecture"] == "Test architecture"
-    assert rules["progress"] == "Test progress"
-    assert rules["tasks"] == {"1": {"description": "Test Task"}}
 
 @pytest.mark.asyncio
-async def test_batched_updates(cursor_manager, tmp_path):
-    """Test that updates are properly batched."""
-    # Queue multiple updates in quick succession
-    for i in range(5):
-        await cursor_manager.queue_update("test", f"value{i}")
-        await asyncio.sleep(0.05)  # Brief wait between updates
+async def test_queue_single_update(context_manager, setup_paths):
+    """Test queuing and processing a single update."""
+    await context_manager.queue_update("context", "Test update")
+    await context_manager.process_updates()  # Explicitly process updates
 
-    # Wait for updates to be processed
-    await asyncio.sleep(0.2)
+    rules = json.loads(setup_paths.rules_file.read_text())
+    assert rules["context"] == "Test update"
 
-    # Check that final update was written
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    rules = json.loads(rules_file.read_text())
-    assert rules["test"] == "value4"
 
 @pytest.mark.asyncio
-async def test_external_file_changes(cursor_manager, tmp_path):
-    """Test handling of external changes to the rules file."""
-    # Make an external change to the rules file
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    external_content = {
-        "architecture": "External architecture",
-        "progress": "External progress",
-    }
-    rules_file.write_text(json.dumps(external_content))
+async def test_queue_multiple_updates(context_manager, setup_paths):
+    """Test queuing and processing multiple updates."""
+    updates = ["Update 1", "Update 2", "Update 3"]
+    for update in updates:
+        await context_manager.queue_update("context", update)
+    await context_manager.process_updates()
 
-    # Wait for the change to be detected and processed
-    await asyncio.sleep(0.2)
+    rules = json.loads(setup_paths.rules_file.read_text())
+    assert rules["context"] == updates[-1]  # Should keep last update
 
-    # Queue a new update
-    await cursor_manager.queue_update("tasks", {"1": {"description": "New Task"}})
-    await asyncio.sleep(0.2)  # Wait for update to be processed
-
-    # Check that both external and queued changes are present
-    rules = json.loads(rules_file.read_text())
-    assert rules["architecture"] == "External architecture"
-    assert rules["progress"] == "External progress"
-    assert rules["tasks"] == {"1": {"description": "New Task"}}
 
 @pytest.mark.asyncio
-async def test_concurrent_updates(cursor_manager, tmp_path):
+async def test_file_change_handling(context_manager, setup_paths):
+    """Test handling of file changes."""
+    file = ".tasks.md"
+    new_content = "Updated tasks content"
+
+    # Update file
+    (setup_paths.project_root / file).write_text(new_content)
+    await context_manager.handle_file_change(file)
+    await context_manager.process_updates()
+
+    rules = json.loads(setup_paths.rules_file.read_text())
+    assert rules[file] == new_content
+
+
+@pytest.mark.asyncio
+async def test_error_handling(context_manager, setup_paths):
+    """Test error handling during updates."""
+    # Create invalid rules file
+    setup_paths.rules_file.write_text("invalid json")
+
+    # Queue update and process
+    await context_manager.queue_update("context", "Test update")
+    await context_manager.process_updates()
+
+    # Should recover and write valid JSON
+    rules = json.loads(setup_paths.rules_file.read_text())
+    assert rules["context"] == "Test update"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_updates(context_manager, setup_paths):
     """Test handling of concurrent updates."""
-    await cursor_manager.start()
+    # Queue multiple updates concurrently
+    await asyncio.gather(
+        *[context_manager.queue_update("context", f"Update {i}") for i in range(5)]
+    )
+    await context_manager.process_updates()
 
-    # Queue updates from multiple sources
-    await cursor_manager.queue_update("component1", "value1")
-    await asyncio.sleep(0.2)  # Wait for first update
+    rules = json.loads(setup_paths.rules_file.read_text())
+    assert rules["context"] == "Update 4"  # Should keep last update
 
-    # Queue second update
-    await cursor_manager.queue_update("component2", "value2")
-    await asyncio.sleep(0.2)  # Wait for second update
-
-    # Queue third update
-    await cursor_manager.queue_update("component3", "value3")
-    await asyncio.sleep(0.2)  # Wait for final update
-
-    # Check final state
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    rules = json.loads(rules_file.read_text())
-    assert rules["component1"] == "value1"
-    assert rules["component2"] == "value2"
-    assert rules["component3"] == "value3"
-
-    await cursor_manager.stop()
 
 @pytest.mark.asyncio
-async def test_invalid_updates(cursor_manager, tmp_path):
-    """Test handling of invalid updates."""
-    await cursor_manager.start()
-
-    # Queue an invalid update
-    await cursor_manager.queue_update("tasks", "invalid")
-
-    # Check that file is still valid JSON
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    content = rules_file.read_text()
-    assert json.loads(content) is not None
-
-@pytest.mark.asyncio
-async def test_metadata_handling(cursor_manager, tmp_path):
-    """Test handling of metadata in rules file."""
-    await cursor_manager.start()
-
-    # Queue an update
-    await cursor_manager.queue_update("test", "value")
-
-    # Check that update was written
-    rules_file = tmp_path / "workspace" / ".cursorrules" / "rules.json"
-    rules = json.loads(rules_file.read_text())
-
-    assert rules["test"] == "value"
+async def test_get_status(context_manager):
+    """Test getting context manager status."""
+    status = context_manager.get_status()
+    assert status["is_running"] is True
+    assert status["has_errors"] is False
+    assert not status["pending_updates"]
+    assert not status["errors"]
+    assert isinstance(status["last_update"], dict)

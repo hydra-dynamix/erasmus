@@ -1,13 +1,8 @@
 """Tests for the stdlib module."""
 
-import sys
 import pytest
 from typing import Set
-
-from src.stdlib import (
-    is_stdlib_module,
-    filter_stdlib_imports,
-)
+from packager.stdlib import is_stdlib_module, filter_stdlib_imports
 
 
 @pytest.fixture

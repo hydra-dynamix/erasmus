@@ -314,30 +314,30 @@ def watch():
     with LogContext(logger, "watch"):
         try:
             # Initialize file watchers
-
+            setup_paths = SetupPaths.with_project_root(Path.cwd())
             factory = WatcherFactory()
 
             # Create watchers for markdown files
             markdown_watcher = factory.create_markdown_watcher(
-                SETUP_PATHS.markdown_files, update_specific_file
+                setup_paths.markdown_files, update_specific_file
             )
 
             # Create watchers for protocol files
             protocol_files = {
-                "agent_registry": SETUP_PATHS.protocols_dir / "agent_registry.json",
-                "protocols": SETUP_PATHS.protocols_dir / "stored",
+                "agent_registry": setup_paths.protocols_dir / "agent_registry.json",
+                "protocols": setup_paths.protocols_dir / "stored",
             }
             protocol_watcher = factory.create_markdown_watcher(
                 protocol_files,
-                lambda file_type, content: handle_protocol_context(SETUP_PATHS, file_type),
+                lambda file_type, content: handle_protocol_context(setup_paths, file_type),
             )
 
             # Create observers for each watcher
             markdown_observer = factory.create_observer(
-                markdown_watcher, str(SETUP_PATHS.project_root)
+                markdown_watcher, str(setup_paths.project_root)
             )
             protocol_observer = factory.create_observer(
-                protocol_watcher, str(SETUP_PATHS.protocols_dir)
+                protocol_watcher, str(setup_paths.protocols_dir)
             )
 
             # Start all watchers

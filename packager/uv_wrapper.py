@@ -20,8 +20,8 @@ def generate_unix_bootstrap(imports: Set[str]) -> str:
     Returns:
         Bash script for Unix systems
     """
-    # Convert imports to space-separated string
-    packages = " ".join(sorted(imports))
+    # Convert imports to space-separated string with consistent ordering
+    packages = " ".join(sorted(imports, key=str.lower))
 
     return f"""#!/bin/bash
 # Cross-platform uv bootstrap
@@ -43,17 +43,7 @@ if [[ "$OS" == "Linux" || "$OS" == "Darwin" ]]; then
   exit $?
 fi
 
-# Windows fallback
-@echo off
-where uv >nul 2>nul
-if %errorlevel% neq 0 (
-  echo Installing uv using winget...
-  winget install --id=astral-sh.uv -e
-)
-
-uv add {packages}
-uv run "%~f0" %*
-exit /b
+exit 1  # Unsupported OS
 """
 
 
@@ -66,10 +56,11 @@ def generate_windows_bootstrap(imports: Set[str]) -> str:
     Returns:
         Batch script for Windows systems
     """
-    # Convert imports to space-separated string
-    packages = " ".join(sorted(imports))
+    # Convert imports to space-separated string with consistent ordering
+    packages = " ".join(sorted(imports, key=str.lower))
 
     return f"""@echo off
+REM Windows uv bootstrap
 where uv >nul 2>nul
 if %errorlevel% neq 0 (
   echo Installing uv using winget...

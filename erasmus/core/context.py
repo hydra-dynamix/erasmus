@@ -25,6 +25,15 @@ class ContextValidationError(Exception):
 class ContextFileHandler:
     """Handles reading, writing, and validation of context files."""
 
+    def backup_rules(self):
+        """Backup the current rules and global rules files to .bak files in the context directory."""
+        if self.rules_file.exists():
+            backup_path = self.context_dir / "rules.md.bak"
+            shutil.copy2(self.rules_file, backup_path)
+        if self.global_rules_file.exists():
+            backup_path = self.context_dir / "global_rules.md.bak"
+            shutil.copy2(self.global_rules_file, backup_path)
+
     def __init__(self, workspace_root: str | Path):
         """Initialize the context file handler.
 
@@ -33,10 +42,10 @@ class ContextFileHandler:
         """
         self.setup_paths = SetupPaths.with_project_root(workspace_root)
         self.workspace_root = Path(workspace_root)
-        self.context_dir = self.workspace_root / ".erasmus" / "context"
-        self.rules_file = self.setup_paths.rules_file
-        self.global_rules_file = self.setup_paths.global_rules_file
-        self.context_file = self.setup_paths.rules_file
+        self.context_dir = self.workspace_root / ".erasmus"
+        self.rules_file = self.context_dir / "rules.md"
+        self.global_rules_file = self.context_dir / "global_rules.md"
+        self.context_file = self.context_dir / "context.json"
 
         # Create context directory if it doesn't exist
         self.context_dir.mkdir(exist_ok=True)
@@ -101,36 +110,52 @@ class ContextFileHandler:
 
         Returns:
             Dict containing parsed rules
+        Raises:
+            ContextValidationError: If the rules file is invalid or cannot be parsed
         """
         try:
             content = self.rules_file.read_text()
-            return self._parse_markdown_rules(content)
+            rules = self._parse_markdown_rules(content)
+            if not rules or not any(isinstance(v, (list, dict)) and v for v in rules.values()):
+                raise ContextValidationError("Rules file is invalid or contains no valid sections.")
+            return rules
         except FileNotFoundError:
             return {}
+        except ContextValidationError:
+            raise
         except Exception as e:
             logger.error(f"Failed to read rules file: {e}")
-            return {}
+            raise ContextValidationError(f"Rules file parsing failed: {e}")
 
     def read_global_rules(self) -> dict[str, list[str] | dict[str, list[str]]]:
         """Read and parse the global rules file.
 
         Returns:
             Dict containing parsed global rules
+        Raises:
+            ContextValidationError: If the global rules file is invalid or cannot be parsed
         """
         try:
             content = self.global_rules_file.read_text()
-            return self._parse_markdown_rules(content)
+            rules = self._parse_markdown_rules(content)
+            if not rules or not any(isinstance(v, (list, dict)) and v for v in rules.values()):
+                raise ContextValidationError("Global rules file is invalid or contains no valid sections.")
+            return rules
         except FileNotFoundError:
             return {}
+        except ContextValidationError:
+            raise
         except Exception as e:
             logger.error(f"Failed to read global rules file: {e}")
-            return {}
+            raise ContextValidationError(f"Global rules file parsing failed: {e}")
 
     def read_context(self) -> dict[str, Any]:
         """Read and parse the context file.
 
         Returns:
             Dict containing context configuration
+        Raises:
+            ContextValidationError: If the context file is invalid or cannot be parsed
         """
         try:
             if not self.context_file.exists():
@@ -144,26 +169,24 @@ class ContextFileHandler:
 
             content = self.context_file.read_text()
             context = json.loads(content)
+            # Validate required fields
+            required_fields = [
+                "project_root",
+                "active_rules",
+                "global_rules",
+                "file_patterns",
+                "excluded_paths",
+            ]
+            missing = [field for field in required_fields if field not in context]
+            if missing:
+                raise ContextValidationError(f"Context file missing required fields: {missing}")
             return context
 
-        except json.JSONDecodeError:
-            # If JSON is invalid, return default context
-            return {
-                "project_root": str(self.workspace_root),
-                "active_rules": [],
-                "global_rules": [],
-                "file_patterns": ["*.py", "*.md"],
-                "excluded_paths": ["venv/", "__pycache__/"],
-            }
+        except json.JSONDecodeError as e:
+            raise ContextValidationError(f"Context file is invalid JSON: {e}")
         except Exception as e:
             logger.error(f"Failed to read context file: {e}")
-            return {
-                "project_root": str(self.workspace_root),
-                "active_rules": [],
-                "global_rules": [],
-                "file_patterns": ["*.py", "*.md"],
-                "excluded_paths": ["venv/", "__pycache__/"],
-            }
+            raise ContextValidationError(f"Context file parsing failed: {e}")
 
     def update_context(self, new_context: dict[str, Any], partial: bool = False) -> None:
         """Update the context file.

@@ -13,7 +13,7 @@ from pathlib import Path
 # Add the src directory to the path so we can import the collector module
 sys.path.insert(0, "src")
 
-from collector import (
+from packager.collector import (
     collect_py_files,
     collect_files_with_extensions,
     collect_files_with_filter,
@@ -41,20 +41,20 @@ class TestCollectorModule(unittest.TestCase):
         # Main Python files
         self.create_file("main.py", "print('Main module')")
         self.create_file("utils.py", "def util_func(): pass")
-        
+
         # Subdirectory with Python files
         os.mkdir(os.path.join(self.base_path, "subdir"))
         self.create_file("subdir/module.py", "def module_func(): pass")
         self.create_file("subdir/another.py", "class AnotherClass: pass")
-        
+
         # Non-Python files
         self.create_file("README.md", "# Test Project")
         self.create_file("config.json", "{}")
-        
+
         # Files that should be excluded
         os.mkdir(os.path.join(self.base_path, "__pycache__"))
         self.create_file("__pycache__/module.cpython-39.pyc", "# Compiled")
-        
+
         # Another subdirectory with mixed files
         os.mkdir(os.path.join(self.base_path, "src"))
         self.create_file("src/core.py", "# Core module")
@@ -65,20 +65,20 @@ class TestCollectorModule(unittest.TestCase):
         """Helper to create a file with content in the test directory."""
         full_path = os.path.join(self.base_path, relative_path)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
-        with open(full_path, 'w') as f:
+        with open(full_path, "w") as f:
             f.write(content)
 
     def test_collect_py_files(self):
         """Test collecting Python files."""
         py_files = collect_py_files(self.base_path)
-        
+
         # We should find 5 Python files
         self.assertEqual(len(py_files), 5)
-        
+
         # Check that all collected files have .py extension
         for file in py_files:
-            self.assertTrue(file.endswith('.py'))
-        
+            self.assertTrue(file.endswith(".py"))
+
         # Check that specific files are included
         expected_files = [
             os.path.join(self.base_path, "main.py"),
@@ -87,48 +87,45 @@ class TestCollectorModule(unittest.TestCase):
             os.path.join(self.base_path, "subdir/another.py"),
             os.path.join(self.base_path, "src/core.py"),
         ]
-        
+
         # Convert to sets for comparison (order doesn't matter)
         self.assertEqual(set(py_files), set(expected_files))
 
     def test_collect_files_with_extensions(self):
         """Test collecting files with specific extensions."""
         # Test with multiple extensions
-        js_css_files = collect_files_with_extensions(
-            self.base_path, extensions=['.js', '.css']
-        )
-        
+        js_css_files = collect_files_with_extensions(self.base_path, extensions=[".js", ".css"])
+
         # We should find 2 files (.js and .css)
         self.assertEqual(len(js_css_files), 2)
-        
+
         # Check that specific files are included
         expected_files = [
             os.path.join(self.base_path, "src/helpers.js"),
             os.path.join(self.base_path, "src/styles.css"),
         ]
-        
+
         # Convert to sets for comparison (order doesn't matter)
         self.assertEqual(set(js_css_files), set(expected_files))
 
     def test_collect_files_with_filter(self):
         """Test collecting files using a custom filter function."""
+
         # Filter function to find files containing 'module' in their name
         def filter_func(file_path):
-            return 'module' in os.path.basename(file_path).lower()
-        
-        module_files = collect_files_with_filter(
-            self.base_path, filter_func=filter_func
-        )
-        
+            return "module" in os.path.basename(file_path).lower()
+
+        module_files = collect_files_with_filter(self.base_path, filter_func=filter_func)
+
         # We should find 1 file with 'module' in their name (the .pyc file is excluded)
         self.assertEqual(len(module_files), 1)
-        
+
         # Check that specific files are included
         expected_files = [
             os.path.join(self.base_path, "subdir/module.py"),
             # The .pyc file should be excluded by default patterns
         ]
-        
+
         # Convert to sets for comparison (order doesn't matter)
         self.assertEqual(set(module_files), set(expected_files))
 
@@ -139,15 +136,15 @@ class TestCollectorModule(unittest.TestCase):
             os.path.join(self.base_path, "subdir/module.py"),
             os.path.join(self.base_path, "src/core.py"),
         ]
-        
+
         relative_paths = get_relative_paths(absolute_paths, self.base_path)
-        
+
         expected_relative_paths = [
             "main.py",
             os.path.join("subdir", "module.py"),
             os.path.join("src", "core.py"),
         ]
-        
+
         self.assertEqual(relative_paths, expected_relative_paths)
 
     def test_exclusion_patterns(self):
@@ -156,12 +153,12 @@ class TestCollectorModule(unittest.TestCase):
         os.mkdir(os.path.join(self.base_path, ".git"))
         self.create_file(".git/config", "# Git config")
         self.create_file(".git/HEAD", "ref: refs/heads/main")
-        
+
         # Create a file that should be excluded
         self.create_file("temp.pyc", "# Compiled Python")
-        
+
         py_files = collect_py_files(self.base_path)
-        
+
         # The .git directory and .pyc file should be excluded
         for file in py_files:
             self.assertFalse(".git" in file)
@@ -179,5 +176,5 @@ class TestCollectorModule(unittest.TestCase):
             collect_py_files(file_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

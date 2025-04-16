@@ -22,16 +22,22 @@ def temp_workspace(tmp_path):
     docs_dir.mkdir()
     scripts_dir.mkdir()
 
-    # Create test files
+    # Create .erasmus directory inside docs
+    erasmus_dir = docs_dir / ".erasmus"
+    erasmus_dir.mkdir(exist_ok=True)
+
+    # Create test files inside .erasmus
     files = {
-        "architecture": docs_dir / ".erasmus/.architecture.md",
-        "progress": docs_dir / ".progress.md",
+        "architecture": erasmus_dir / ".architecture.md",
+        "progress": erasmus_dir / ".progress.md",
+        "tasks": erasmus_dir / ".tasks.md",
         "script": scripts_dir / "test_script.py",
     }
 
     # Initialize files with content
     files["architecture"].write_text("# architecture\n\nTest content")
     files["progress"].write_text("# progress\n\nTest content")
+    files["tasks"].write_text("# tasks\nTest content")
     files["script"].write_text("print('Hello, World!')")
 
     return tmp_path, files
@@ -42,7 +48,8 @@ def test_concurrent_file_updates(temp_workspace):
     workspace, files = temp_workspace
     events = []
 
-    def callback(file_key: str):
+    def callback(file_key: str, content=None):
+        print(f"[TEST CALLBACK] file_key received: {file_key}")
         events.append(file_key)
 
     # Create factory and watchers
@@ -125,7 +132,8 @@ def test_file_system_events(temp_workspace):
     workspace, files = temp_workspace
     events = []
 
-    def callback(file_key: str):
+    def callback(file_key: str, content=None):
+        print(f"[TEST CALLBACK] file_key received: {file_key}")
         events.append(file_key)
 
     # Create factory and watchers

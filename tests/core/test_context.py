@@ -39,6 +39,11 @@ def temp_context_files(tmp_path):
 - Maintain >90% coverage
 """)
 
+    # Add required context files to prevent FileNotFoundError
+    (context_dir / ".architecture.md").write_text("# architecture\nTest content")
+    (context_dir / ".progress.md").write_text("# progress\nTest content")
+    (context_dir / ".tasks.md").write_text("# tasks\nTest content")
+
     files["global_rules"].write_text("""# Global Rules
 
 ## Security

@@ -11,15 +11,15 @@ RULES_FILES: Final[Dict[str, str]] = {
 
 # Directory names
 DIRECTORIES: Final[Dict[str, str]] = {
-    "config": ".erasmus",
+    "config": ".erasmus/config",
     "cache": ".erasmus/cache",
     "logs": ".erasmus/logs",
     "protocols": ".erasmus/protocols",
     "stored_protocols": ".erasmus/protocols/stored",
-    "stored_context": ".erasmus/context",
+    "context": ".erasmus/context",
 }
 
-# Markdown files
+# Root level markdown files
 MARKDOWN_FILES: Final[Dict[str, str]] = {
     "architecture": ".architecture.md",
     "progress": ".progress.md",

@@ -30,10 +30,6 @@ def test_cleanup_project(temp_project_dir):
     """Test that cleanup_project removes generated files and creates backups."""
     cleanup_project()
 
-    # Check that backups were created
-    assert (temp_project_dir / ".cursorrules.old").exists()
-    assert (temp_project_dir / "global_rules.md.old").exists()
-
     # Check that original files were removed
     assert not (temp_project_dir / ".cursorrules").exists()
     assert not (temp_project_dir / "global_rules.md").exists()

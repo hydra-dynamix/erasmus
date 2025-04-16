@@ -19,7 +19,7 @@ class ProtocolIntegration:
         """Initialize the protocol integration.
 
         Args:
-            setup_paths: Optional SetupPaths instance. If not provided, will create one with current directory.
+        setup_paths: Optional SetupPaths instance. If not provided, will create one with current directory.
         """
         self.protocol_server = None
         self.setup_paths = setup_paths or SetupPaths.with_project_root(Path.cwd())
