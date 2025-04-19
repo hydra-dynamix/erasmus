@@ -1,199 +1,285 @@
-"""Path management for Erasmus project files."""
-
-import os
 from pathlib import Path
-import logging
-from typing import Dict, Any, Optional
-from datetime import datetime
-
 from pydantic import BaseModel, Field, ConfigDict
+from dotenv import load_dotenv
+from enum import Enum
+import os
+from typing import NamedTuple
+from .logging import timeit
 
-from .path_constants import (
-    RULES_FILES,
-    DIRECTORIES,
-    MARKDOWN_FILES,
-    SCRIPT_FILES,
-    GLOBAL_RULES_PATHS,
-    IDE_MARKERS,
-    DEFAULT_IDE_ENV,
-)
-from .env_manager import EnvironmentManager
-
-logger = logging.getLogger(__name__)
+load_dotenv()
 
 
-class PathManager(BaseModel):
-    """Manages paths for the Erasmus project."""
+class IDEMetadata(NamedTuple):
+    """Metadata for an IDE environment."""
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    name: str
+    rules_file: str
+    global_rules_path: Path
 
-    project_root: Path
-    env_manager: EnvironmentManager = Field(default_factory=EnvironmentManager)
 
-    # Core directories with public names
-    erasmus_dir: Optional[Path] = None
-    config_dir: Optional[Path] = None
-    cache_dir: Optional[Path] = None
-    logs_dir: Optional[Path] = None
-    context_dir: Optional[Path] = None
-    protocols_dir: Optional[Path] = None
-    stored_protocols_dir: Optional[Path] = None
-    registry_file: Optional[Path] = None
-    rules_file: Optional[Path] = None
-    global_rules_file: Optional[Path] = None
-    env_file: Optional[Path] = None
+class IDE(Enum):
+    """IDE environment with associated metadata."""
 
-    def __init__(self, project_root: Path, **kwargs):
-        """Initialize the PathManager.
+    windsurf = IDEMetadata(
+        name="windsurf",
+        rules_file=".windsurfrules",
+        global_rules_path=Path.home()
+        / ".codeium"
+        / "windsurf"
+        / "memories"
+        / "global_rules.md",
+    )
 
-        Args:
-            project_root: Path to the project root directory
-            **kwargs: Additional path overrides
-        """
-        super().__init__(project_root=project_root, **kwargs)
-        self.ensure_directories()
+    cursor = IDEMetadata(
+        name="cursor",
+        rules_file=".cursorrules",
+        global_rules_path=Path.cwd() / ".cursor" / "global_rules.md",
+    )
 
-    @property
-    def default_erasmus_dir(self) -> Path:
-        """Get the default erasmus directory."""
-        return self.project_root / ".erasmus"
+    codex = IDEMetadata(
+        name="codex",
+        # Local rules file for Codex IDE (prefixed with a dot)
+        rules_file=".codex.md",
+        global_rules_path=Path.home() / ".codex" / "instructions.md",
+    )
+
+    claude = IDEMetadata(
+        name="claude",
+        rules_file="CLAUDE.md",
+        global_rules_path=Path.home() / ".claude" / "CLAUDE.md",
+    )
 
     @property
-    def default_config_dir(self) -> Path:
-        """Get the default config directory."""
-        return self.erasmus_dir or self.default_erasmus_dir / "config"
+    def metadata(self) -> IDEMetadata:
+        """Get the metadata for this IDE."""
+        return self.value
 
     @property
-    def default_cache_dir(self) -> Path:
-        """Get the default cache directory."""
-        return self.erasmus_dir or self.default_erasmus_dir / "cache"
+    def rules_file(self) -> str:
+        """Get the rules file name for this IDE."""
+        return self.metadata.rules_file
 
     @property
-    def default_logs_dir(self) -> Path:
-        """Get the default logs directory."""
-        return self.erasmus_dir or self.default_erasmus_dir / "logs"
+    def global_rules_path(self) -> Path:
+        """Get the global rules path for this IDE."""
+        return self.metadata.global_rules_path
 
-    @property
-    def default_context_dir(self) -> Path:
-        """Get the default context directory."""
-        return self.erasmus_dir or self.default_erasmus_dir / "context"
 
-    @property
-    def default_protocols_dir(self) -> Path:
-        """Get the default protocols directory."""
-        return self.erasmus_dir or self.default_erasmus_dir / "protocols"
+def detect_ide_from_env() -> IDE | None:
+    """
+    Detect IDE from environment variables.
+    Returns None if no IDE is detected.
+    """
+    ide_env = os.environ.get("IDE_ENV", "").lower()
 
-    @property
-    def default_stored_protocols_dir(self) -> Path:
-        """Get the default stored protocols directory."""
-        return self.protocols_dir or self.default_protocols_dir / "stored"
+    if not ide_env:
+        return None
 
-    @property
-    def default_registry_file(self) -> Path:
-        """Get the default registry file."""
-        return self.protocols_dir or self.default_protocols_dir / "agent_registry.json"
+    # Check for IDE based on prefix
+    if ide_env.startswith("w"):
+        return IDE.windsurf
+    elif ide_env.startswith("cu"):
+        return IDE.cursor
+    elif ide_env.startswith("co"):
+        return IDE.codex
+    elif ide_env.startswith("cl"):
+        return IDE.claude
 
-    @property
-    def default_rules_file(self) -> Path:
-        """Get the default rules file."""
-        return self.project_root / f".{self.env_manager.ide_env}rules"
+    return None
 
-    @property
-    def default_global_rules_file(self) -> Path:
-        """Get the default global rules file."""
-        return self.project_root / f".{self.env_manager.ide_env}rules.global"
 
-    @property
-    def default_env_file(self) -> Path:
-        """Get the default environment file."""
-        return self.project_root / ".env"
+def prompt_for_ide() -> IDE:
+    """
+    Prompt the user to select an IDE.
+    Returns the selected IDE.
+    """
+    print("No IDE environment detected. Please select an IDE:")
+    print("1. Windsurf")
+    print("2. Cursor")
+    print("3. Codex")
+    print("4. Claude")
 
-    @property
-    def markdown_files(self) -> Dict[str, Path]:
-        """Get root-level markdown file paths."""
-        return {
-            "architecture": self.project_root / ".architecture.md",
-            "progress": self.project_root / ".progress.md",
-            "tasks": self.project_root / ".tasks.md",
-        }
-
-    def ensure_directories(self) -> None:
-        """Ensure all required directories exist."""
-        directories = [
-            self.erasmus_dir or self.default_erasmus_dir,
-            self.config_dir or self.default_config_dir,
-            self.cache_dir or self.default_cache_dir,
-            self.logs_dir or self.default_logs_dir,
-            self.context_dir or self.default_context_dir,
-            self.protocols_dir or self.default_protocols_dir,
-            self.stored_protocols_dir or self.default_stored_protocols_dir,
-        ]
-        for directory in directories:
-            directory.mkdir(parents=True, exist_ok=True)
-
-    def create_context_files(self) -> None:
-        """Create the context directory and files if they don't exist."""
+    while True:
         try:
-            # Create context directory
-            context_dir = self.context_dir or self.default_context_dir
-            context_dir.mkdir(parents=True, exist_ok=True)
+            choice = input("Enter your choice (1-4): ")
+            if choice == "1":
+                return IDE.windsurf
+            elif choice == "2":
+                return IDE.cursor
+            elif choice == "3":
+                return IDE.codex
+            elif choice == "4":
+                return IDE.claude
+            else:
+                print("Invalid choice. Please enter a number between 1 and 4.")
+        except KeyboardInterrupt:
+            print("\nOperation cancelled. Using default IDE (Cursor).")
+            return IDE.cursor
 
-            # Create timestamp-based context directory
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            context_subdir = context_dir / f"context_{timestamp}"
-            context_subdir.mkdir(parents=True, exist_ok=True)
 
-            # Create the context files
-            for file_name in [".architecture.md", ".progress.md", ".tasks.md"]:
-                file_path = context_subdir / file_name
-                if not file_path.exists():
-                    file_path.touch()
+def get_ide() -> IDE:
+    """
+    Get the IDE from environment variables or prompt the user.
+    Returns the selected IDE.
+    """
+    ide = detect_ide_from_env()
+    if ide is None:
+        ide = prompt_for_ide()
+        environment = Path.cwd() / ".env"
+        if environment.exists():
+            environment_content = environment.read_text()
+            environment_content += f"\nIDE_ENV={ide.name}"
+            environment.write_text(environment_content)
+        else:
+            environment.write_text(f"IDE_ENV={ide.name}")
+    return ide
 
-            logger.debug("Created context files in %s", context_subdir)
-        except Exception as e:
-            logger.error("Failed to create context files: %s", e)
-            raise
 
-    def get_protocol_file(self, protocol_name: str) -> Path:
-        """Get the path to a protocol file.
+class PathMngrModel(BaseModel):
+    """Manages paths for different IDE environments."""
 
-        Args:
-            protocol_name: Name of the protocol
+    # Allow extra attributes for mocking and patching
+    model_config = ConfigDict(extra="allow")
 
-        Returns:
-            Path: Path to the protocol file
-        """
-        return (
-            self.stored_protocols_dir or self.default_stored_protocols_dir
-        ) / f"{protocol_name}.md"
+    ide: IDE | None = None
+    # Directories
+    root_dir: Path = Path.cwd()
+    erasmus_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus")
+    context_dir: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "context"
+    )
+    protocol_dir: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "protocol"
+    )
+    template_dir: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates"
+    )
 
-    def get_protocol_json(self, protocol_name: str) -> Path:
-        """Get the path to a protocol JSON file.
+    # Files
+    architecture_file: Path = Field(
+        default_factory=lambda: Path.cwd() / ".ctx.architecture.xml"
+    )
+    progress_file: Path = Field(
+        default_factory=lambda: Path.cwd() / ".ctx.progress.xml"
+    )
+    tasks_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.tasks.xml")
+    rules_file: Path | None = None
+    global_rules_file: Path | None = None
 
-        Args:
-            protocol_name: Name of the protocol
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Initialize and time path setup
+        self._setup_paths()
 
-        Returns:
-            Path: Path to the protocol JSON file
-        """
-        return (
-            self.stored_protocols_dir or self.default_stored_protocols_dir
-        ) / f"{protocol_name}.json"
+    @timeit
+    def _setup_paths(self):
+        """Set up paths based on the selected IDE."""
+        if self.ide:
+            # Set rules file based on IDE
+            self.rules_file = self.root_dir / self.ide.rules_file
+            self.global_rules_file = self.ide.global_rules_path
 
-    def model_dump(self) -> Dict[str, Any]:
-        """Get a dictionary representation of all paths."""
-        return {
-            "project_root": self.project_root,
-            "erasmus_dir": self.erasmus_dir or self.default_erasmus_dir,
-            "config_dir": self.config_dir or self.default_config_dir,
-            "cache_dir": self.cache_dir or self.default_cache_dir,
-            "logs_dir": self.logs_dir or self.default_logs_dir,
-            "context_dir": self.context_dir or self.default_context_dir,
-            "protocols_dir": self.protocols_dir or self.default_protocols_dir,
-            "stored_protocols_dir": self.stored_protocols_dir or self.default_stored_protocols_dir,
-            "registry_file": self.registry_file or self.default_registry_file,
-            "rules_file": self.rules_file or self.default_rules_file,
-            "global_rules_file": self.global_rules_file or self.default_global_rules_file,
-            "env_file": self.env_file or self.default_env_file,
-            "markdown_files": self.markdown_files,
-        }
+            # Create symlink for cursor if needed (special case for windsurf)
+            if self.ide == IDE.windsurf:
+                cursor_rules = self.root_dir / ".cursorrules"
+                if self.rules_file.exists() and not cursor_rules.exists():
+                    cursor_rules.symlink_to(self.rules_file)
+
+    def get_ide_env(self) -> str | None:
+        """Get the IDE environment name."""
+        return self.ide.name if self.ide else None
+
+    def get_context_dir(self) -> Path:
+        """Get the context directory path."""
+        return self.context_dir
+
+    def get_protocol_dir(self) -> Path:
+        """Get the protocol directory path."""
+        return self.protocol_dir
+
+    def get_architecture_file(self) -> Path:
+        """Get the architecture file path."""
+        return self.architecture_file
+
+    def get_progress_file(self) -> Path:
+        """Get the progress file path."""
+        return self.progress_file
+
+    def get_tasks_file(self) -> Path:
+        """Get the tasks file path."""
+        return self.tasks_file
+
+    def get_rules_file(self) -> Path | None:
+        """Get the rules file path."""
+        return self.rules_file
+
+    def get_global_rules_file(self) -> Path | None:
+        """Get the global rules file path."""
+        return self.global_rules_file
+
+    def get_root_dir(self) -> Path:
+        """Get the root directory path."""
+        return self.root_dir
+
+    def get_path(self, name: str) -> Path:
+        """Get a path by name."""
+        if hasattr(self, name):
+            return getattr(self, name)
+        raise ValueError(f"Path {name} not found")
+
+    def set_path(self, name: str, path: Path) -> None:
+        """Set a path by name."""
+        if hasattr(self, name):
+            setattr(self, name, path)
+        else:
+            raise ValueError(f"Path {name} not found")
+
+    @timeit
+    def ensure_dirs(self) -> None:
+        """Ensure all directories exist."""
+        self.context_dir.mkdir(parents=True, exist_ok=True)
+        self.protocol_dir.mkdir(parents=True, exist_ok=True)
+        self.erasmus_dir.mkdir(parents=True, exist_ok=True)
+        self.template_dir.mkdir(parents=True, exist_ok=True)
+
+    @timeit
+    def ensure_files(self) -> None:
+        """Ensure all files exist."""
+        self.ensure_dirs()
+        self.architecture_file.touch(exist_ok=True)
+        self.progress_file.touch(exist_ok=True)
+        self.tasks_file.touch(exist_ok=True)
+        if self.rules_file:
+            self.rules_file.touch(exist_ok=True)
+        if self.global_rules_file:
+            self.global_rules_file.touch(exist_ok=True)
+
+    @timeit
+    def setup_paths(self) -> None:
+        """Set up all paths and ensure directories and files exist."""
+        self._setup_paths()
+        self.ensure_dirs()
+        self.ensure_files()
+
+
+# Singleton instance
+_path_manager = None
+
+
+def get_path_manager(ide: IDE | None = None) -> PathMngrModel:
+    """Get the singleton path manager instance."""
+    global _path_manager
+    if _path_manager is None:
+        # If no IDE is provided, try to detect it
+        if ide is None:
+            ide = get_ide()
+        _path_manager = PathMngrModel(ide=ide)
+    elif ide is not None and _path_manager.ide != ide:
+        # Update the IDE if it's different
+        _path_manager.ide = ide
+        _path_manager._setup_paths()
+    return _path_manager
+
+
+# Legacy alias for backwards compatibility
+PathManager = PathMngrModel
