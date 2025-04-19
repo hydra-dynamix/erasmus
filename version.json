@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "last_updated": "2025-04-19T11:47:43.880230",
+  "version": "0.2.0",
+  "last_updated": "2025-04-19T14:22:06.333355",
   "changes": [
     {
       "description": "initial release",
@@ -11,6 +11,11 @@
       "description": "Refactored to multi script project and added protocol manager and context manager to handle dyanmic context changes. Also implemented a packager to bundle the multiscript project into a single file installer.",
       "type": "minor",
       "timestamp": "2025-04-19T11:47:43.880230"
+    },
+    {
+      "description": "Bump minor",
+      "type": "minor",
+      "timestamp": "2025-04-19T14:22:06.333355"
     }
   ]
 }
