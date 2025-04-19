@@ -221,7 +221,7 @@ def package(
             else:
                 folder_name = input_path.name
 
-            build_dir = Path("build") / version
+            build_dir = Path("releases") / version
             build_dir.mkdir(parents=True, exist_ok=True)
             output_path = build_dir / f"{folder_name}_v{version}.py"
 
