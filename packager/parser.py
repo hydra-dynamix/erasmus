@@ -1,413 +1,544 @@
-"""
-Import Parser Module.
+"""Parser module for extracting imports from Python files.
 
-This module provides functionality to parse Python files and extract imports
-using the AST module. It can also strip import statements from the source code
-while preserving the rest of the functionality.
-
-Usage:
-    from parser import extract_imports, strip_imports, parse_file
-
-    # Extract imports from a file
-    imports = parse_file('path/to/file.py')
-
-    # Extract imports from source code
-    imports = extract_imports(source_code)
-
-    # Strip imports from source code
-    stripped_code = strip_imports(source_code)
+This module provides functionality to parse Python files and extract import information,
+including handling of relative imports and error reporting.
 """
 
 import ast
 import logging
-import textwrap
+import os
+import re
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Set, Tuple, List, Optional, Dict, Union
-from .stdlib import is_stdlib_module
+from typing import Dict, List, Optional, Set, Tuple, Union
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class ImportSet:
-    """Manages categorized imports (stdlib, third-party, local, relative)."""
+@dataclass
+class ImportInfo:
+    """Information about an import statement."""
 
-    def __init__(self):
-        self.stdlib = set()
-        self.third_party = set()
-        self.local = set()
-        self.relative = set()
+    module_name: str
+    imported_names: Set[str] = field(default_factory=set)
+    is_from_import: bool = False
+    level: int = 0  # For relative imports (should be avoided; use absolute imports)
+    lineno: int = 0
+    col_offset: int = 0
+
+
+@dataclass
+class FileImports:
+    """Container for all imports found in a file and any parsing errors."""
+
+    imports: list[ImportInfo] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+
+
+@dataclass
+class ImportSet:
+    """Container for categorized imports from a file or project."""
+
+    stdlib: Set[str] = field(default_factory=set)
+    third_party: Set[str] = field(default_factory=set)
+    local: Set[str] = field(default_factory=set)
+
+    def get_all_imports(self) -> Set[str]:
+        """Get all imports as a single set."""
+        return self.stdlib | self.third_party | self.local
+
+    def get_all_base_modules(self) -> Set[str]:
+        """Get all base module names (first part of import path)."""
+        all_imports = self.get_all_imports()
+        return {imp.split(".")[0] for imp in all_imports}
 
     def update(self, other: "ImportSet") -> None:
-        """Merge another ImportSet into this one."""
+        """Update this ImportSet with imports from another ImportSet.
+
+        Args:
+            other: Another ImportSet to merge with this one
+        """
         self.stdlib.update(other.stdlib)
         self.third_party.update(other.third_party)
         self.local.update(other.local)
-        self.relative.update(other.relative)
-
-    def get_all_imports(self) -> Set[str]:
-        """Return all imports across all categories."""
-        return self.stdlib | self.third_party | self.local | self.relative
-
-    def __eq__(self, other) -> bool:
-        """Compare ImportSet with another ImportSet or regular set."""
-        if isinstance(other, ImportSet):
-            return self.get_all_imports() == other.get_all_imports()
-        elif isinstance(other, set):
-            return self.get_all_imports() == other
-        return NotImplemented
-
-    def __iter__(self):
-        """Make ImportSet iterable by yielding all imports."""
-        yield from self.get_all_imports()
-
-    def __repr__(self) -> str:
-        """Return string representation of ImportSet."""
-        return f"ImportSet({self.get_all_imports()})"
-
-    def __str__(self) -> str:
-        """Return string representation of ImportSet."""
-        return str(self.get_all_imports())
-
-    def get_all_base_modules(self) -> Set[str]:
-        """Return all base module names (first part of each import path).
-
-        For example:
-        - 'os.path' -> 'os'
-        - 'numpy.array' -> 'numpy'
-        - 'mypackage.submodule.func' -> 'mypackage'
-        """
-        base_modules = set()
-        for imp in self.get_all_imports():
-            # Split on first dot to get base package
-            base_modules.add(imp.split(".")[0])
-        return base_modules
-
-    def is_empty(self) -> bool:
-        """Check if all import sets are empty."""
-        return not (self.stdlib or self.third_party or self.local or self.relative)
-
-    def format_imports(self) -> str:
-        """Format imports into a string with proper grouping and sorting."""
-        sections = []
-        if self.stdlib:
-            sections.append("# Standard library imports")
-            sections.extend(f"import {imp}" for imp in sorted(self.stdlib))
-        if self.third_party:
-            sections.append("# Third-party imports")
-            sections.extend(f"import {imp}" for imp in sorted(self.third_party))
-        if self.local:
-            sections.append("# Local imports")
-            sections.extend(f"import {imp}" for imp in sorted(self.local))
-        if self.relative:
-            sections.append("# Relative imports")
-            sections.extend(f"from . import {imp}" for imp in sorted(self.relative))
-        return "\n".join(sections)
-
-    def add_import(self, imp: str) -> None:
-        """Add an import to the appropriate category.
-
-        Args:
-            imp: Import statement to add
-        """
-        # Handle relative imports
-        if imp.startswith("."):
-            # For relative imports like '.local.something', store both '.local' and '.local.something'
-            parts = imp.split(".")
-            # Count leading dots
-            dots = ""
-            while parts and not parts[0]:
-                dots += "."
-                parts.pop(0)
-            # Add each part of the path
-            for i in range(len(parts)):
-                if parts[i]:  # Skip empty parts (from consecutive dots)
-                    self.relative.add(dots + ".".join(parts[: i + 1]))
-            return
-
-        # Get base module name
-        base_module = imp.split(".")[0]
-
-        # Check if it's a standard library module
-        if is_stdlib_module(base_module):
-            self.stdlib.add(imp)
-            self.stdlib.add(base_module)
-            return
-
-        # Check if it's a local module
-        # This is a simplified check - in a real implementation,
-        # you might want to check against your project's module structure
-        if base_module in ["__main__", "__init__"]:
-            self.local.add(imp)
-            return
-
-        # Assume it's a third-party module
-        self.third_party.add(imp)
 
 
-def normalize_import_name(name: str) -> str:
-    """
-    Normalize an import name by removing version suffixes and converting to lowercase.
+class ImportVisitor(ast.NodeVisitor):
+    """AST visitor that collects import information from Python files."""
+
+    def __init__(self) -> None:
+        self.imports: list[ImportInfo] = []
+
+    def visit_Import(self, node: ast.Import) -> None:
+        """Process Import nodes (e.g., 'import foo' or 'import foo as bar')."""
+        for name in node.names:
+            import_info = ImportInfo(
+                module_name=name.name, lineno=node.lineno, col_offset=node.col_offset
+            )
+            if name.asname:
+                import_info.imported_names.add(name.asname)
+            self.imports.append(import_info)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        """Process ImportFrom nodes (e.g., 'from foo import bar')."""
+        if node.module is None:
+            # Handle "from packager. import foo" case (should be avoided; use absolute imports)
+            module_name = ""
+        else:
+            module_name = node.module
+
+        import_info = ImportInfo(
+            module_name=module_name,
+            is_from_import=True,
+            level=node.level,
+            lineno=node.lineno,
+            col_offset=node.col_offset,
+        )
+
+        for name in node.names:
+            if name.name == "*":
+                import_info.imported_names.add("*")
+            else:
+                import_name = name.asname if name.asname else name.name
+                import_info.imported_names.add(import_name)
+
+        self.imports.append(import_info)
+        self.generic_visit(node)
+
+
+def parse_file(file_path: Union[str, Path]) -> FileImports:
+    """Parse a Python file and extract its imports.
 
     Args:
-        name: The import name to normalize.
+        file_path: Path to the Python file to parse
 
     Returns:
-        The normalized import name.
-
-    Example:
-        >>> normalize_import_name("numpy>=1.20.0")
-        'numpy'
+        FileImports object containing the list of imports and any errors encountered
     """
-    # Remove version constraints
-    name = name.split(">=")[0].split("<=")[0].split("==")[0].split("!=")[0]
-    # Remove any remaining whitespace
-    name = name.strip()
-    return name
+    file_path = Path(file_path)
+    result = FileImports()
 
-
-def sanitize_docstrings(source: str, replacement: str = '""') -> str:
-    """Remove or replace docstrings in Python code.
-
-    Args:
-        source: The Python code as a string
-        replacement: The string to replace docstrings with (defaults to empty string)
-
-    Returns:
-        The code with docstrings replaced
-    """
-
-    class DocstringRemover(ast.NodeVisitor):
-        def __init__(self):
-            self.docstring_ranges = []
-
-        def visit_FunctionDef(self, node):
-            self._check_docstring(node)
-            self.generic_visit(node)
-
-        def visit_AsyncFunctionDef(self, node):
-            self._check_docstring(node)
-            self.generic_visit(node)
-
-        def visit_ClassDef(self, node):
-            self._check_docstring(node)
-            self.generic_visit(node)
-
-        def visit_Module(self, node):
-            self._check_docstring(node)
-            self.generic_visit(node)
-
-        def _check_docstring(self, node):
-            if (
-                node.body
-                and isinstance(node.body[0], ast.Expr)
-                and isinstance(node.body[0].value, ast.Constant)
-                and isinstance(node.body[0].value.value, str)  # make sure it's a string
-            ):
-                doc_node = node.body[0]
-                self.docstring_ranges.append((doc_node.lineno, doc_node.end_lineno))
-
-    try:
-        # Find docstring line ranges using AST
-        tree = ast.parse(source)
-        remover = DocstringRemover()
-        remover.visit(tree)
-
-        # Convert to a lookup set
-        doc_lines = set()
-        for start, end in remover.docstring_ranges:
-            doc_lines.update(range(start, end + 1))
-
-        # Tokenize and reconstruct the source
-        output = []
-        last_line = 0
-        lines = source.splitlines(keepends=True)
-        for i, line in enumerate(lines, start=1):
-            if i in doc_lines:
-                # Replace only the first line of the docstring block with the replacement
-                if i == min(r for r in doc_lines if r >= i):
-                    indent = line[: len(line) - len(line.lstrip())]
-                    output.append(f"{indent}{replacement}\n")
-            elif i > last_line:
-                output.append(line)
-
-        return "".join(output)
-    except SyntaxError:
-        # If we can't parse the source, return it unchanged
-        return source
-
-
-def extract_imports(source: str) -> ImportSet:
-    """Extract all imports from a Python source file.
-
-    Args:
-        source (str): The source code to parse.
-
-    Returns:
-        ImportSet: A set of all imports found in the source.
-    """
-    imports = ImportSet()
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
-        return imports
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for name in node.names:
-                imports.add_import(name.name)
-        elif isinstance(node, ast.ImportFrom):
-            if node.level > 0:  # Relative import
-                module = "." * node.level + (node.module or "")
-                for name in node.names:
-                    imports.add_import(f"{module}.{name.name}")
-            else:  # Absolute import
-                module = node.module or ""
-                for name in node.names:
-                    imports.add_import(f"{module}.{name.name}")
-
-    return imports
-
-
-def extract_code_body(source: str, preserve_comments: bool = True) -> Tuple[ImportSet, str]:
-    """Extract imports and return code body with imports removed.
-
-    Args:
-        source: Python source code as string
-        preserve_comments: Whether to preserve comments in output
-
-    Returns:
-        Tuple of (ImportSet, stripped_code)
-    """
-    imports = extract_imports(source)
-
-    # First sanitize docstrings
-    source = sanitize_docstrings(source)
-
-    # Then remove imports
-    tree = ast.parse(source)
-    lines = source.splitlines()
-    import_lines = set()
-
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            import_lines.update(range(node.lineno, node.end_lineno + 1))
-
-    stripped_lines = []
-    for i, line in enumerate(lines, 1):
-        if i not in import_lines:
-            stripped_lines.append(line)
-
-    return imports, "\n".join(stripped_lines)
-
-
-def parse_file(file_path: str) -> Tuple[Set[str], str]:
-    """Parse a Python file and extract imports.
-
-    Args:
-        file_path: Path to the Python file
-
-    Returns:
-        Tuple of (set of imports, stripped source code)
-    """
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            source = f.read()
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    imports = extract_imports(source)
-    stripped = strip_imports(source)
-
-    # Convert to base names only for the return value
-    base_imports = set()
-    for imp in imports.get_all_imports():
-        if imp.startswith("."):
-            continue  # Skip relative imports
-        base_name = imp.split(".")[0]
-        base_imports.add(base_name)
-
-    return base_imports, stripped
-
-
-def parse_multiple_files(file_paths: List[str]) -> Tuple[Set[str], Dict[str, str]]:
-    """Parse multiple Python files and extract imports.
-
-    Args:
-        file_paths: List of paths to Python files
-
-    Returns:
-        Tuple of (set of all imports, dict of stripped source code)
-    """
-    all_imports = set()
-    stripped_files = {}
-
-    for file_path in file_paths:
-        try:
-            imports, stripped = parse_file(file_path)
-            all_imports.update(imports)
-            stripped_files[file_path] = stripped
-        except (FileNotFoundError, SyntaxError) as e:
-            logger.warning(f"Error processing {file_path}: {e}")
-
-    return all_imports, stripped_files
-
-
-def strip_imports(source: str, preserve_comments: bool = True) -> str:
-    """Strip import statements from source code while preserving other content.
-
-    Args:
-        source: Python source code as string
-        preserve_comments: Whether to preserve comments in output
-
-    Returns:
-        Source code with imports removed
-    """
-    tree = ast.parse(source)
-    lines = source.splitlines()
-    import_lines = set()
-
-    # Find all import lines
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            # Handle multi-line imports
-            import_lines.update(range(node.lineno, node.end_lineno + 1))
-
-    # Rebuild source without imports
-    result = []
-    for i, line in enumerate(lines, 1):
-        if i not in import_lines:
-            if preserve_comments or not line.strip().startswith("#"):
-                result.append(line)
-
-    return "\n".join(result)
-
-
-if __name__ == "__main__":
-    import sys
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Parse Python files for imports")
-    parser.add_argument("files", nargs="+", help="Python files to parse")
-    parser.add_argument(
-        "--preserve-comments",
-        action="store_true",
-        help="Preserve comments and docstrings when stripping imports",
-    )
-    args = parser.parse_args()
+            content = f.read()
+    except Exception as e:
+        error_msg = f"Failed to read file {file_path}: {str(e)}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        return result
 
     try:
-        imports, stripped_files = parse_multiple_files(args.files)
-        print(f"\nImports found in {len(args.files)} files:")
-        for imp in sorted(imports):
-            print(f"  {imp}")
-
-        print("\nStripped code for each file:")
-        for file_path, stripped in zip(args.files, stripped_files):
-            print(f"\n{file_path}:")
-            print("-" * 40)
-            print(stripped)
+        tree = ast.parse(content, filename=str(file_path))
+    except SyntaxError as e:
+        error_msg = f"Syntax error in {file_path} at line {e.lineno}, column {e.offset}: {str(e)}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        return result
     except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+        error_msg = f"Failed to parse {file_path}: {str(e)}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        return result
+
+    visitor = ImportVisitor()
+    visitor.visit(tree)
+    result.imports = visitor.imports
+    return result
+
+
+def resolve_relative_import(
+    base_path: Union[str, Path], import_info: ImportInfo, package_name: Optional[str] = None
+) -> Optional[str]:
+    """Resolve a relative import to its absolute form.
+
+    Args:
+        base_path: Path to the file containing the relative import
+        import_info: ImportInfo object containing the import details
+        package_name: Optional package name for resolving relative imports
+
+    Returns:
+        Resolved absolute import path or None if resolution fails
+    """
+    if import_info.level == 0:
+        return import_info.module_name
+
+    if not package_name:
+        logger.warning("Package name not provided for relative import resolution")
+        return None
+
+    try:
+        base_path = Path(base_path)
+        parts = package_name.split(".")
+
+        # Go up the directory tree based on the relative import level
+        current_path = base_path.parent
+        for _ in range(import_info.level - 1):
+            current_path = current_path.parent
+            if not current_path.exists():
+                return None
+
+        # Construct the absolute import path
+        remaining_parts = parts[: -import_info.level] if import_info.level <= len(parts) else []
+        if import_info.module_name:
+            remaining_parts.append(import_info.module_name)
+
+        return ".".join(remaining_parts) if remaining_parts else None
+
+    except Exception as e:
+        logger.error(f"Failed to resolve relative import: {str(e)}")
+        return None
+
+
+def normalize_imports(
+    file_imports: FileImports, base_path: Union[str, Path], package_name: Optional[str] = None
+) -> Tuple[Set[str], list[str]]:
+    """Convert collected imports into a normalized set of import strings.
+
+    Args:
+        file_imports: FileImports object containing the imports to normalize
+        base_path: Path to the file containing the imports
+        package_name: Optional package name for resolving relative imports
+
+    Returns:
+        Tuple of (set of normalized import strings, list of error messages)
+    """
+    normalized_imports: Set[str] = set()
+    errors: list[str] = file_imports.errors.copy()
+
+    for import_info in file_imports.imports:
+        if import_info.level > 0:
+            resolved = resolve_relative_import(base_path, import_info, package_name)
+            if resolved is None:
+                errors.append(
+                    f"Failed to resolve relative import at line {import_info.lineno}: "
+                    f"from {'.' * import_info.level}{import_info.module_name} "
+                    f"import {', '.join(import_info.imported_names)}"
+                )
+                continue
+            import_info.module_name = resolved
+
+        if import_info.is_from_import:
+            if "*" in import_info.imported_names:
+                normalized_imports.add(import_info.module_name)
+            else:
+                for name in import_info.imported_names:
+                    normalized_imports.add(f"{import_info.module_name}.{name}")
+        else:
+            normalized_imports.add(import_info.module_name)
+
+    return normalized_imports, errors
+
+
+def parse_imports(content: str) -> Tuple[ImportSet, list[str]]:
+    """Parse imports from a string containing Python code.
+
+    Args:
+        content: String containing Python code
+
+    Returns:
+        Tuple of (ImportSet object containing categorized imports, list of error messages)
+    """
+    result = FileImports()
+
+    try:
+        tree = ast.parse(content)
+    except SyntaxError as e:
+        error_msg = f"Syntax error at line {e.lineno}, column {e.offset}: {str(e)}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        return ImportSet(), result.errors
+    except Exception as e:
+        error_msg = f"Failed to parse content: {str(e)}"
+        logger.error(error_msg)
+        result.errors.append(error_msg)
+        return ImportSet(), result.errors
+
+    visitor = ImportVisitor()
+    visitor.visit(tree)
+    result.imports = visitor.imports
+
+    # Since we don't have a file path, we can't resolve relative imports
+    # So we'll just normalize the imports without resolving relative imports
+    normalized_imports: Set[str] = set()
+    for import_info in result.imports:
+        if import_info.is_from_import:
+            if "*" in import_info.imported_names:
+                normalized_imports.add(import_info.module_name)
+            else:
+                for name in import_info.imported_names:
+                    normalized_imports.add(f"{import_info.module_name}.{name}")
+        else:
+            normalized_imports.add(import_info.module_name)
+
+    # Create an ImportSet object
+    import_set = ImportSet()
+
+    # Categorize imports
+    for imp in normalized_imports:
+        # This is a simplified categorization - in a real implementation,
+        # you would use the StdlibDetector to properly categorize imports
+        if imp.startswith(".") or imp.startswith(".."):
+            import_set.local.add(imp)
+        else:
+            # Assume it's a third-party import for now
+            # In a real implementation, you would check against stdlib
+            import_set.third_party.add(imp)
+
+    return import_set, result.errors
+
+
+def extract_imports(
+    file_path: Union[str, Path], package_name: Optional[str] = None
+) -> Tuple[ImportSet, list[str]]:
+    """Extract and normalize imports from a Python file.
+
+    This is the main entry point for the parser module. It combines parsing
+    and normalization into a single convenient function.
+
+    Args:
+        file_path: Path to the Python file to parse
+        package_name: Optional package name for resolving relative imports
+
+    Returns:
+        Tuple of (ImportSet object containing categorized imports, list of error messages)
+    """
+    file_imports = parse_file(file_path)
+    normalized_imports, errors = normalize_imports(file_imports, file_path, package_name)
+
+    # Create an ImportSet object
+    import_set = ImportSet()
+
+    # Categorize imports
+    for imp in normalized_imports:
+        # This is a simplified categorization - in a real implementation,
+        # you would use the StdlibDetector to properly categorize imports
+        if imp.startswith(".") or imp.startswith(".."):
+            import_set.local.add(imp)
+        else:
+            # Assume it's a third-party import for now
+            # In a real implementation, you would check against stdlib
+            import_set.third_party.add(imp)
+
+    return import_set, errors
+
+
+def is_valid_python_file(file_path: Union[str, Path]) -> bool:
+    """Check if a file is a valid Python file.
+
+    Args:
+        file_path: Path to the file to check
+
+    Returns:
+        True if the file is a valid Python file, False otherwise
+    """
+    file_path = Path(file_path)
+
+    # Check if file exists and has .py extension
+    if not file_path.exists() or file_path.suffix != ".py":
+        return False
+
+    # Check if file is not empty
+    try:
+        if file_path.stat().st_size == 0:
+            return False
+    except Exception:
+        return False
+
+    # Try to parse the file to check for syntax errors
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        ast.parse(content, filename=str(file_path))
+        return True
+    except Exception:
+        return False
+
+
+def extract_code_body(
+    files: Union[str, Path, list[Union[str, Path]]],
+    preserve_comments: bool = True,
+    ignore_modules: set[str] = None,
+) -> str:
+    """Extract code body from Python files, removing imports.
+
+    Args:
+        files: Path to Python file, directory, list of files, or string content
+        preserve_comments: Whether to keep comments in output
+        ignore_modules: Set of module names to ignore/remove imports for
+
+    Returns:
+        Combined code body with imports removed
+    """
+    # If files is a string and not a path, treat it as content
+    if isinstance(files, str) and not Path(files).exists():
+        content = files
+        # Try to parse the content
+        try:
+            tree = ast.parse(content)
+            has_syntax_error = False
+        except SyntaxError as e:
+            has_syntax_error = True
+            logger.warning(f"Syntax error in content: {e}")
+
+        # Extract imports if possible
+        try:
+            # Use parse_imports for string content
+            import_set, _ = parse_imports(content)
+            imports = import_set.get_all_imports()
+        except SyntaxError:
+            imports = set()
+
+        # Remove imports from the content
+        code_body = content
+        if ignore_modules is not None:
+            for mod in ignore_modules:
+                # Remove 'import erasmus' or 'import erasmus.something'
+                code_body = re.sub(
+                    rf"^\s*import\s+{re.escape(mod)}(\.[\w\.]+)?(\s+as\s+\w+)?\s*$",
+                    "",
+                    code_body,
+                    flags=re.MULTILINE,
+                )
+                # Remove 'from erasmus import ...' or 'from erasmus.something import ...'
+                code_body = re.sub(
+                    rf"^\s*from\s+{re.escape(mod)}(\.[\w\.]+)?\s+import.*$",
+                    "",
+                    code_body,
+                    flags=re.MULTILINE,
+                )
+                # Remove 'from . import erasmus' or 'from .erasmus import ...'
+                code_body = re.sub(
+                    rf"^\s*from\s+\.\s*{re.escape(mod)}(\.[\w\.]+)?\s+import.*$",
+                    "",
+                    code_body,
+                    flags=re.MULTILINE,
+                )
+        for imp in imports:
+            code_body = re.sub(
+                rf"^.*import.*{re.escape(imp)}.*$",
+                "",
+                code_body,
+                flags=re.MULTILINE,
+            )
+            base_module = imp.split(".")[0]
+            code_body = re.sub(
+                rf"^from\s+{re.escape(base_module)}\s+import.*$",
+                "",
+                code_body,
+                flags=re.MULTILINE,
+            )
+
+        lines = code_body.splitlines()
+        cleaned_lines = []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            if not preserve_comments and stripped.startswith("#"):
+                continue
+            cleaned_lines.append(line.rstrip())
+
+        if cleaned_lines:
+            return "\n".join(cleaned_lines)
+        return ""
+
+    if isinstance(files, (str, Path)):
+        files = [files]
+
+    seen_sections = set()
+    code_bodies = []
+
+    def hash_code(code: str) -> str:
+        lines = []
+        for line in code.split("\n"):
+            line = line.strip()
+            if line and not line.startswith("#"):
+                line = " ".join(line.split())
+                lines.append(line)
+        return hash("".join(lines))
+
+    for file in files:
+        file = Path(file)
+        if not file.exists():
+            raise FileNotFoundError(f"File does not exist: {file}")
+
+        if file.is_file():
+            content = file.read_text()
+            try:
+                tree = ast.parse(content)
+                has_syntax_error = False
+            except SyntaxError as e:
+                has_syntax_error = True
+                logger.warning(f"Syntax error in {file}: {e}")
+
+            try:
+                import_set, _ = parse_imports(content)
+                imports = import_set.get_all_imports()
+            except SyntaxError:
+                imports = set()
+
+            code_body = content
+            if ignore_modules is not None:
+                for mod in ignore_modules:
+                    # Remove 'import erasmus' or 'import erasmus.something'
+                    code_body = re.sub(
+                        rf"^\s*import\s+{re.escape(mod)}(\.[\w\.]+)?(\s+as\s+\w+)?\s*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+                    # Remove 'from erasmus import ...' or 'from erasmus.something import ...'
+                    code_body = re.sub(
+                        rf"^\s*from\s+{re.escape(mod)}(\.[\w\.]+)?\s+import.*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+                    # Remove 'from . import erasmus' or 'from .erasmus import ...'
+                    code_body = re.sub(
+                        rf"^\s*from\s+\.\s*{re.escape(mod)}(\.[\w\.]+)?\s+import.*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+            for imp in imports:
+                code_body = re.sub(
+                    rf"^.*import.*{re.escape(imp)}.*$",
+                    "",
+                    code_body,
+                    flags=re.MULTILINE,
+                )
+                base_module = imp.split(".")[0]
+                code_body = re.sub(
+                    rf"^from\s+{re.escape(base_module)}\s+import.*$",
+                    "",
+                    code_body,
+                    flags=re.MULTILINE,
+                )
+
+            lines = code_body.splitlines()
+            cleaned_lines = []
+            for line in lines:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                if not preserve_comments and stripped.startswith("#"):
+                    continue
+                cleaned_lines.append(line.rstrip())
+
+            if cleaned_lines:
+                code_section = "\n".join(cleaned_lines)
+                code_hash = hash_code(code_section)
+
+                if code_hash not in seen_sections:
+                    seen_sections.add(code_hash)
+                    header = "# Code from " + file.name
+                    if has_syntax_error:
+                        header += " (contains syntax errors)"
+                    if preserve_comments:
+                        code_bodies.append(header + "\n" + code_section)
+                    else:
+                        code_bodies.append(code_section)
+
+    return "\n\n".join(code_bodies)

@@ -4,7 +4,6 @@ from erasmus.utils.paths import get_path_manager
 from erasmus.protocol import ProtocolManager
 from erasmus.context import ContextManager
 from erasmus.utils.rich_console import print_table
-import os
 
 app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
 
@@ -27,9 +26,7 @@ def setup_callback(ctx: typer.Context):
     # Step 3: Create project directory and context using path manager
     project_dir = Path.cwd() / project_name
     project_dir.mkdir(parents=True, exist_ok=True)
-    print_table(
-        ["Info"], [[f"Project directory created: {project_dir}"]], title="Setup"
-    )
+    print_table(["Info"], [[f"Project directory created: {project_dir}"]], title="Setup")
 
     # Step 4: Use path manager for all Erasmus folders inside project
     erasmus_dir = path_manager.erasmus_dir
@@ -38,16 +35,12 @@ def setup_callback(ctx: typer.Context):
     template_dir = path_manager.template_dir
     for d in [erasmus_dir, context_dir, protocol_dir, template_dir]:
         d.mkdir(parents=True, exist_ok=True)
-    print_table(
-        ["Info"], [[f"Erasmus folders created in: {erasmus_dir}"]], title="Setup"
-    )
+    print_table(["Info"], [[f"Erasmus folders created in: {erasmus_dir}"]], title="Setup")
 
     # Step 5: Create a template context in the context folder and update root .ctx.*.xml files
     context_manager = ContextManager(base_dir=str(context_dir))
     context_manager.create_context(project_name)
-    print_table(
-        ["Info"], [[f"Template context created: {project_name}"]], title="Setup"
-    )
+    print_table(["Info"], [[f"Template context created: {project_name}"]], title="Setup")
     # Load the new context to root .ctx.*.xml files
     context_manager.load_context(project_name)
     print_table(

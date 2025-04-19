@@ -14,13 +14,22 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple, Union, Optional, Any
 import ast
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import re
+import importlib.util
 
-from .parser import extract_imports, ImportSet
-from .stdlib import StdlibDetector, is_stdlib_module
+from packager.parser import (
+    extract_imports,
+    ImportSet,
+    is_valid_python_file,
+    parse_imports,
+    extract_code_body,
+)
+from packager.stdlib import StdlibDetector, is_stdlib_module
 from rich.console import Console
 from rich.logging import RichHandler
+from packager.collector import collect_python_files
+from packager.mapping import map_imports_to_packages
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +52,7 @@ class IndentNode:
     """
 
     content: str
-    children: List["IndentNode"]
+    children: list["IndentNode"]
     parent: Optional["IndentNode"]
     indent_level: int
     is_empty: bool = False
@@ -69,7 +78,7 @@ class IndentNode:
         child.parent = self
         self.children.append(child)
 
-    def get_all_lines(self) -> List[str]:
+    def get_all_lines(self) -> list[str]:
         """Get all lines in this node and its children, preserving relative indentation."""
         lines = []
         if self.is_empty:
@@ -85,7 +94,7 @@ class IndentNode:
         return lines
 
 
-def build_indent_tree(lines: List[str]) -> IndentNode:
+def build_indent_tree(lines: list[str]) -> IndentNode:
     """Build a tree structure from lines of code, where each level represents indentation.
 
     Args:
@@ -142,7 +151,7 @@ def build_indent_tree(lines: List[str]) -> IndentNode:
     return root
 
 
-def normalize_indentation(code: Union[str, List[str]]) -> List[str]:
+def normalize_indentation(code: Union[str, list[str]]) -> list[str]:
     """Normalize indentation in Python code to use 4 spaces per level.
 
     Args:
@@ -213,7 +222,7 @@ def normalize_indentation(code: Union[str, List[str]]) -> List[str]:
     return result
 
 
-def analyze_dependencies(files: List[Path]) -> Dict[Path, ImportSet]:
+def analyze_dependencies(files: list[Path]) -> dict[Path, ImportSet]:
     """Analyze dependencies between files to determine stacking order.
 
     Args:
@@ -226,12 +235,12 @@ def analyze_dependencies(files: List[Path]) -> Dict[Path, ImportSet]:
     for file in files:
         with open(file, "r", encoding="utf-8") as f:
             content = f.read()
-            imports = extract_imports(content)
+            imports, _ = parse_imports(content)
             dependencies[file] = imports
     return dependencies
 
 
-def order_files(dependencies: Dict[Path, ImportSet], files: List[Path]) -> List[Path]:
+def order_files(dependencies: dict[Path, ImportSet], files: list[Path]) -> list[Path]:
     """Order files based on their dependencies.
 
     Args:
@@ -286,8 +295,54 @@ def order_files(dependencies: Dict[Path, ImportSet], files: List[Path]) -> List[
     return ordered
 
 
+def collect_python_files(
+    paths: list[Union[str, Path]], exclude_patterns: Optional[list[str]] = None
+) -> list[Path]:
+    """Collect valid Python files from the given paths.
+
+    Args:
+        paths: List of paths to files or directories
+        exclude_patterns: List of glob patterns to exclude
+
+    Returns:
+        List of valid Python file paths
+    """
+    py_files = []
+    for path in paths:
+        path = Path(path)
+        if not path.exists():
+            logger.error(f"Path does not exist: {path}")
+            continue
+
+        if path.is_file():
+            if is_valid_python_file(path):
+                py_files.append(path)
+            else:
+                logger.warning(f"Skipping invalid or non-Python file: {path}")
+        else:
+            # Find all .py files, excluding __pycache__ and dot directories
+            for file in path.rglob("*.py"):
+                if "__pycache__" not in str(file) and not any(
+                    p.startswith(".") for p in file.parts
+                ):
+                    if is_valid_python_file(file):
+                        py_files.append(file)
+                    else:
+                        logger.warning(f"Skipping invalid Python file: {file}")
+
+    # Apply exclude patterns
+    if exclude_patterns:
+        py_files = [
+            file
+            for file in py_files
+            if not any(fnmatch.fnmatch(str(file), pattern) for pattern in exclude_patterns)
+        ]
+
+    return py_files
+
+
 def collect_all_imports(
-    files: List[Union[str, Path]], base_path: Path
+    files: list[Union[str, Path]], base_path: Path
 ) -> Tuple[ImportSet, ImportSet, ImportSet]:
     """Collect and categorize all imports from the given files.
 
@@ -332,96 +387,94 @@ def format_imports(imports: ImportSet, group_imports: bool = True) -> str:
     """Format imports into a string.
 
     Args:
-        imports: The ImportSet containing all imports to format
-        group_imports: Whether to group imports by type (stdlib, third-party, local)
+        imports: ImportSet containing categorized imports
+        group_imports: Whether to group imports by type
 
     Returns:
-        A string containing all formatted imports
+        Formatted import statements as a string
     """
-    if not imports:
-        return ""
-
     formatted = []
+    seen_imports = set()  # Track imports to avoid duplicates
 
     def format_import(imp: str) -> str:
-        if "." in imp and not imp.startswith("."):
-            base, *parts = imp.split(".")
-            if len(parts) == 1:
-                return f"from {base} import {parts[0]}"
-        return f"import {imp}"
+        """Format an import statement correctly."""
+        # Skip relative imports
+        if imp.startswith("."):
+            return None
 
-    def format_relative_import(imp: str) -> str:
-        """Format a relative import into a 'from ... import ...' statement.
+        # Skip if we've seen this import before
+        base_name = imp.split(".")[0]
+        if base_name in seen_imports:
+            return None
+        seen_imports.add(base_name)
 
-        Args:
-            imp: The relative import to format (e.g., '.local_module' or '.local.something')
+        # Special case for timeit
+        if imp == "logging.timeit":
+            return "import timeit"
 
-        Returns:
-            Formatted import statement
-        """
-        if imp == ".":
-            return "from . import *"
-
-        # Count leading dots
-        dots = ""
-        while imp.startswith("."):
-            dots += "."
-            imp = imp[1:]
-
-        # Handle empty module name (just dots)
-        if not imp:
-            return f"from {'.' * len(dots)} import *"
-
-        # Handle module path
         if "." in imp:
-            module, name = imp.rsplit(".", 1)
-            return f"from {dots}{module} import {name}"
-        return f"from {dots}{imp} import *"
+            # For imports with dots, use 'from packager... import' syntax
+            parts = imp.split(".")
+            if len(parts) == 2:
+                # Simple case: from a import b
+                return f"from {parts[0]} import {parts[1]}"
+            else:
+                # Complex case: from a.b import c
+                module = ".".join(parts[:-1])
+                name = parts[-1]
+                return f"from {module} import {name}"
+        return f"import {imp}"
 
     if group_imports:
         # Standard library imports
         if imports.stdlib:
             formatted.append("# Standard library imports")
-            formatted.extend(format_import(imp) for imp in sorted(imports.stdlib))
+            for imp in sorted(imports.stdlib):
+                stmt = format_import(imp)
+                if stmt:
+                    formatted.append(stmt)
             formatted.append("")
 
         # Third-party imports
         if imports.third_party:
             formatted.append("# Third-party imports")
-            formatted.extend(format_import(imp) for imp in sorted(imports.third_party))
+            for imp in sorted(imports.third_party):
+                stmt = format_import(imp)
+                if stmt:
+                    formatted.append(stmt)
             formatted.append("")
 
         # Local imports
         if imports.local:
             formatted.append("# Local imports")
-            formatted.extend(format_import(imp) for imp in sorted(imports.local))
-            formatted.append("")
-
-        # Relative imports
-        if imports.relative:
-            formatted.append("# Relative imports")
-            formatted.extend(format_relative_import(imp) for imp in sorted(imports.relative))
+            for imp in sorted(imports.local):
+                stmt = format_import(imp)
+                if stmt:
+                    formatted.append(stmt)
             formatted.append("")
     else:
         # All imports in alphabetical order
-        all_imports = sorted(
-            imports.stdlib | imports.third_party | imports.local | imports.relative
-        )
-        formatted.extend(format_import(imp) for imp in all_imports)
+        all_imports = sorted(imports.stdlib | imports.third_party | imports.local)
+        for imp in all_imports:
+            stmt = format_import(imp)
+            if stmt:
+                formatted.append(stmt)
         formatted.append("")
 
     return "\n".join(formatted).strip()
 
 
 def extract_code_body(
-    files: Union[str, Path, List[Union[str, Path]]],
+    files: Union[str, Path, list[Union[str, Path]]],
     preserve_comments: bool = True,
+    ignore_modules: set[str] = None,
 ) -> str:
     """Extract code body from Python files, removing imports.
 
     Args:
         files: Path to Python file, directory, or list of files
         preserve_comments: Whether to keep comments in output
+        ignore_modules: Set of module names to ignore/remove imports for
 
     Returns:
         Combined code body with imports removed
@@ -429,7 +482,22 @@ def extract_code_body(
     if isinstance(files, (str, Path)):
         files = [files]
 
+    # Track code sections to avoid duplicates
+    seen_sections = set()
     code_bodies = []
+
+    def hash_code(code: str) -> str:
+        """Create a hash of the code, ignoring whitespace and comments."""
+        # Remove comments and empty lines
+        lines = []
+        for line in code.split("\n"):
+            line = line.strip()
+            if line and not line.startswith("#"):
+                # Normalize whitespace
+                line = " ".join(line.split())
+                lines.append(line)
+        return hash("".join(lines))
+
     for file in files:
         file = Path(file)
         if not file.exists():
@@ -437,26 +505,56 @@ def extract_code_body(
 
         if file.is_file():
             content = file.read_text()
-            # Parse the file to get the AST
+            # Try to parse the file
             try:
                 tree = ast.parse(content)
-            except SyntaxError:
-                # If there's a syntax error, try to parse line by line
-                lines = content.splitlines()
-                valid_lines = []
-                for line in lines:
-                    try:
-                        ast.parse(line)
-                        valid_lines.append(line)
-                    except SyntaxError:
-                        continue
-                content = "\n".join(valid_lines)
-                tree = ast.parse(content)
+                has_syntax_error = False
+            except SyntaxError as e:
+                has_syntax_error = True
+                logger.warning(f"Syntax error in {file}: {e}")
 
-            # Remove imports and get code body
-            imports = extract_imports(content)
+            # Extract imports if possible
+            try:
+                import_set, _ = parse_imports(content)
+                imports = import_set.get_all_imports()
+            except SyntaxError:
+                imports = set()
+
+            # Remove imports from the content
             code_body = content
-            for imp in imports.get_all_imports():
+            # Remove ignored import statements
+            if ignore_modules is not None:
+                for mod in ignore_modules:
+                    # Remove 'import mod', 'from packager. import mod', 'from packager.mod import ...', 'from mod import ...'
+                    code_body = re.sub(
+                        rf"^\s*import\s+{re.escape(mod)}(\s+as\s+\w+)?\s*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+                    code_body = re.sub(
+                        rf"^\s*from\s+\.\s+import\s+{re.escape(mod)}.*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+                    code_body = re.sub(
+                        rf"^\s*from\s+\.\s*{re.escape(mod)}\s+import.*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+                    code_body = re.sub(
+                        rf"^\s*from\s+{re.escape(mod)}\s+import.*$",
+                        "",
+                        code_body,
+                        flags=re.MULTILINE,
+                    )
+            # Remove any 'from packager.' or 'from erasmus.' or 'import .' lines
+            code_body = re.sub(r"^\s*from\s+\.\s*.*$", "", code_body, flags=re.MULTILINE)
+            code_body = re.sub(r"^\s*from\s+erasmus\..*$", "", code_body, flags=re.MULTILINE)
+            code_body = re.sub(r"^\s*import\s+\..*$", "", code_body, flags=re.MULTILINE)
+            for imp in imports:
                 # Replace import statements with empty lines to preserve line numbers
                 code_body = re.sub(
                     rf"^.*import.*{re.escape(imp)}.*$",
@@ -486,136 +584,164 @@ def extract_code_body(
                 cleaned_lines.append(line.rstrip())
 
             if cleaned_lines:
-                header = "# Code from " + file.name
-                if not preserve_comments:
-                    # Only add the header if we're preserving comments
-                    code_bodies.append("\n".join(cleaned_lines))
-                else:
-                    code_bodies.append(header + "\n" + "\n".join(cleaned_lines))
+                # Check for duplicate code sections
+                code_section = "\n".join(cleaned_lines)
+                code_hash = hash_code(code_section)
+
+                if code_hash not in seen_sections:
+                    seen_sections.add(code_hash)
+                    header = "# Code from " + file.name
+                    if has_syntax_error:
+                        header += " (contains syntax errors)"
+                    if preserve_comments:
+                        code_bodies.append(header + "\n" + code_section)
+                    else:
+                        code_bodies.append(code_section)
 
     return "\n\n".join(code_bodies)
 
 
 def build_script(
-    files: List[Union[str, Path]],
-    base_path: Optional[Path] = None,
-    preserve_comments: bool = True,
-    group_imports: bool = True,
-) -> Tuple[ImportSet, str]:
-    """Build a single script from multiple Python files.
-
-    Args:
-        files: List of Python files to combine
-        base_path: Base path for resolving relative imports
-        preserve_comments: Whether to preserve comments and docstrings
-        group_imports: Whether to group imports by type
-
-    Returns:
-        Tuple of (ImportSet, script_content)
-    """
-    if base_path is None:
-        base_path = Path.cwd()
-
-    # Convert string paths to Path objects
-    py_files = [Path(f) for f in files if Path(f).suffix == ".py"]
-
-    # Extract imports and code
-    imports = ImportSet()
-    for file in py_files:
-        try:
-            content = file.read_text()
-            imports.update(extract_imports(content))
-        except Exception as e:
-            logger.error(f"Error processing file {file}: {e}")
-            continue
-
-    # Generate script content
-    script_lines = [
-        "#!/usr/bin/env python3",
-        "# -*- coding: utf-8 -*-",
-        '"""',
-        "Auto-generated script by Python Script Packager",
-        '"""',
-        "",
-        format_imports(imports, group_imports),
-        "",
-        "# Generated code",
-        extract_code_body(py_files, preserve_comments),
-    ]
-
-    return imports, "\n".join(script_lines)
-
-
-def generate_script(
-    input_path: Union[str, Path, List[Union[str, Path]]],
-    output_file: Optional[Union[str, Path]] = None,
-    preserve_comments: bool = True,
-    group_imports: bool = True,
+    imports: ImportSet,
+    code_body: str,
 ) -> str:
-    """Generate a standalone script from Python files.
+    """Build a single script from imports and code body.
 
     Args:
-        input_path: Path to Python file, directory, or list of files
-        output_file: Optional path to write output
-        preserve_comments: Whether to keep comments in output
-        group_imports: Whether to group imports by type
+        imports: ImportSet object containing categorized imports
+        code_body: String containing the code body
 
     Returns:
         Generated script content
     """
-    # Convert input_path to list of Path objects
-    if isinstance(input_path, (str, Path)):
-        input_path = [input_path]
+    # Generate output script
+    output = []
 
-    py_files = []
-    for path in input_path:
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Input path does not exist: {path}")
+    # Add imports section
+    output.append("# Standard library imports")
+    for imp in sorted(imports.stdlib):
+        output.append(f"import {imp}")
 
-        if path.is_file():
-            py_files.append(path)
-        else:
-            py_files.extend(path.glob("**/*.py"))
+    output.append("\n# Third party imports")
+    for imp in sorted(imports.third_party):
+        output.append(f"import {imp}")
 
-    if not py_files:
-        raise ValueError(f"No Python files found in {input_path}")
+    # Add code body
+    output.append("\n# Implementation")
+    output.append(code_body)
 
-    # Extract imports and code
-    imports = ImportSet()
+    return "\n".join(output)
+
+
+def resolve_local_imports(py_files, project_root):
+    """Recursively resolve and order all local imports for inlining using topological sort."""
+    from packager.parser import parse_imports
+    import sys
+
+    # Map module name to file path
+    module_to_file = {}
     for file in py_files:
-        content = file.read_text()
-        file_imports = extract_imports(content)
-        imports.update(file_imports)
+        rel_path = file.relative_to(project_root)
+        module_name = ".".join(rel_path.with_suffix("").parts)
+        module_to_file[module_name] = file
 
-    code_body = extract_code_body(py_files, preserve_comments)
+    # Build dependency graph
+    dependencies = {mod: set() for mod in module_to_file}
+    for mod, file in module_to_file.items():
+        with open(file, "r", encoding="utf-8") as f:
+            content = f.read()
+        imports, _ = parse_imports(content)
+        for imp in imports.local:
+            if imp in module_to_file and imp != mod:
+                dependencies[mod].add(imp)
 
-    # Generate script content
-    script_lines = [
-        "#!/usr/bin/env python3",
-        "# -*- coding: utf-8 -*-",
-        '"""',
-        "Auto-generated script by Python Script Packager",
-        '"""',
-        "",
-        format_imports(imports, group_imports),
-        "",
-        "# Generated code",
-        code_body,
-    ]
+    # Topological sort
+    ordered = []
+    temp_mark = set()
+    perm_mark = set()
 
-    script_content = "\n".join(script_lines)
+    def visit(mod):
+        if mod in perm_mark:
+            return
+        if mod in temp_mark:
+            raise RuntimeError(f"Circular dependency detected: {mod}")
+        temp_mark.add(mod)
+        for dep in dependencies[mod]:
+            visit(dep)
+        temp_mark.remove(mod)
+        perm_mark.add(mod)
+        ordered.append(module_to_file[mod])
 
-    # Write to file if specified
-    if output_file:
-        output_file = Path(output_file)
-        if output_file.is_dir():
-            # If output_file is a directory, create a default output file
-            output_file = output_file / "output.py"
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        output_file.write_text(script_content)
+    for mod in dependencies:
+        if mod not in perm_mark:
+            visit(mod)
+    return ordered
 
-    return script_content
+
+def generate_script(
+    paths: list[Union[str, Path]],
+    output_path: Union[str, Path],
+    preserve_comments: bool = True,
+    exclude_patterns: Optional[list[str]] = None,
+) -> Path:
+    """Generate a script from Python files, inlining all local imports."""
+    # Convert paths to Path objects
+    py_files = collect_python_files(paths, exclude_patterns)
+    if not py_files:
+        raise ValueError("No Python files found in the specified paths")
+
+    # Determine project root
+    project_root = Path(min(str(f) for f in py_files)).parent
+    # Recursively resolve and order all local imports
+    ordered_files = resolve_local_imports(py_files, project_root)
+
+    # Track which modules have been inlined
+    inlined_modules = set()
+    code_sections = []
+    for file in ordered_files:
+        rel_path = file.relative_to(project_root)
+        module_name = ".".join(rel_path.with_suffix("").parts)
+        if module_name in inlined_modules:
+            continue
+        inlined_modules.add(module_name)
+        with open(file, "r", encoding="utf-8") as f:
+            content = f.read()
+        # Remove all import statements for inlined local modules
+        code = content
+        for mod in inlined_modules:
+            code = re.sub(
+                rf"^\s*import\s+{re.escape(mod)}(\.[\w\.]+)?(\s+as\s+\w+)?\s*$",
+                "",
+                code,
+                flags=re.MULTILINE,
+            )
+            code = re.sub(
+                rf"^\s*from\s+{re.escape(mod)}(\.[\w\.]+)?\s+import.*$",
+                "",
+                code,
+                flags=re.MULTILINE,
+            )
+        code_sections.append(f"\n# {file.name}\n{code}")
+        # Inject public symbols into global namespace
+        public_symbols = []
+        for line in code.splitlines():
+            match = re.match(r"^def ([a-zA-Z_][a-zA-Z0-9_]*)\(", line)
+            if match and not match.group(1).startswith("_"):
+                public_symbols.append(match.group(1))
+            match = re.match(r"^class ([a-zA-Z_][a-zA-Z0-9_]*)\(", line)
+            if match and not match.group(1).startswith("_"):
+                public_symbols.append(match.group(1))
+        for symbol in public_symbols:
+            code_sections.append(f"{symbol} = {symbol}")
+
+    # Write output file
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(code_sections))
+
+    logger.info(f"Generated script: {output_path}")
+    return output_path
 
 
 if __name__ == "__main__":

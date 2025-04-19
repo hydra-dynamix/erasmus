@@ -22,270 +22,201 @@ Usage:
     # Returns {'requests', 'numpy'}
 """
 
-import importlib.util
 import sys
-from typing import Optional
+import importlib.util
+import logging
+from typing import Set, Dict, Optional
+from pathlib import Path
+import json
+
+logger = logging.getLogger(__name__)
+
+# Cache of stdlib modules for the current Python version
+_STDLIB_MODULES: Optional[Set[str]] = None
+
+# Additional modules that are part of stdlib but may not be detected automatically
+ADDITIONAL_STDLIB = {
+    "argparse",
+    "ast",
+    "asyncio",
+    "collections",
+    "concurrent",
+    "contextlib",
+    "copy",
+    "dataclasses",
+    "datetime",
+    "decimal",
+    "enum",
+    "functools",
+    "glob",
+    "importlib",
+    "inspect",
+    "io",
+    "itertools",
+    "json",
+    "logging",
+    "math",
+    "multiprocessing",
+    "operator",
+    "os",
+    "pathlib",
+    "pickle",
+    "platform",
+    "queue",
+    "re",
+    "shutil",
+    "signal",
+    "socket",
+    "sqlite3",
+    "string",
+    "subprocess",
+    "sys",
+    "tempfile",
+    "threading",
+    "time",
+    "traceback",
+    "types",
+    "typing",
+    "unittest",
+    "urllib",
+    "uuid",
+    "warnings",
+    "weakref",
+    "xml",
+    "zipfile",
+}
 
 
 class StdlibDetector:
-    """Class for detecting standard library modules."""
+    """Class for detecting standard library modules.
+
+    This class provides methods to detect whether a module belongs to the
+    Python standard library. It uses multiple detection methods and caches
+    the results for better performance.
+    """
 
     def __init__(self):
-        """Initialize the StdlibDetector with empty caches."""
-        self._stdlib_modules: Optional[set[str]] = None
-        self._stdlib_prefixes: list[str] = []
-        self._initialized = False
+        """Initialize the StdlibDetector."""
+        self._stdlib_modules: Optional[Set[str]] = None
+        self.initialize()
 
     def initialize(self) -> None:
-        """Initialize the set of standard library modules.
+        """Initialize the stdlib module cache."""
+        self._stdlib_modules = _get_stdlib_modules()
+        logger.info(f"Initialized StdlibDetector with {len(self._stdlib_modules)} modules")
 
-        This method populates the _stdlib_modules cache using the best
-        available method for the current Python version.
-        """
-        # Method 1: Use sys.stdlib_module_names (Python 3.10+)
-        if hasattr(sys, "stdlib_module_names"):
-            self._stdlib_modules = set(sys.stdlib_module_names)
-            self._initialized = True
-            return
-
-        # Method 2: Try to use stdlib_list package if available
-        try:
-            import stdlib_list
-
-            version = f"{sys.version_info.major}.{sys.version_info.minor}"
-            self._stdlib_modules = set(stdlib_list.stdlib_list(version))
-            self._initialized = True
-            return
-        except ImportError:
-            # Continue to fallback method
-            pass
-
-        # Method 3: Use a built-in list of common standard library modules
-        # This is a fallback method and may not be comprehensive
-        self._stdlib_modules = {
-            # Basic modules
-            "abc",
-            "argparse",
-            "array",
-            "ast",
-            "asyncio",
-            "base64",
-            "binascii",
-            "builtins",
-            "calendar",
-            "cmath",
-            "collections",
-            "concurrent",
-            "configparser",
-            "contextlib",
-            "copy",
-            "csv",
-            "ctypes",
-            "datetime",
-            "decimal",
-            "difflib",
-            "dis",
-            "email",
-            "enum",
-            "errno",
-            "fcntl",
-            "filecmp",
-            "fnmatch",
-            "fractions",
-            "ftplib",
-            "functools",
-            "gc",
-            "getopt",
-            "getpass",
-            "gettext",
-            "glob",
-            "gzip",
-            "hashlib",
-            "heapq",
-            "hmac",
-            "html",
-            "http",
-            "imaplib",
-            "importlib",
-            "inspect",
-            "io",
-            "ipaddress",
-            "itertools",
-            "json",
-            "keyword",
-            "linecache",
-            "locale",
-            "logging",
-            "lzma",
-            "math",
-            "mimetypes",
-            "mmap",
-            "multiprocessing",
-            "netrc",
-            "numbers",
-            "operator",
-            "os",
-            "pathlib",
-            "pickle",
-            "pkgutil",
-            "platform",
-            "plistlib",
-            "poplib",
-            "posix",
-            "pprint",
-            "profile",
-            "pstats",
-            "pwd",
-            "py_compile",
-            "pyclbr",
-            "queue",
-            "random",
-            "re",
-            "reprlib",
-            "resource",
-            "runpy",
-            "sched",
-            "secrets",
-            "select",
-            "selectors",
-            "shelve",
-            "shlex",
-            "shutil",
-            "signal",
-            "site",
-            "smtplib",
-            "socket",
-            "socketserver",
-            "sqlite3",
-            "ssl",
-            "stat",
-            "statistics",
-            "string",
-            "struct",
-            "subprocess",
-            "sys",
-            "sysconfig",
-            "tarfile",
-            "tempfile",
-            "textwrap",
-            "threading",
-            "time",
-            "timeit",
-            "token",
-            "tokenize",
-            "trace",
-            "traceback",
-            "tracemalloc",
-            "types",
-            "typing",
-            "unicodedata",
-            "unittest",
-            "urllib",
-            "uuid",
-            "venv",
-            "warnings",
-            "wave",
-            "weakref",
-            "webbrowser",
-            "winreg",
-            "wsgiref",
-            "xml",
-            "xmlrpc",
-            "zipapp",
-            "zipfile",
-            "zipimport",
-            "zlib",
-            # Modules that might be confused with third-party packages
-            "distutils",
-            "setuptools",
-            "pip",
-            "pkg_resources",
-        }
-
-        # Common prefixes for standard library modules
-        self._stdlib_prefixes = [
-            "collections.",
-            "concurrent.",
-            "ctypes.",
-            "email.",
-            "html.",
-            "http.",
-            "importlib.",
-            "logging.",
-            "multiprocessing.",
-            "os.",
-            "unittest.",
-            "urllib.",
-            "xml.",
-            "xmlrpc.",
-        ]
-
-        self._initialized = True
-
-    def is_stdlib_module(self, name: str) -> bool:
-        """Check if a module name belongs to the Python standard library.
+    def is_stdlib_module(self, module_name: str) -> bool:
+        """Check if a module is part of the Python standard library.
 
         Args:
-            name: The name of the module to check.
+            module_name: Name of the module to check
 
         Returns:
-            True if the module is part of the standard library, False otherwise.
+            True if the module is part of the standard library, False otherwise
         """
-        # Initialize if not already done
-        if not self._initialized:
-            self.initialize()
+        # Get the top-level module name
+        top_module = module_name.split(".")[0]
 
-        # Direct match in the standard library modules set
-        if name in self._stdlib_modules:
+        # Check if it's in our stdlib set
+        if self._stdlib_modules and top_module in self._stdlib_modules:
             return True
 
-        # Check if it's a submodule of a standard library module
-        for prefix in self._stdlib_prefixes:
-            if name.startswith(prefix):
-                return True
-
-        # Check if it's importable without installing anything
-        # This is a last resort and might not be reliable in all environments
+        # Try to find the module spec
         try:
-            spec = importlib.util.find_spec(name)
-            if spec is not None and spec.origin is not None:
-                # Exclude modules from site-packages or dist-packages
-                site_pkgs = ("site-packages", "dist-packages")
-                return not any(site_pkg in spec.origin for site_pkg in site_pkgs)
+            spec = importlib.util.find_spec(top_module)
+            if spec is None:
+                return False
+
+            # If the module is in the standard library directory, it's stdlib
+            if spec.origin and Path(spec.origin).is_relative_to(sys.prefix):
+                return True
         except (ImportError, AttributeError, ValueError):
             pass
 
         return False
 
-    def filter_stdlib_imports(self, imports: set[str]) -> set[str]:
+    def filter_stdlib_imports(self, imports: Set[str]) -> Set[str]:
         """Filter out standard library modules from a set of imports.
 
         Args:
-            imports: A set of module names to filter.
+            imports: A set of module names to filter
 
         Returns:
-            A set containing only the third-party (non-stdlib) module names.
+            A set containing only the third-party (non-stdlib) module names
         """
         return {imp for imp in imports if not self.is_stdlib_module(imp)}
 
 
-# Create a singleton instance
-_detector = StdlibDetector()
-_detector.initialize()
+def _get_stdlib_modules() -> Set[str]:
+    """Get a set of all standard library module names for the current Python version.
 
-
-def is_stdlib_module(name: str) -> bool:
-    """Check if a module name belongs to the Python standard library.
-
-    This is a convenience function that uses the singleton StdlibDetector.
-
-    Args:
-        name: The name of the module to check.
+    This function uses various methods to build a comprehensive list of stdlib modules:
+    1. Checks sys.stdlib_module_names if available (Python 3.10+)
+    2. Scans the standard library directory
+    3. Includes additional known stdlib modules
 
     Returns:
-        True if the module is part of the standard library, False otherwise.
+        Set of standard library module names
     """
-    return _detector.is_stdlib_module(name.lower())
+    global _STDLIB_MODULES
+
+    if _STDLIB_MODULES is not None:
+        return _STDLIB_MODULES
+
+    stdlib_modules = set()
+
+    # Method 1: Use sys.stdlib_module_names if available (Python 3.10+)
+    if hasattr(sys, "stdlib_module_names"):
+        stdlib_modules.update(sys.stdlib_module_names)
+
+    # Method 2: Scan the standard library directory
+    stdlib_dir = Path(sys.prefix) / "Lib"
+    if stdlib_dir.exists():
+        # Add .py files in stdlib_dir
+        stdlib_modules.update(f.stem for f in stdlib_dir.glob("*.py") if f.stem != "__init__")
+
+        # Add directories that are packages
+        stdlib_modules.update(
+            d.name for d in stdlib_dir.iterdir() if d.is_dir() and (d / "__init__.py").exists()
+        )
+
+    # Method 3: Add additional known stdlib modules
+    stdlib_modules.update(ADDITIONAL_STDLIB)
+
+    # Cache the result
+    _STDLIB_MODULES = stdlib_modules
+    return stdlib_modules
+
+
+def is_stdlib_module(module_name: str) -> bool:
+    """Check if a module is part of the Python standard library.
+
+    Args:
+        module_name: Name of the module to check
+
+    Returns:
+        True if the module is part of the standard library, False otherwise
+    """
+    # Get the top-level module name
+    top_module = module_name.split(".")[0]
+
+    # Check if it's in our stdlib set
+    if top_module in _get_stdlib_modules():
+        return True
+
+    # Try to find the module spec
+    try:
+        spec = importlib.util.find_spec(top_module)
+        if spec is None:
+            return False
+
+        # If the module is in the standard library directory, it's stdlib
+        if spec.origin and Path(spec.origin).is_relative_to(sys.prefix):
+            return True
+    except (ImportError, AttributeError, ValueError):
+        pass
+
+    return False
 
 
 def filter_stdlib_imports(imports: set[str]) -> set[str]:
@@ -299,7 +230,7 @@ def filter_stdlib_imports(imports: set[str]) -> set[str]:
     Returns:
         A set containing only the third-party (non-stdlib) module names.
     """
-    return _detector.filter_stdlib_imports(imports)
+    return {imp for imp in imports if not is_stdlib_module(imp)}
 
 
 if __name__ == "__main__":

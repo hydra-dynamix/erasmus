@@ -9,13 +9,7 @@ from erasmus.cli.setup_commands import app as setup_app
 from erasmus.utils.rich_console import print_table
 
 app = typer.Typer(
-    help="""
-    Erasmus - Development Context Management System
-    
-    A tool for managing development contexts, protocols, and Model Context Protocol (MCP) interactions.
-    
-    For more information, visit: https://github.com/hydra-dynamics/erasmus
-    """
+    help="Erasmus - Development Context Management System\n\nA tool for managing development contexts, protocols, and Model Context Protocol (MCP) interactions.\n\nFor more information, visit: https://github.com/hydra-dynamics/erasmus"
 )
 
 # Add sub-commands
@@ -32,9 +26,7 @@ def print_main_help_and_exit():
         ["erasmus protocol", "Manage protocols"],
         ["erasmus setup", "Setup Erasmus"],
     ]
-    print_table(
-        ["Command", "Description"], command_rows, title="Available Erasmus Commands"
-    )
+    print_table(["Command", "Description"], command_rows, title="Available Erasmus Commands")
     typer.echo("\nFor more information about a command, run:")
     typer.echo("  erasmus <command> --help")
     raise typer.Exit(1)
@@ -50,7 +42,6 @@ def main(ctx: typer.Context):
 
 
 # Patch Typer's error handling to show help on unknown command
-import sys
 from typer.main import get_command
 from typer.core import TyperGroup
 from click import UsageError

@@ -19,148 +19,63 @@ Usage:
 import json
 import logging
 import os
+import requests
 from pathlib import Path
 from typing import Dict, Optional, Set, Union
+from dataclasses import dataclass
+from packager.parser import ImportSet
+from packaging.utils import canonicalize_name
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Default mappings for common packages where import name differs from package name
-DEFAULT_MAPPINGS = {
-    # Computer Vision
-    "cv2": "opencv-python",
-    "cv": "opencv-python",
-    # Data Science
-    "np": "numpy",
-    "numpy": "numpy",  # Added explicit numpy mapping
-    "pd": "pandas",
-    "plt": "matplotlib",
-    "sns": "seaborn",
-    "sklearn": "scikit-learn",
-    "skimage": "scikit-image",
-    # Web Development
-    "bs4": "beautifulsoup4",
-    "bs": "beautifulsoup4",
-    "django": "django",
-    "flask": "flask",
-    "requests": "requests",
-    # Utilities
-    "PIL": "pillow",
-    "PIL.Image": "pillow",
-    "yaml": "pyyaml",
-    "lxml": "lxml",
-    "jinja2": "jinja2",
-    "jinja": "jinja2",
-    # Testing
-    "pytest": "pytest",
-    "nose": "nose",
-    "unittest": "unittest",  # Part of stdlib
-    # Documentation
-    "sphinx": "sphinx",
-    "docutils": "docutils",
-    # Development Tools
-    "black": "black",
-    "flake8": "flake8",
-    "mypy": "mypy",
-    "isort": "isort",
-    "pylint": "pylint",
-    # Database
-    "sqlalchemy": "sqlalchemy",
-    "sqlite3": "sqlite3",  # Part of stdlib
-    "psycopg2": "psycopg2-binary",
-    "pymongo": "pymongo",
-    # Networking
-    "socket": "socket",  # Part of stdlib
-    "urllib": "urllib3",
-    "httplib": "http.client",  # Part of stdlib
-    # GUI
-    "tkinter": "tk",  # Part of stdlib
-    "PyQt5": "PyQt5",
-    "PySide2": "PySide2",
-    "wx": "wxPython",
-    # Machine Learning
-    "tensorflow": "tensorflow",
-    "tf": "tensorflow",
-    "torch": "torch",
-    "transformers": "transformers",
-    "keras": "keras",
-    # Data Processing
-    "nltk": "nltk",
-    "spacy": "spacy",
-    "gensim": "gensim",
-    "scipy": "scipy",
-    # Visualization
-    "plotly": "plotly",
-    "bokeh": "bokeh",
-    "altair": "altair",
-    # API Development
-    "fastapi": "fastapi",
-    "starlette": "starlette",
-    "uvicorn": "uvicorn",
-    # Async
-    "asyncio": "asyncio",  # Part of stdlib
-    "aiohttp": "aiohttp",
-    "tornado": "tornado",
-    # Serialization
-    "json": "json",  # Part of stdlib
-    "pickle": "pickle",  # Part of stdlib
-    "msgpack": "msgpack",
-    # Cryptography
-    "crypto": "pycryptodome",
-    "cryptography": "cryptography",
-    # Audio/Video
-    "pyaudio": "pyaudio",
-    "moviepy": "moviepy",
-    "pygame": "pygame",
-    # Image Processing
-    "imageio": "imageio",
-    "pillow": "pillow",
-    # CLI
-    "click": "click",
-    "typer": "typer",
-    "argparse": "argparse",  # Part of stdlib
-    # Configuration
-    "configparser": "configparser",  # Part of stdlib
-    "toml": "toml",
-    "pyyaml": "pyyaml",
-    # Date/Time
-    "datetime": "datetime",  # Part of stdlib
-    "time": "time",  # Part of stdlib
-    "pytz": "pytz",
-    # File System
-    "os": "os",  # Part of stdlib
-    "pathlib": "pathlib",  # Part of stdlib
-    "shutil": "shutil",  # Part of stdlib
-    # Regular Expressions
-    "re": "re",  # Part of stdlib
-    # Math
-    "math": "math",  # Part of stdlib
-    "random": "random",  # Part of stdlib
-    "statistics": "statistics",  # Part of stdlib
-    # Collections
-    "collections": "collections",  # Part of stdlib
-    "itertools": "itertools",  # Part of stdlib
-    "functools": "functools",  # Part of stdlib
-    # Concurrency
-    "threading": "threading",  # Part of stdlib
-    "multiprocessing": "multiprocessing",  # Part of stdlib
-    # Debugging
-    "pdb": "pdb",  # Part of stdlib
-    "logging": "logging",  # Part of stdlib
-    "traceback": "traceback",  # Part of stdlib
-    # Type Hints
-    "typing": "typing",  # Part of stdlib
-    # Other
-    "six": "six",
-    "tqdm": "tqdm",
-    "rich": "rich",
-    "colorama": "colorama",
-    "pygments": "pygments",
+
+@dataclass
+class PackageMapping:
+    """Mapping from import names to PyPI package names."""
+
+    name: str
+    package: str
+    version: Optional[str] = None
+
+
+# Common mappings for packages where import name differs from package name
+COMMON_MAPPINGS: dict[str, PackageMapping] = {
+    "PIL": PackageMapping("PIL", "Pillow"),
+    "sklearn": PackageMapping("sklearn", "scikit-learn"),
+    "cv2": PackageMapping("cv2", "opencv-python"),
+    "yaml": PackageMapping("yaml", "PyYAML"),
+    "bs4": PackageMapping("bs4", "beautifulsoup4"),
+    "lxml": PackageMapping("lxml", "lxml"),
+    "pandas": PackageMapping("pandas", "pandas"),
+    "numpy": PackageMapping("numpy", "numpy"),
+    "matplotlib": PackageMapping("matplotlib", "matplotlib"),
+    "seaborn": PackageMapping("seaborn", "seaborn"),
+    "plotly": PackageMapping("plotly", "plotly"),
+    "requests": PackageMapping("requests", "requests"),
+    "aiohttp": PackageMapping("aiohttp", "aiohttp"),
+    "fastapi": PackageMapping("fastapi", "fastapi"),
+    "uvicorn": PackageMapping("uvicorn", "uvicorn"),
+    "sqlalchemy": PackageMapping("sqlalchemy", "SQLAlchemy"),
+    "pytest": PackageMapping("pytest", "pytest"),
+    "black": PackageMapping("black", "black"),
+    "flake8": PackageMapping("flake8", "flake8"),
+    "mypy": PackageMapping("mypy", "mypy"),
+    "isort": PackageMapping("isort", "isort"),
+    "rich": PackageMapping("rich", "rich"),
+    "typer": PackageMapping("typer", "typer"),
+    "pydantic": PackageMapping("pydantic", "pydantic"),
 }
 
 # Custom mappings that can be added by users
-_custom_mappings: Dict[str, str] = {}
+_custom_mappings: dict[str, str] = {}
+
+# Cache for PyPI package info
+_pypi_cache: dict[str, Optional[str]] = {}
+
+# Cache for import to package mappings
+_IMPORT_TO_PACKAGE: Optional[dict[str, str]] = None
 
 
 def register_mapping(import_name: str, package_name: str) -> None:
@@ -178,50 +93,119 @@ def register_mapping(import_name: str, package_name: str) -> None:
     logger.info(f"Registered custom mapping: {import_name} -> {package_name}")
 
 
-def get_package_name(import_name: str) -> str:
-    """
-    Get the PyPI package name for a given import name.
+def query_pypi(module_name: str) -> Optional[str]:
+    """Query PyPI's JSON API to find the package name for a module.
 
     Args:
-        import_name: The name used in import statements.
+        module_name: The module name to look up
 
     Returns:
-        The name of the package on PyPI.
-
-    Example:
-        >>> get_package_name("cv2")
-        'opencv-python'
-        >>> get_package_name("numpy")
-        'numpy'
+        The package name if found, None otherwise
     """
-    # Check custom mappings first
-    if import_name in _custom_mappings:
-        return _custom_mappings[import_name]
+    if module_name in _pypi_cache:
+        return _pypi_cache[module_name]
 
-    # Then check default mappings
-    if import_name in DEFAULT_MAPPINGS:
-        return DEFAULT_MAPPINGS[import_name]
+    try:
+        # First try direct package name match
+        response = requests.get(f"https://pypi.org/pypi/{module_name}/json")
+        if response.status_code == 200:
+            _pypi_cache[module_name] = module_name
+            return module_name
 
-    # If not found, assume the import name is the package name
-    return import_name
+        # Then try searching for packages that provide this module
+        response = requests.get(f"https://pypi.org/search/?q={module_name}&format=json")
+        if response.status_code == 200:
+            results = response.json()
+            for result in results.get("results", []):
+                package_name = result["name"]
+                # Check if this package provides the module
+                pkg_response = requests.get(f"https://pypi.org/pypi/{package_name}/json")
+                if pkg_response.status_code == 200:
+                    pkg_data = pkg_response.json()
+                    # Check if package provides this module
+                    if any(module_name in pkg_data.get("info", {}).get("requires_dist", [])):
+                        _pypi_cache[module_name] = package_name
+                        return package_name
+
+        _pypi_cache[module_name] = None
+        return None
+    except Exception as e:
+        logger.warning(f"Error querying PyPI for {module_name}: {e}")
+        return None
 
 
-def map_imports_to_packages(imports: Set[str]) -> Dict[str, str]:
+def _load_import_to_package() -> dict[str, str]:
+    """Load and cache the import to package mappings.
+
+    Returns:
+        Dict mapping import names to PyPI package names
     """
-    Map a set of import names to their corresponding package names.
+    global _IMPORT_TO_PACKAGE
+
+    if _IMPORT_TO_PACKAGE is not None:
+        return _IMPORT_TO_PACKAGE
+
+    # Start with common mappings
+    _IMPORT_TO_PACKAGE = COMMON_MAPPINGS.copy()
+
+    # Try to load additional mappings from a JSON file
+    mappings_file = Path(__file__).parent / "import_mappings.json"
+    if mappings_file.exists():
+        try:
+            with mappings_file.open() as f:
+                additional_mappings = json.load(f)
+                _IMPORT_TO_PACKAGE.update(additional_mappings)
+        except Exception as e:
+            logger.warning(f"Failed to load additional mappings from {mappings_file}: {e}")
+
+    return _IMPORT_TO_PACKAGE
+
+
+def get_package_name(import_name: str) -> Optional[str]:
+    """Get the PyPI package name for an import name.
 
     Args:
-        imports: A set of import names.
+        import_name: The import name to look up
 
     Returns:
-        A dictionary mapping import names to package names.
-
-    Example:
-        >>> imports = {"cv2", "numpy", "pandas"}
-        >>> map_imports_to_packages(imports)
-        {'cv2': 'opencv-python', 'numpy': 'numpy', 'pandas': 'pandas'}
+        The PyPI package name, or None if not found or if it's a stdlib module
     """
-    return {imp: get_package_name(imp) for imp in imports}
+    # Get the top-level module name
+    top_module = import_name.split(".")[0]
+
+    # Check the mapping
+    mappings = _load_import_to_package()
+    if top_module in mappings:
+        mapping = mappings[top_module]
+        # If it's a PackageMapping, return the .package attribute
+        if isinstance(mapping, PackageMapping):
+            return mapping.package
+        # If it's a string (legacy/custom), return as is
+        return mapping
+
+    # If not in mappings, try to canonicalize the name
+    # This handles cases where the import name matches the package name
+    try:
+        return canonicalize_name(top_module)
+    except Exception:
+        return None
+
+
+def map_imports_to_packages(imports: Set[str]) -> dict[str, str]:
+    """Map a set of import names to their corresponding PyPI package names.
+
+    Args:
+        imports: Set of import names to map
+
+    Returns:
+        Dict mapping import names to PyPI package names
+    """
+    result = {}
+    for imp in imports:
+        pkg_name = get_package_name(imp)
+        if pkg_name is not None:
+            result[imp] = pkg_name
+    return result
 
 
 def load_mappings_from_file(file_path: Union[str, Path]) -> None:
@@ -280,7 +264,7 @@ def save_mappings_to_file(file_path: Union[str, Path]) -> None:
         raise
 
 
-def get_all_mappings() -> Dict[str, str]:
+def get_all_mappings() -> dict[str, str]:
     """
     Get all mappings (default and custom).
 
@@ -292,7 +276,7 @@ def get_all_mappings() -> Dict[str, str]:
         >>> print(f"Total mappings: {len(all_mappings)}")
     """
     # Start with default mappings
-    all_mappings = DEFAULT_MAPPINGS.copy()
+    all_mappings = {imp: pkg for imp, pkg in COMMON_MAPPINGS.items() if pkg.package}
     # Add custom mappings (these will override defaults if there are conflicts)
     all_mappings.update(_custom_mappings)
     return all_mappings
@@ -307,6 +291,32 @@ def clear_custom_mappings() -> None:
     """
     _custom_mappings.clear()
     logger.info("Cleared all custom mappings")
+
+
+def get_required_packages(import_set: ImportSet) -> dict[str, Optional[str]]:
+    """Get required PyPI packages from an ImportSet.
+
+    Args:
+        import_set: ImportSet containing categorized imports
+
+    Returns:
+        Dictionary mapping package names to versions (if available)
+    """
+    packages = {}
+
+    # Process third-party imports
+    for module in import_set.third_party:
+        package_name = get_package_name(module)
+        if package_name:
+            packages[package_name] = None  # Version will be determined by uv
+
+    # Process local imports that might be third-party packages
+    for module in import_set.local:
+        package_name = get_package_name(module)
+        if package_name and package_name not in packages:
+            packages[package_name] = None
+
+    return packages
 
 
 if __name__ == "__main__":

@@ -3,10 +3,8 @@ CLI commands for managing development contexts.
 """
 
 import typer
-from pathlib import Path
 from loguru import logger
 from erasmus.context import ContextManager, ContextError
-import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
 from erasmus.utils.rich_console import print_table
 import os
@@ -67,9 +65,7 @@ def context_callback(ctx: typer.Context):
             ["erasmus context select", "Select and load a context interactively"],
             ["erasmus context load", "Load a context by name to root .ctx XML files"],
         ]
-        print_table(
-            ["Command", "Description"], command_rows, title="Available Commands"
-        )
+        print_table(["Command", "Description"], command_rows, title="Available Commands")
         typer.echo("\nFor more information about a command, run:")
         typer.echo("  erasmus context <command> --help")
         raise typer.Exit(0)
@@ -111,13 +107,10 @@ def delete(name: str = typer.Argument(None, help="Name of the context to delete"
         if not name:
             contexts = context_manager.list_contexts()
             if not contexts:
-                print_table(
-                    ["Info"], [["No contexts found"]], title="Available Contexts"
-                )
+                print_table(["Info"], [["No contexts found"]], title="Available Contexts")
                 raise typer.Exit(1)
             context_rows = [
-                [str(index + 1), context_name]
-                for index, context_name in enumerate(contexts)
+                [str(index + 1), context_name] for index, context_name in enumerate(contexts)
             ]
             print_table(["#", "Context Name"], context_rows, title="Available Contexts")
             choice = typer.prompt("Select a context by number or name")
@@ -187,13 +180,10 @@ def show(name: str = typer.Argument(None, help="Name of the context to show")):
             # List available contexts and prompt for selection
             contexts = context_manager.list_contexts()
             if not contexts:
-                print_table(
-                    ["Info"], [["No contexts found"]], title="Available Contexts"
-                )
+                print_table(["Info"], [["No contexts found"]], title="Available Contexts")
                 raise typer.Exit(1)
             context_rows = [
-                [str(index + 1), context_name]
-                for index, context_name in enumerate(contexts)
+                [str(index + 1), context_name] for index, context_name in enumerate(contexts)
             ]
             print_table(["#", "Context Name"], context_rows, title="Available Contexts")
             choice = typer.prompt("Select a context by number or name")
@@ -257,13 +247,10 @@ def update(
             # List available contexts and prompt for selection
             contexts = context_manager.list_contexts()
             if not contexts:
-                print_table(
-                    ["Info"], [["No contexts found"]], title="Available Contexts"
-                )
+                print_table(["Info"], [["No contexts found"]], title="Available Contexts")
                 raise typer.Exit(1)
             context_rows = [
-                [str(index + 1), context_name]
-                for index, context_name in enumerate(contexts)
+                [str(index + 1), context_name] for index, context_name in enumerate(contexts)
             ]
             print_table(["#", "Context Name"], context_rows, title="Available Contexts")
             choice = typer.prompt("Select a context by number or name")
@@ -373,8 +360,7 @@ def edit(
             print_table(["Info"], [["No contexts found"]], title="Available Contexts")
             raise typer.Exit(1)
         context_rows = [
-            [str(index + 1), context_name]
-            for index, context_name in enumerate(contexts)
+            [str(index + 1), context_name] for index, context_name in enumerate(contexts)
         ]
         print_table(["#", "Context Name"], context_rows, title="Available Contexts")
         choice = typer.prompt("Select a context by number or name")
@@ -464,13 +450,10 @@ def load_context(name: str = typer.Argument(None, help="Name of the context to l
             # List available contexts and prompt for selection
             contexts = context_manager.list_contexts()
             if not contexts:
-                print_table(
-                    ["Info"], [["No contexts found"]], title="Available Contexts"
-                )
+                print_table(["Info"], [["No contexts found"]], title="Available Contexts")
                 raise typer.Exit(1)
             context_rows = [
-                [str(index + 1), context_name]
-                for index, context_name in enumerate(contexts)
+                [str(index + 1), context_name] for index, context_name in enumerate(contexts)
             ]
             print_table(["#", "Context Name"], context_rows, title="Available Contexts")
             choice = typer.prompt("Select a context by number or name")
@@ -518,9 +501,7 @@ def select_context():
         typer.echo("No contexts found to select.")
         raise typer.Exit(1)
     # Display contexts in a table
-    context_rows = [
-        [str(index + 1), context_name] for index, context_name in enumerate(contexts)
-    ]
+    context_rows = [[str(index + 1), context_name] for index, context_name in enumerate(contexts)]
     print_table(["#", "Context Name"], context_rows, title="Available Contexts")
     choice = typer.prompt("Select a context by number or name")
     # Determine selected context name

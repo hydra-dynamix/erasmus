@@ -5,12 +5,12 @@ build-backend = "hatchling.build"
 [project]
 name = "erasmus-workspace"
 version = "0.1.0"
-description = "AI Context Watcher for Development"
+description = "Erasmus is a context manager for AI development."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
-    { name = "Your Name", email = "your.email@example.com" }
+    { name = "Richard Porteous aka Bakobiibizo", email = "richard@hydradynamix.com" }
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -29,6 +29,7 @@ dependencies = [
     "watchdog>=4.0.2",
     "mcp[cli]>=1.6.0",
     "loguru>=0.7.3",
+    "requests>=2.32.3",
 ]
 
 [project.scripts]
@@ -160,8 +161,7 @@ warn_unreachable = true
 members = [
     "erasmus",
     "packager"
-    , "erasmus/mcp/servers/openai"]
-
+]
 [dependency-groups]
 dev = [
     "pytest-asyncio>=0.24.0",

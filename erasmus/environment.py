@@ -6,7 +6,7 @@ from pathlib import Path
 from typing_extensions import Callable
 from pydantic import BaseModel, ConfigDict
 from getpass import getpass
-from .utils.logging import timeit
+from erasmus.utils.logging import timeit
 
 
 class EnvironmentError(Exception):
@@ -89,9 +89,7 @@ class EnvironmentConfig(BaseModel):
 
     def define_required(self, name: str, type_: type, **kwargs) -> None:
         """Define a required environment variable."""
-        self._definitions[name] = VariableDefinition(
-            name=name, type=type_, required=True, **kwargs
-        )
+        self._definitions[name] = VariableDefinition(name=name, type=type_, required=True, **kwargs)
 
     def define_optional(self, name: str, type_: type, **kwargs) -> None:
         """Define an optional environment variable."""
@@ -110,31 +108,21 @@ class EnvironmentConfig(BaseModel):
             converted_value = definition.type(value)
 
             # Apply validation
-            if (
-                definition.min_value is not None
-                and converted_value < definition.min_value
-            ):
+            if definition.min_value is not None and converted_value < definition.min_value:
                 raise EnvironmentError(
                     f"{name} must be greater than or equal to {definition.min_value}"
                 )
 
-            if (
-                definition.max_value is not None
-                and converted_value > definition.max_value
-            ):
+            if definition.max_value is not None and converted_value > definition.max_value:
                 raise EnvironmentError(
                     f"{name} must be less than or equal to {definition.max_value}"
                 )
 
             if definition.pattern is not None and isinstance(converted_value, str):
                 if not re.match(definition.pattern, converted_value):
-                    raise EnvironmentError(
-                        f"{name} must match pattern {definition.pattern}"
-                    )
+                    raise EnvironmentError(f"{name} must match pattern {definition.pattern}")
 
-            if definition.validator is not None and not definition.validator(
-                converted_value
-            ):
+            if definition.validator is not None and not definition.validator(converted_value):
                 raise EnvironmentError(f"{name} failed custom validation")
 
             self._variables[name] = converted_value
@@ -219,9 +207,7 @@ class EnvironmentConfig(BaseModel):
         for variable_key, variable_definition in self._definitions.items():
             variable_value = self._variables.get(variable_key)
             if variable_definition.required and variable_value is None:
-                raise EnvironmentError(
-                    f"Missing required environment variable: {variable_key}"
-                )
+                raise EnvironmentError(f"Missing required environment variable: {variable_key}")
             if variable_value is not None:
                 if not isinstance(variable_value, variable_definition.type):
                     raise TypeError(

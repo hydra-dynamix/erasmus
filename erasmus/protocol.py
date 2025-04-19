@@ -2,9 +2,8 @@
 Protocol management functionality for Erasmus.
 """
 
-import os
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel
 from loguru import logger
 from erasmus.utils.paths import get_path_manager
@@ -32,22 +31,16 @@ class ProtocolModel(BaseModel):
 class ProtocolManager:
     """
     Manages protocol files for Erasmus.
-    Loads base protocol templates from .erasmus/templates/protocols and custom user protocols from .erasmus/protocol.
+    Loads base protocol templates from erasmus.erasmus/templates/protocols and custom user protocols from erasmus.erasmus/protocol.
     Provides methods to list, get, create, update, and delete protocols.
     """
 
-    def __init__(
-        self, base_dir: Optional[str] = None, user_dir: Optional[str] = None
-    ) -> None:
+    def __init__(self, base_dir: Optional[str] = None, user_dir: Optional[str] = None) -> None:
         # Always use path_manager.template_dir / 'protocols' unless base_dir is explicitly provided
         self.base_template_dir: Path = (
-            Path(base_dir)
-            if base_dir is not None
-            else path_manager.template_dir / "protocols"
+            Path(base_dir) if base_dir is not None else path_manager.template_dir / "protocols"
         )
-        self.user_protocol_dir: Path = (
-            Path(user_dir) if user_dir else path_manager.protocol_dir
-        )
+        self.user_protocol_dir: Path = Path(user_dir) if user_dir else path_manager.protocol_dir
         self.base_template_dir.mkdir(parents=True, exist_ok=True)
         self.user_protocol_dir.mkdir(parents=True, exist_ok=True)
         logger.info(
@@ -73,7 +66,7 @@ class ProtocolManager:
 
     def list_protocols(
         self, include_templates: bool = True, include_user: bool = True
-    ) -> List[str]:
+    ) -> list[str]:
         """
         List all available protocol names.
         Args:
@@ -85,17 +78,11 @@ class ProtocolManager:
         protocol_names = set()
         if include_templates:
             protocol_names.update(
-                [
-                    protocol_path.stem
-                    for protocol_path in self.base_template_dir.glob("*.xml")
-                ]
+                [protocol_path.stem for protocol_path in self.base_template_dir.glob("*.xml")]
             )
         if include_user:
             protocol_names.update(
-                [
-                    protocol_path.stem
-                    for protocol_path in self.user_protocol_dir.glob("*.xml")
-                ]
+                [protocol_path.stem for protocol_path in self.user_protocol_dir.glob("*.xml")]
             )
         return sorted(protocol_names)
 
@@ -112,14 +99,10 @@ class ProtocolManager:
         template_path = self._get_protocol_path(sanitized_name, is_template=True)
         if user_path.exists():
             content = user_path.read_text()
-            return ProtocolModel(
-                name=sanitized_name, path=str(user_path), content=content
-            )
+            return ProtocolModel(name=sanitized_name, path=str(user_path), content=content)
         elif template_path.exists():
             content = template_path.read_text()
-            return ProtocolModel(
-                name=sanitized_name, path=str(template_path), content=content
-            )
+            return ProtocolModel(name=sanitized_name, path=str(template_path), content=content)
         else:
             return None
 
@@ -144,9 +127,7 @@ class ProtocolManager:
             if template_path.exists():
                 content = template_path.read_text()
             else:
-                content = (
-                    '<?xml version="1.0" encoding="UTF-8"?>\n<Protocol></Protocol>'
-                )
+                content = '<?xml version="1.0" encoding="UTF-8"?>\n<Protocol></Protocol>'
         else:
             # If content is not valid XML, wrap it in <Protocol>...</Protocol>
             import xml.etree.ElementTree as ET
@@ -157,9 +138,7 @@ class ProtocolManager:
                 content = f'<?xml version="1.0" encoding="UTF-8"?>\n<Protocol>{content}</Protocol>'
         protocol_path.write_text(_sanitize_xml_content(content))
         logger.info(f"Created protocol: {sanitized_name}")
-        return ProtocolModel(
-            name=sanitized_name, path=str(protocol_path), content=content
-        )
+        return ProtocolModel(name=sanitized_name, path=str(protocol_path), content=content)
 
     def update_protocol(self, protocol_name: str, content: str) -> ProtocolModel:
         """
@@ -175,9 +154,7 @@ class ProtocolManager:
         sanitized_name = self._sanitize_name(protocol_name)
         protocol_path = self._get_protocol_path(sanitized_name, is_template=False)
         if not protocol_path.exists():
-            raise FileNotFoundError(
-                f"Protocol '{sanitized_name}' not found in user protocols."
-            )
+            raise FileNotFoundError(f"Protocol '{sanitized_name}' not found in user protocols.")
         # Ensure content is a valid XML string
         if not isinstance(content, str) or not content.strip():
             content = '<?xml version="1.0" encoding="UTF-8"?>\n<Protocol></Protocol>'
@@ -190,9 +167,7 @@ class ProtocolManager:
                 content = f'<?xml version="1.0" encoding="UTF-8"?>\n<Protocol>{content}</Protocol>'
         protocol_path.write_text(_sanitize_xml_content(content))
         logger.info(f"Updated protocol: {sanitized_name}")
-        return ProtocolModel(
-            name=sanitized_name, path=str(protocol_path), content=content
-        )
+        return ProtocolModel(name=sanitized_name, path=str(protocol_path), content=content)
 
     def delete_protocol(self, protocol_name: str) -> None:
         """
@@ -212,8 +187,6 @@ class ProtocolManager:
                 f"Cannot delete template protocol: '{sanitized_name}'. Only custom (user) protocols can be deleted."
             )
         if not protocol_path.exists():
-            raise FileNotFoundError(
-                f"Protocol '{sanitized_name}' not found in user protocols."
-            )
+            raise FileNotFoundError(f"Protocol '{sanitized_name}' not found in user protocols.")
         protocol_path.unlink()
         logger.info(f"Deleted protocol: {sanitized_name}")

@@ -65,9 +65,7 @@ def get_element_text(root: ET.Element, xpath: str, default: Any = None) -> Any:
     return element.text
 
 
-def get_element_attribute(
-    root: ET.Element, xpath: str, attribute: str, default: Any = None
-) -> Any:
+def get_element_attribute(root: ET.Element, xpath: str, attribute: str, default: Any = None) -> Any:
     """
     Get the value of an attribute using XPath.
 
@@ -86,7 +84,7 @@ def get_element_attribute(
     return element.get(attribute, default)
 
 
-def get_elements(root: ET.Element, xpath: str) -> List[ET.Element]:
+def get_elements(root: ET.Element, xpath: str) -> list[ET.Element]:
     """
     Get all elements matching an XPath expression.
 
@@ -100,7 +98,7 @@ def get_elements(root: ET.Element, xpath: str) -> List[ET.Element]:
     return root.findall(xpath)
 
 
-def get_element_texts(root: ET.Element, xpath: str) -> List[str]:
+def get_element_texts(root: ET.Element, xpath: str) -> list[str]:
     """
     Get the text content of all elements matching an XPath expression.
 
@@ -171,7 +169,7 @@ def get_protocol_name(file_path: Union[str, Path]) -> Optional[str]:
         return None
 
 
-def xml_to_dict(element: ET.Element) -> Dict[str, Any]:
+def xml_to_dict(element: ET.Element) -> dict[str, Any]:
     """
     Convert an XML element to a dictionary.
 

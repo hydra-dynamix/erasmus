@@ -6,18 +6,14 @@ directory, including saving, loading, and sanitizing content.
 """
 
 import os
-import re
-import shutil
 import xml.etree.ElementTree as ET
-import xml.dom.minidom as minidom
-import uuid
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from loguru import logger
 from erasmus.utils.paths import get_path_manager
 from erasmus.utils.sanatizer import _sanitize_string, _sanitize_xml_content
 from erasmus.utils.rich_console import get_console
-from typing import Optional, List, Dict, Any
+from typing import Optional
 
 console = get_console()
 
@@ -340,7 +336,7 @@ class ContextManager(CtxMngrModel):
         except Exception as context_error:
             raise ContextFileError(f"Failed to display context: {context_error}")
 
-    def list_contexts(self) -> List[str]:
+    def list_contexts(self) -> list[str]:
         """
         List all development contexts by name.
         Returns:

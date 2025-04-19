@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from enum import Enum
 import os
 from typing import NamedTuple
-from .logging import timeit
+from erasmus.utils.logging import timeit
 
 load_dotenv()
 
@@ -23,11 +23,7 @@ class IDE(Enum):
     windsurf = IDEMetadata(
         name="windsurf",
         rules_file=".windsurfrules",
-        global_rules_path=Path.home()
-        / ".codeium"
-        / "windsurf"
-        / "memories"
-        / "global_rules.md",
+        global_rules_path=Path.home() / ".codeium" / "windsurf" / "memories" / "global_rules.md",
     )
 
     cursor = IDEMetadata(
@@ -145,23 +141,13 @@ class PathMngrModel(BaseModel):
     # Directories
     root_dir: Path = Path.cwd()
     erasmus_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus")
-    context_dir: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "context"
-    )
-    protocol_dir: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "protocol"
-    )
-    template_dir: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates"
-    )
+    context_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "context")
+    protocol_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "protocol")
+    template_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "templates")
 
     # Files
-    architecture_file: Path = Field(
-        default_factory=lambda: Path.cwd() / ".ctx.architecture.xml"
-    )
-    progress_file: Path = Field(
-        default_factory=lambda: Path.cwd() / ".ctx.progress.xml"
-    )
+    architecture_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.architecture.xml")
+    progress_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.progress.xml")
     tasks_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.tasks.xml")
     rules_file: Path | None = None
     global_rules_file: Path | None = None
