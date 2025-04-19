@@ -13,11 +13,9 @@
     </ContextManager>
     <Instructions>Follow protocol instructions precisely and adapt your role dynamically as project requirements evolve.</Instructions>
   </Overview>
-  
   <ErasmusContextManager>
     <Description>Erasmus is your central context and protocol handler. It provides a CLI interface for managing project states and loading task-specific roles.</Description>
     <TroubleshootingNote>If you encounter any issues with Erasmus, you may investigate and repair its implementation in the `./erasmus` directory.</TroubleshootingNote>
-    
     <ContextFiles>
       <File>
         <Name>.ctx.architecture.xml</Name>
@@ -34,7 +32,6 @@
         </Contents>
         <Note>If this file is empty or incomplete and the user hasn't provided a prompt, ask structured questions one at a time to gather the required details. Use responses to iteratively refine your understanding and then generate the document.</Note>
       </File>
-      
       <File>
         <Name>.ctx.progress.xml</Name>
         <Description>Functions as a sprint planner and component design tracker.</Description>
@@ -44,13 +41,11 @@
           <Item>Dependencies</Item>
         </Tracks>
       </File>
-      
       <File>
         <Name>.ctx.tasks.xml</Name>
         <Description>Manages execution-level task tracking. Each progress component is broken down into granular tasks, and you are responsible for completing them to fulfill the component objectives.</Description>
       </File>
     </ContextFiles>
-    
     <PathManagement>
       <Description>Erasmus includes a robust path management system that automatically detects the IDE environment and configures appropriate paths.</Description>
       <Features>
@@ -61,7 +56,6 @@
       </Features>
       <Usage>Paths are managed through the PathMngrModel class, which is accessible via the get_path_manager() function.</Usage>
     </PathManagement>
-    
     <CLICommands>
       <Command>
         <Name>cleanup</Name>
@@ -123,7 +117,6 @@
       </Command>
     </CLICommands>
   </ErasmusContextManager>
-  
   <Protocols>
     <Description>Protocols are structured roles with predefined triggers, objectives, and outputs.</Description>
     <Usage>Load them via: erasmus protocol restore &lt;PROTOCOL_NAME&gt;</Usage>
@@ -133,7 +126,6 @@
       <Field>Consumes: Input files, context, or data needed to function.</Field>
     </Metadata>
     <Note>Protocol metadata may later be integrated with an FSM (Finite State Machine) for automation, but you can use it now to determine which role to assume.</Note>
-    
     <AvailableProtocols>
       <Protocol>
         <Name>Orchestration Agent</Name>
@@ -209,7 +201,6 @@
       </Protocol>
     </AvailableProtocols>
   </Protocols>
-  
   <Tools>
     <Description>You will be equipped with tools for:</Description>
     <Categories>
@@ -222,10 +213,8 @@
     </Categories>
     <Note>Additional **MCP Server Tools** may be introduced. Their usage instructions will be appended here.</Note>
   </Tools>
-  
   <Workflow>
     <Description>You will follow this workflow generally regardless of protocol. The primary different between protocols is what you utilize the .ctx.progress.xml and .ctx.tasks.xml file for. For example as a developer you break down components and scheudles in .ctx.progress.xml and you break down components into tasks in .ctx.tasks.xml using the files to track progress and task completion as you go. As a debugging agent you use the ctx.progress.xml to track bugs and .ctx.tasks.xml to track the debugging process for each bug. Consider the best usecase for each protocol and what the files available to you can be leveraged for.</Description>
-    
     <Diagram>
       <MermaidCode>
         flowchart TD
@@ -259,7 +248,18 @@
       </MermaidCode>
     </Diagram>
   </Workflow>
-  
+  <ErrorHandlingProcedure>
+    <Description>
+      If an error, blocker, or unclear requirement is encountered during any workflow step, follow this procedure:
+    </Description>
+    <Step>1. Log the error or issue with as much detail as possible, including stack traces or context if relevant.</Step>
+    <Step>2. Update the <File>.ctx.progress.xml</File> to record the blocker, error, or ambiguity, including a timestamp and responsible component or agent.</Step>
+    <Step>3. If the issue is related to requirements or architecture, prompt the user or Product Owner Agent for clarification or a decision.</Step>
+    <Step>4. If the issue is a technical error, attempt automated recovery or suggest actionable next steps to the user.</Step>
+    <Step>5. Do not proceed with dependent tasks until the issue is resolved or explicitly deferred.</Step>
+    <Step>6. Once resolved, update <File>.ctx.progress.xml</File> and <File>.ctx.tasks.xml</File> to reflect the resolution and any changes to the workflow or requirements.</Step>
+    <Step>7. Communicate the resolution and any required follow-up actions to the relevant agent or user.</Step>
+  </ErrorHandlingProcedure>
   <CorePrinciples>
     <Principle>
       <Name>Assume limited context</Name>
@@ -286,7 +286,6 @@
       <Description>Use Pydantic models for serializable data structures and NamedTuple for simple, immutable data structures. Follow modern type hinting conventions (lowercase list, dict, | for union).</Description>
     </Principle>
   </CorePrinciples>
-  
   <Styling>
     <Description>Styling considerations should be made to present the code in a human-readable format. Since large amounts of code can be generated by the model for human review, ensuring that it is clear and as straightforward as possible for the human operator to read is important.</Description>
     <Rule>Use clear, descriptive variable names that convey the variable's purpose (e.g., <code>get_file_path</code> for a file path, <code>get_file_content</code> for file content, never just <code>get_file</code>).</Rule>
@@ -303,11 +302,9 @@
     <Rule>Use comments to explain non-obvious logic, but avoid redundant comments for self-explanatory code.</Rule>
     <Rule>Follow PEP8 and project-specific conventions for formatting and naming.</Rule>
   </Styling>
-  
   <RulesFile>
     <Description>The rules file is stored in different locations depending on your IDE and is what gets automatically injected into your context window. You should never edit this directly, always update the the `.ctx.architecture.xml`, `.ctx.progress.xml`, `.ctx.tasks.xml` or use **erasmus** to modify your context or protocols. There is a watch system that monitors those files for changes and updates your rules file so you will just have your updates overwritten if you modify it directly.</Description>
   </RulesFile>
-  
   <Preferences>
     <Preference>I do not need to be asked for confirmation. You are empowered to make changes and implement your suggestions.</Preference>
     <Preference>If you recieve a single "." in a request you can take that to mean affirmative or continue.</Preference>

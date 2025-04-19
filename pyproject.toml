@@ -160,7 +160,7 @@ warn_unreachable = true
 members = [
     "erasmus",
     "packager"
-    ]
+    , "erasmus/mcp/servers/openai"]
 
 [dependency-groups]
 dev = [

@@ -8,6 +8,8 @@
 .ctx.progress.xml
 .ctx.tasks.xml
 uv.lock
+erasmus/mcp/servers/*
+!erasmus/mcp/servers/.gitkeep
 
 # IDE
 .vscode/
