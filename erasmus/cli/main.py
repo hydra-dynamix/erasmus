@@ -20,11 +20,38 @@ app.add_typer(setup_app, name="setup", help="Setup Erasmus")
 
 # Custom error handler for unknown commands and argument errors
 def print_main_help_and_exit():
+    try:
+        from rich.console import Console
+
+        console = Console()
+        banner = [
+            ("green", " _____                                  "),
+            ("green", "|  ___|                                 "),
+            ("cyan", "| |__ _ __ __ _ ___ _ __ ___  _   _ ___ "),
+            ("green", "|  __| '__/ _` / __| '_ ` _ \\| | | / __|"),
+            ("cyan", "| |__| | | (_| \\__ \\ | | | | | |_| \\__ \\"),
+            ("green", "\\____/_|  \\__,_|___/_| |_| |_|\\__,_|___/"),
+        ]
+        for color, line in banner:
+            console.print(line, style=color)
+    except ImportError:
+        # Fallback to plain text if rich is not available
+        typer.echo(r"""
+ _____                                  
+|  ___|                                 
+| |__ _ __ __ _ ___ _ __ ___  _   _ ___ 
+|  __| '__/ _` / __| '_ ` _ \| | | / __|
+| |__| | | (_| \__ \ | | | | | |_| \__ \
+\____/_|  \__,_|___/_| |_| |_|\__,_|___/
+""")
     typer.echo("\nErasmus - Development Context Management System")
     command_rows = [
         ["erasmus context", "Manage development contexts"],
         ["erasmus protocol", "Manage protocols"],
         ["erasmus setup", "Setup Erasmus"],
+        ["erasmus watch", "Watch for .ctx file changes"],
+        ["erasmus status", "Show current status"],
+        ["erasmus version", "Show Erasmus version"],
     ]
     print_table(["Command", "Description"], command_rows, title="Available Erasmus Commands")
     typer.echo("\nFor more information about a command, run:")
@@ -82,6 +109,55 @@ def watch():  # pragma: no cover
     except KeyboardInterrupt:
         monitor.stop()
         typer.echo("Stopped watching.")
+
+
+@app.command()
+def status():
+    """Show the current Erasmus context and protocol status."""
+    from erasmus.context import ContextManager
+    from erasmus.protocol import ProtocolManager
+    from erasmus.utils.rich_console import print_table
+    import os
+
+    context_manager = ContextManager()
+    protocol_manager = ProtocolManager()
+
+    # Current context (from .erasmus/current_context.txt if exists)
+    current_context = None
+    current_context_path = os.path.join(context_manager.base_dir.parent, "current_context.txt")
+    if os.path.exists(current_context_path):
+        with open(current_context_path) as f:
+            current_context = f.read().strip()
+
+    # List all contexts
+    try:
+        contexts = context_manager.list_contexts()
+    except Exception as e:
+        contexts = []
+
+    # List all protocols
+    try:
+        protocols = protocol_manager.list_protocols()
+    except Exception as e:
+        protocols = []
+
+    print_table(
+        ["Status", "Value"],
+        [
+            ["Current Context", current_context or "(none set)"],
+            ["Available Contexts", ", ".join(contexts) if contexts else "(none)"],
+            ["Available Protocols", ", ".join(protocols) if protocols else "(none)"],
+        ],
+        title="Erasmus Status",
+    )
+
+
+@app.command()
+def version():
+    """Show the Erasmus version."""
+    import erasmus
+
+    typer.echo(f"Erasmus version: {erasmus.__version__}")
 
 
 if __name__ == "__main__":

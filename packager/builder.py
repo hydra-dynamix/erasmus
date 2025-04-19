@@ -17,6 +17,9 @@ import textwrap
 from dataclasses import dataclass, field
 import re
 import importlib.util
+import toml
+import subprocess
+import base64
 
 from packager.parser import (
     extract_imports,
@@ -30,6 +33,10 @@ from rich.console import Console
 from rich.logging import RichHandler
 from packager.collector import collect_python_files
 from packager.mapping import map_imports_to_packages
+from packager.paths import get_packager_path_manager
+from packager.file_order import get_ordered_files
+from packager.inliner import inline_module, get_public_symbols
+from packager.embedder import collect_erasmus_embedded_files
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +345,18 @@ def collect_python_files(
             if not any(fnmatch.fnmatch(str(file), pattern) for pattern in exclude_patterns)
         ]
 
+    # Exclude test files and __main__.py from py_files
+    py_files = [
+        f
+        for f in py_files
+        if not (
+            f.name.startswith("test_")
+            or f.name == "__main__.py"
+            or "/tests/" in str(f)
+            or "\\tests\\" in str(f)
+        )
+    ]
+
     return py_files
 
 
@@ -410,7 +429,7 @@ def format_imports(imports: ImportSet, group_imports: bool = True) -> str:
 
         # Special case for timeit
         if imp == "logging.timeit":
-            return "import timeit"
+            return None  # Do not emit import for logging.timeit
 
         if "." in imp:
             # For imports with dots, use 'from packager... import' syntax
@@ -684,61 +703,102 @@ def generate_script(
     preserve_comments: bool = True,
     exclude_patterns: Optional[list[str]] = None,
 ) -> Path:
-    """Generate a script from Python files, inlining all local imports."""
+    """Generate a script from Python files, inlining all local imports and placing them at the top."""
+    # Initialize path manager
+    path_manager = get_packager_path_manager()
     # Convert paths to Path objects
     py_files = collect_python_files(paths, exclude_patterns)
+    # Exclude all __init__.py files
+    py_files = [f for f in py_files if f.name != "__init__.py"]
+    # Ensure all files are absolute paths
+    py_files = [f.resolve() for f in py_files]
     if not py_files:
         raise ValueError("No Python files found in the specified paths")
 
-    # Determine project root
-    project_root = Path(min(str(f) for f in py_files)).parent
-    # Recursively resolve and order all local imports
-    ordered_files = resolve_local_imports(py_files, project_root)
+    # Use path manager for project root
+    project_root = path_manager.get_project_root()
+
+    # Use file_order module for stacking
+    ordered_files = get_ordered_files(py_files, path_manager)
 
     # Track which modules have been inlined
     inlined_modules = set()
-    code_sections = []
+    local_module_sections = []  # Store local modules to place at the top
+    main_module_section = None
     for file in ordered_files:
+        if file.name == "main.py":
+            # Defer inlining main.py until the end
+            code = inline_module(file, inlined_modules)
+            main_module_section = f"\n# {file.name}\n{code}"
+            continue
         rel_path = file.relative_to(project_root)
         module_name = ".".join(rel_path.with_suffix("").parts)
         if module_name in inlined_modules:
             continue
         inlined_modules.add(module_name)
-        with open(file, "r", encoding="utf-8") as f:
-            content = f.read()
-        # Remove all import statements for inlined local modules
-        code = content
-        for mod in inlined_modules:
-            code = re.sub(
-                rf"^\s*import\s+{re.escape(mod)}(\.[\w\.]+)?(\s+as\s+\w+)?\s*$",
-                "",
-                code,
-                flags=re.MULTILINE,
-            )
-            code = re.sub(
-                rf"^\s*from\s+{re.escape(mod)}(\.[\w\.]+)?\s+import.*$",
-                "",
-                code,
-                flags=re.MULTILINE,
-            )
-        code_sections.append(f"\n# {file.name}\n{code}")
+        code = inline_module(file, inlined_modules)
+        local_module_sections.append(f"\n# {file.name}\n{code}")
         # Inject public symbols into global namespace
-        public_symbols = []
-        for line in code.splitlines():
-            match = re.match(r"^def ([a-zA-Z_][a-zA-Z0-9_]*)\(", line)
-            if match and not match.group(1).startswith("_"):
-                public_symbols.append(match.group(1))
-            match = re.match(r"^class ([a-zA-Z_][a-zA-Z0-9_]*)\(", line)
-            if match and not match.group(1).startswith("_"):
-                public_symbols.append(match.group(1))
+        public_symbols = get_public_symbols(code)
         for symbol in public_symbols:
-            code_sections.append(f"{symbol} = {symbol}")
+            local_module_sections.append(f"{symbol} = {symbol}")
+    # Inline main.py last if present
+    if main_module_section:
+        local_module_sections.append(main_module_section)
+
+    # Combine all code sections, with local modules at the top
+    output_lines = []
+    output_lines.extend(local_module_sections)
+    output = "\n".join(output_lines)
+
+    # Final pass: remove all 'from erasmus' and 'import erasmus' lines (anywhere in output)
+    output = re.sub(r"^\s*from\s+erasmus[\w\.]*\s+import.*$", "", output, flags=re.MULTILINE)
+    output = re.sub(r"^\s*import\s+erasmus[\w\.]*.*$", "", output, flags=re.MULTILINE)
+
+    # Embed .erasmus files
+    embedded_files = collect_erasmus_embedded_files(path_manager)
+    embed_code = [
+        "import os, base64",
+        "def _extract_erasmus_embedded_files():",
+        "    embedded = {}",
+    ]
+    for k, v in embedded_files.items():
+        embed_code.append(f"    embedded[{repr(k)}] = {repr(v)}")
+    embed_code += [
+        '    if not os.path.exists(".erasmus"):',
+        "        for rel_path, b64 in embedded.items():",
+        "            out_path = os.path.join(os.getcwd(), rel_path)",
+        "            os.makedirs(os.path.dirname(out_path), exist_ok=True)",
+        '            with open(out_path, "wb") as f:',
+        "                f.write(base64.b64decode(b64))",
+        "    # else: do not overwrite",
+        "",
+        "_extract_erasmus_embedded_files()",
+        "",
+    ]
+    # Prepend embed_code to output
+    output = "\n".join(embed_code) + output
+
+    # Append a single entry point at the end (call app() directly, no import)
+    output += "\n\nif __name__ == '__main__':\n    app()\n"
 
     # Write output file
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(code_sections))
+        f.write(output)
+
+    # --- Add dependencies with uv ---
+    pyproject_file = Path("pyproject.toml")
+    if pyproject_file.exists():
+        pyproject = toml.load(pyproject_file)
+        dependencies = pyproject.get("project", {}).get("dependencies", [])
+        for dep in dependencies:
+            pkg = re.split(r"[>=<\[ ]", dep)[0].strip()
+            print(f"Adding dependency with uv: {pkg}")
+            subprocess.run(["uv", "add", "--script", str(output_path), pkg], check=True)
+    else:
+        print("pyproject.toml not found, skipping uv dependency injection.")
 
     logger.info(f"Generated script: {output_path}")
     return output_path

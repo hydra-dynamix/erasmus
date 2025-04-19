@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from enum import Enum
 import os
 from typing import NamedTuple
-from erasmus.utils.logging import timeit
 
 load_dotenv()
 
@@ -157,7 +156,6 @@ class PathMngrModel(BaseModel):
         # Initialize and time path setup
         self._setup_paths()
 
-    @timeit
     def _setup_paths(self):
         """Set up paths based on the selected IDE."""
         if self.ide:
@@ -220,7 +218,6 @@ class PathMngrModel(BaseModel):
         else:
             raise ValueError(f"Path {name} not found")
 
-    @timeit
     def ensure_dirs(self) -> None:
         """Ensure all directories exist."""
         self.context_dir.mkdir(parents=True, exist_ok=True)
@@ -228,7 +225,6 @@ class PathMngrModel(BaseModel):
         self.erasmus_dir.mkdir(parents=True, exist_ok=True)
         self.template_dir.mkdir(parents=True, exist_ok=True)
 
-    @timeit
     def ensure_files(self) -> None:
         """Ensure all files exist."""
         self.ensure_dirs()
@@ -240,7 +236,6 @@ class PathMngrModel(BaseModel):
         if self.global_rules_file:
             self.global_rules_file.touch(exist_ok=True)
 
-    @timeit
     def setup_paths(self) -> None:
         """Set up all paths and ensure directories and files exist."""
         self._setup_paths()

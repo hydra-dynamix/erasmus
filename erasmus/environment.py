@@ -6,7 +6,9 @@ from pathlib import Path
 from typing_extensions import Callable
 from pydantic import BaseModel, ConfigDict
 from getpass import getpass
-from erasmus.utils.logging import timeit
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class EnvironmentError(Exception):
@@ -165,7 +167,6 @@ class EnvironmentConfig(BaseModel):
             return mask_sensitive_value(value)
         return str(value)
 
-    @timeit
     def load_from_file(self, file_path: str | Path) -> None:
         """Load environment variables from a file."""
         file_path = Path(file_path)
@@ -184,7 +185,6 @@ class EnvironmentConfig(BaseModel):
                     except ValueError:
                         continue
 
-    @timeit
     def load_from_system(self) -> None:
         """Load environment variables from system environment."""
         for name, definition in self._definitions.items():
@@ -201,7 +201,6 @@ class EnvironmentConfig(BaseModel):
                     value = input(f"Enter {name}: ")
                 self.set(name, value)
 
-    @timeit
     def validate(self) -> None:
         """Validate all environment variables according to their definitions."""
         for variable_key, variable_definition in self._definitions.items():
@@ -220,7 +219,6 @@ class EnvironmentConfig(BaseModel):
                         f"Environment variable '{variable_key}' failed custom validation."
                     )
 
-    @timeit
     def merge(self, other: "EnvironmentConfig") -> None:
         """Merge another environment configuration into this one."""
         # First merge definitions

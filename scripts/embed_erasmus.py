@@ -1,115 +1,72 @@
 #!/usr/bin/env python3
-"""
-Script to embed the watcher.py file into the installer script as erasmus.py.
-This creates a self-extracting installer that contains the erasmus.py file.
-"""
-
-import os
 import sys
 import base64
-import json
-import hashlib
-from pathlib import Path
+import os
 
-def main():
-    """Main function to embed watcher.py into the installer as erasmus.py."""
-    # Get project root directory
-    project_root = Path.cwd()
-    
-    # Define paths
-    watcher_path = project_root / 'watcher.py'
-    install_path = project_root / 'scripts' / 'install.sh'
-    version_path = project_root / 'version.json'
-    release_dir = project_root / 'scripts' / 'release'
-    
-    # Create release directory if it doesn't exist
-    release_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Check if required files exist
-    if not watcher_path.exists():
-        print(f"Error: {watcher_path} not found")
-        print("\nTo fix this error:")
-        print("1. Create your main Python script as 'watcher.py' in the project root")
-        print("2. Then run this script again to build the installer")
-        return 1
-    
-    if not install_path.exists():
-        print(f"Error: {install_path} not found")
-        print("\nTo fix this error:")
-        print("1. Make sure you're running this script from the project root directory")
-        print("2. Ensure the scripts directory contains install.sh")
-        return 1
-    
-    if not version_path.exists():
-        print(f"Error: {version_path} not found")
-        print("\nTo fix this error:")
-        print("1. Make sure you're running this script from the project root directory")
-        print("2. Create a version.json file with a 'version' field")
-        print("   Example: {\"version\": \"0.1.0\"}")
-        return 1
-    
-    # Get version from version.json
-    with open(version_path, 'r') as f:
-        version_data = json.load(f)
-        version = version_data.get('version', '0.0.0')
-    
-    print(f"Building installer for version {version}")
-    
-    # Create version-specific directory
-    version_dir = release_dir / f'v{version}'
-    version_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Read the installer script
-    with open(install_path, 'r') as f:
-        installer_content = f.read()
-    
-    # Read the watcher.py file and encode it as base64
-    with open(watcher_path, 'rb') as f:
-        watcher_content = f.read()
-        # Calculate SHA-256 hash for verification
-        watcher_hash = hashlib.sha256(watcher_content).hexdigest()
-        encoded_content = base64.b64encode(watcher_content).decode('utf-8')
-    
-    print(f"Generated SHA-256 hash: {watcher_hash}")
-    
-    # Save the hash to a file in the version directory
-    hash_file_path = version_dir / f'erasmus_v{version}.sha256'
-    with open(hash_file_path, 'w') as hash_file:
-        hash_file.write(f"{watcher_hash}  erasmus_v{version}.sh\n")
-    print(f"Saved hash to: {hash_file_path}")
-    
-    # Create the combined installer
-    output_path = version_dir / f'erasmus_v{version}.sh'
-    
-    with open(output_path, 'w') as f:
-        # Write the installer script
-        f.write(installer_content)
-        
-        # Add the marker line and hash information
-        f.write("\n\n# __ERASMUS_EMBEDDED_BELOW__\n")
-        f.write("# The content below this line is the base64-encoded watcher.py file\n")
-        f.write("# It will be extracted during installation as erasmus.py\n")
-        f.write(f"# SHA256_HASH={watcher_hash}\n")
-        
-        # Add exit command to prevent the shell from trying to execute the base64 content
-        f.write("exit 0\n\n")
-        
-        # Add the base64-encoded content with a comment character to prevent execution
-        f.write("# BEGIN_BASE64_CONTENT\n")
-        
-        # Split the encoded content into lines to ensure each line starts with a comment character
-        encoded_lines = [encoded_content[i:i+76] for i in range(0, len(encoded_content), 76)]
-        for line in encoded_lines:
-            f.write(f"# {line}\n")
-            
-        f.write("# END_BASE64_CONTENT")
-    
-    # Make the installer executable
-    os.chmod(output_path, 0o755)
-    
-    print(f"Successfully created installer: {output_path}")
-    print(f"This installer will extract watcher.py as erasmus.py during installation")
-    return 0
+BANNER = """#!/usr/bin/env bash
+# Erasmus Self-Extracting Installer
+# Usage: bash thisfile.sh
+
+# Universal Installer for Erasmus
+# This script will extract the embedded erasmus.py and run it with uv
+"""
+
+INSTALLER_BODY = """
+# Unpack erasmus.py from this script (self-extracting)
+SCRIPT_PATH="$0"
+EMBED_MARKER="# BEGIN_BASE64_CONTENT"
+END_MARKER="# END_BASE64_CONTENT"
+
+BASE64_CONTENT=$(awk "/$EMBED_MARKER/{flag=1;next}/$END_MARKER/{flag=0}flag" "$SCRIPT_PATH" | tr -d '# ')
+if [ -z "$BASE64_CONTENT" ]; then
+    echo "Error: Could not extract embedded erasmus.py"
+    exit 1
+fi
+
+echo "$BASE64_CONTENT" | base64 -d > erasmus.py
+
+# Install uv if needed
+if ! command -v uv &>/dev/null; then
+    echo "Installing uv..."
+    if command -v brew &>/dev/null; then
+        brew install astral/tap/uv
+    elif command -v apt-get &>/dev/null; then
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+    elif command -v winget &>/dev/null; then
+        winget install astral.uv
+    else
+        echo "Please install uv manually: https://astral.sh/uv"
+        exit 1
+    fi
+    export PATH="$HOME/.local/bin:$PATH"
+fi
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# Run erasmus.py with uv
+uv run erasmus.py
+
+exit 0
+"""
 
 if __name__ == "__main__":
-    sys.exit(main())
+    if len(sys.argv) != 3:
+        print("Usage: python3 embed_erasmus.py <input_py_file> <output_sh_file>")
+        sys.exit(1)
+    input_py = sys.argv[1]
+    output_sh = sys.argv[2]
+    if not os.path.isfile(input_py):
+        print(f"Error: {input_py} not found")
+        sys.exit(1)
+    with open(input_py, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("utf-8")
+    with open(output_sh, "w") as out:
+        out.write(BANNER)
+        out.write(INSTALLER_BODY)
+        out.write("\n# BEGIN_BASE64_CONTENT\n")
+        # Write base64, 76 chars per line
+        for i in range(0, len(encoded), 76):
+            out.write(f"# {encoded[i : i + 76]}\n")
+        out.write("# END_BASE64_CONTENT\n")
+    os.chmod(output_sh, 0o755)
+    print(f"Installer created: {output_sh}")

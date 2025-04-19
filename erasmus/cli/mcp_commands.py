@@ -9,10 +9,10 @@ from erasmus.mcp.mcp import MCPClient, MCPServer, MCPRegistry, MCPError
 from erasmus.utils.rich_console import print_table
 
 mcp_registry = MCPRegistry()
-app = typer.Typer(help="Manage MCP servers and clients.")
+mcp_app = typer.Typer(help="Manage MCP servers and clients.")
 
 
-def show_help_and_exit():
+def show_mcp_help_and_exit():
     """Show help menu and exit with error code."""
     command_rows = [
         ["erasmus mcp server start", "Start an MCP server"],
@@ -26,15 +26,13 @@ def show_help_and_exit():
         ["erasmus mcp client unregister", "Unregister an MCP client"],
         ["erasmus mcp client list", "List all registered clients"],
     ]
-    print_table(
-        ["Command", "Description"], command_rows, title="Available MCP Commands"
-    )
+    print_table(["Command", "Description"], command_rows, title="Available MCP Commands")
     typer.echo("\nFor more information about a command, run:")
     typer.echo("  erasmus mcp <command> --help")
     raise typer.Exit(1)
 
 
-@app.callback(invoke_without_command=True)
+@mcp_app.callback(invoke_without_command=True)
 def mcp_callback(ctx: typer.Context):
     """
     Manage MCP servers and clients.
@@ -52,9 +50,7 @@ def mcp_callback(ctx: typer.Context):
             ["erasmus mcp client unregister", "Unregister an MCP client"],
             ["erasmus mcp client list", "List all registered clients"],
         ]
-        print_table(
-            ["Command", "Description"], command_rows, title="Available MCP Commands"
-        )
+        print_table(["Command", "Description"], command_rows, title="Available MCP Commands")
         typer.echo("\nFor more information about a command, run:")
         typer.echo("  erasmus mcp <command> --help")
         raise typer.Exit(0)
@@ -62,7 +58,7 @@ def mcp_callback(ctx: typer.Context):
 
 # Server commands
 server_app = typer.Typer(help="Manage MCP servers.")
-app.add_typer(server_app, name="server")
+mcp_app.add_typer(server_app, name="server")
 
 
 @server_app.command()
@@ -93,10 +89,10 @@ def start(
         server = MCPServer(host, port)
         server.start()
         logger.info(f"Started server: {name} on {host}:{port}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
     except MCPError as e:
         logger.error(f"Failed to start server: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 @server_app.command()
@@ -120,10 +116,10 @@ def stop(name: str = typer.Argument(None, help="Name of the server to stop")):
         server = MCPServer(server_info["host"], server_info["port"])
         server.stop()
         logger.info(f"Stopped server: {name}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
     except MCPError as e:
         logger.error(f"Failed to stop server: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 @server_app.command()
@@ -183,17 +179,15 @@ def list():
         for server_name in servers:
             server_info = mcp_registry.get_server(server_name)
             server_rows.append([server_name, server_info["host"], server_info["port"]])
-        print_table(
-            ["Server Name", "Host", "Port"], server_rows, title="Registered MCP Servers"
-        )
+        print_table(["Server Name", "Host", "Port"], server_rows, title="Registered MCP Servers")
     except MCPError as e:
         logger.error(f"Failed to list servers: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 # Client commands
 client_app = typer.Typer(help="Manage MCP clients.")
-app.add_typer(client_app, name="client")
+mcp_app.add_typer(client_app, name="client")
 
 
 @client_app.command()
@@ -234,10 +228,10 @@ def connect(
         client = MCPClient(server_url)
         client.connect()
         logger.info(f"Connected client: {name} to server: {server_name}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
     except MCPError as e:
         logger.error(f"Failed to connect client: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 @client_app.command()
@@ -265,18 +259,16 @@ def disconnect(
         client = MCPClient(server_url)
         client.disconnect()
         logger.info(f"Disconnected client: {name} from server: {server_name}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
     except MCPError as e:
         logger.error(f"Failed to disconnect client: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 @client_app.command()
 def register(
     name: str = typer.Argument(None, help="Name of the client to register"),
-    server_name: str = typer.Argument(
-        None, help="Name of the server the client is connected to"
-    ),
+    server_name: str = typer.Argument(None, help="Name of the server the client is connected to"),
 ):
     """Register a new MCP client.
 
@@ -289,18 +281,16 @@ def register(
             typer.echo("Error: Client name is required.")
             raise typer.Exit(1)
         if not server_name:
-            server_name = typer.prompt(
-                "Enter the server name the client is connected to"
-            )
+            server_name = typer.prompt("Enter the server name the client is connected to")
         if not server_name:
             typer.echo("Error: Server name is required.")
             raise typer.Exit(1)
         mcp_registry.register_client(name, server_name)
         logger.info(f"Registered client: {name} to server: {server_name}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
     except MCPError as e:
         logger.error(f"Failed to register client: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 @client_app.command()
@@ -319,10 +309,10 @@ def unregister(
             raise typer.Exit(1)
         mcp_registry.unregister_client(name)
         logger.info(f"Unregistered client: {name}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
     except MCPError as e:
         logger.error(f"Failed to unregister client: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
 @client_app.command()
@@ -349,10 +339,10 @@ def list():
         )
     except MCPError as e:
         logger.error(f"Failed to list clients: {e}")
-        show_help_and_exit()
+        show_mcp_help_and_exit()
 
 
-@app.command("select-server")
+@mcp_app.command("select-server")
 def select_server():
     """Interactively select an MCP server and display its details."""
     try:
@@ -361,9 +351,7 @@ def select_server():
             typer.echo("No servers found to select.")
             raise typer.Exit(1)
         # Display servers in a table
-        server_rows = [
-            [str(index + 1), server_name] for index, server_name in enumerate(servers)
-        ]
+        server_rows = [[str(index + 1), server_name] for index, server_name in enumerate(servers)]
         print_table(["#", "Server Name"], server_rows, title="Registered MCP Servers")
         choice = typer.prompt("Select a server by number or name")
         selected = None
@@ -390,7 +378,7 @@ def select_server():
         raise typer.Exit(1)
 
 
-@app.command("select-client")
+@mcp_app.command("select-client")
 def select_client():
     """Interactively select an MCP client and display its details."""
     try:
@@ -399,9 +387,7 @@ def select_client():
             typer.echo("No clients found to select.")
             raise typer.Exit(1)
         # Display clients in a table
-        client_rows = [
-            [str(index + 1), client_name] for index, client_name in enumerate(clients)
-        ]
+        client_rows = [[str(index + 1), client_name] for index, client_name in enumerate(clients)]
         print_table(["#", "Client Name"], client_rows, title="Registered MCP Clients")
         choice = typer.prompt("Select a client by number or name")
         selected = None
@@ -429,7 +415,7 @@ def select_client():
 
 if __name__ == "__main__":
     try:
-        app()
+        mcp_app()
     except Exception as error:
         print_table(["Error"], [[str(error)]], title="CLI Error")
         raise typer.Exit(1)

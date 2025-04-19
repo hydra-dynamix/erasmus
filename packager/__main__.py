@@ -16,6 +16,7 @@ import typer
 from rich.console import Console
 from rich.logging import RichHandler
 from click import Context, UsageError
+from typer.core import TyperGroup
 
 from packager.builder import generate_script, order_files
 from packager.collector import collect_py_files
@@ -34,6 +35,22 @@ app = typer.Typer(
 console = Console()
 
 
+# Add version-control subcommand group
+class HelpOnErrorGroup(TyperGroup):
+    def main(self, *args, **kwargs):
+        try:
+            return super().main(*args, **kwargs)
+        except UsageError as e:
+            print_version_control_help_and_exit()
+        except Exception:
+            print_version_control_help_and_exit()
+
+
+version_app = typer.Typer(
+    help="Version control operations using version.json", cls=HelpOnErrorGroup
+)
+
+
 def setup_logging(verbose: bool = False):
     """Set up logging configuration based on verbose flag."""
     level = logging.DEBUG if verbose else logging.INFO
@@ -46,9 +63,9 @@ def setup_logging(verbose: bool = False):
     return logging.getLogger("packager")
 
 
-def print_help_and_exit():
-    """Show help menu and exit with error code."""
-    console.print("\nPython Script Packager CLI")
+def print_packager_help_and_exit():
+    """Show packager help menu and exit with error code."""
+    console.print("\n[bold]Packager Help Menu[/]")
     command_rows = [
         [
             "erasmus-packager package",
@@ -72,7 +89,7 @@ def print_help_and_exit():
 def handle_error(msg: str):
     """Handle errors by showing the error message and help menu."""
     console.print(f"\n[red]Error: {msg}[/]")
-    print_help_and_exit()
+    print_packager_help_and_exit()
 
 
 def get_version_info():
@@ -94,7 +111,7 @@ def get_version_info():
 def main(ctx: typer.Context):
     """Python Script Packager CLI."""
     if ctx.invoked_subcommand is None:
-        print_help_and_exit()
+        print_packager_help_and_exit()
 
 
 @app.command()
@@ -255,7 +272,7 @@ def list_files(
         files = collect_py_files(directory)
         if not files:
             console.print("[yellow]No Python files found in directory.[/]")
-            print_help_and_exit()
+            print_packager_help_and_exit()
 
         console.print("\n[bold]Python files found:[/]")
         for file in files:
@@ -273,9 +290,130 @@ def version():
     return 0
 
 
+@version_app.callback()
+def version_main(ctx: typer.Context):
+    """Version control submenu."""
+    if ctx.invoked_subcommand is None:
+        print_version_control_help_and_exit()
+
+
+def print_version_control_help_and_exit():
+    console.print("\n[bold]Version Control Help Menu[/]")
+    command_rows = [
+        ["version-control show", "Show the current version and last updated timestamp"],
+        ["version-control bump [major|minor|patch]", "Bump the version and log the change"],
+        ["version-control log", "Show the version change log"],
+    ]
+    console.print("\n[bold]Available Version Control Commands:[/]")
+    for cmd, desc in command_rows:
+        console.print(f"  {cmd:<40} {desc}")
+    console.print("\nFor more information about a command, run:")
+    console.print("  erasmus-packager version-control <command> --help")
+    raise typer.Exit(1)
+
+
+@version_app.command("show")
+def show_version():
+    """Show the current version and last updated timestamp."""
+    version_file = Path("version.json")
+    if not version_file.exists():
+        typer.echo("version.json not found.")
+        raise typer.Exit(1)
+    with open(version_file) as f:
+        data = json.load(f)
+    typer.echo(f"Version: {data.get('version')}")
+    typer.echo(f"Last updated: {data.get('last_updated')}")
+
+
+@version_app.command("bump")
+def bump_version(
+    part: str = typer.Argument(
+        ...,
+        help="Which part to bump: 'major' (1.2.3→2.0.0, breaking changes), 'minor' (1.2.3→1.3.0, new features), or 'patch' (1.2.3→1.2.4, bug fixes). Example: 'packager version-control bump minor --description \"Add feature\"'",
+    ),
+    description: str = typer.Option("", help="Description of the change"),
+):
+    """Bump the version (major, minor, or patch) and log the change."""
+    try:
+        version_file = Path("version.json")
+        if not version_file.exists():
+            typer.echo("version.json not found.")
+            raise typer.Exit(1)
+        with open(version_file) as f:
+            data = json.load(f)
+        version = data.get("version", "0.0.0").split(".")
+        if len(version) != 3:
+            typer.echo("Invalid version format in version.json.")
+            raise typer.Exit(1)
+        major, minor, patch = map(int, version)
+        if part == "major":
+            major += 1
+            minor = 0
+            patch = 0
+        elif part == "minor":
+            minor += 1
+            patch = 0
+        elif part == "patch":
+            patch += 1
+        else:
+            typer.echo("Invalid part. Use 'major', 'minor', or 'patch'.")
+            print_version_control_help_and_exit()
+        import datetime
+
+        now = datetime.datetime.now().isoformat()
+        new_version = f"{major}.{minor}.{patch}"
+        data["version"] = new_version
+        data["last_updated"] = now
+        if "changes" not in data:
+            data["changes"] = []
+        data["changes"].append(
+            {"description": description or f"Bump {part}", "type": part, "timestamp": now}
+        )
+        with open(version_file, "w") as f:
+            json.dump(data, f, indent=2)
+        typer.echo(f"Version bumped to {new_version}")
+    except Exception:
+        print_version_control_help_and_exit()
+
+
+@version_app.command("log")
+def version_log():
+    """Show the version change log."""
+    version_file = Path("version.json")
+    if not version_file.exists():
+        typer.echo("version.json not found.")
+        raise typer.Exit(1)
+    with open(version_file) as f:
+        data = json.load(f)
+    changes = data.get("changes", [])
+    if not changes:
+        typer.echo("No version changes logged.")
+        return
+    for change in changes:
+        typer.echo(f"[{change['timestamp']}] {change['type']}: {change['description']}")
+
+
+app.add_typer(version_app, name="version-control", help="Version control operations")
+
+
 def run():
     """Entry point for the packager CLI."""
     try:
+        # If the user ran just 'packager version-control', show custom help
+        if (
+            len(sys.argv) >= 2
+            and sys.argv[1] == "version-control"
+            and (len(sys.argv) == 2 or sys.argv[2].startswith("-"))
+        ):
+            print_version_control_help_and_exit()
+        # If the user ran 'packager version-control bump' with no PART argument, show custom help
+        if (
+            len(sys.argv) >= 3
+            and sys.argv[1] == "version-control"
+            and sys.argv[2] == "bump"
+            and (len(sys.argv) == 3 or sys.argv[3].startswith("-"))
+        ):
+            print_version_control_help_and_exit()
         app()
     except UsageError as e:
         handle_error(str(e))

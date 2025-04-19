@@ -11,10 +11,10 @@ import os
 import re
 
 protocol_manager = ProtocolManager()
-app = typer.Typer(help="Manage development protocols.")
+protocol_app = typer.Typer(help="Manage development protocols.")
 
 
-def show_help_and_exit():
+def show_protocol_help_and_exit():
     """Show help menu and exit with error code."""
     command_rows = [
         ["erasmus protocol list", "List all protocols"],
@@ -26,15 +26,13 @@ def show_help_and_exit():
         ["erasmus protocol select", "Select and display a protocol"],
         ["erasmus protocol load", "Load a protocol as active"],
     ]
-    print_table(
-        ["Command", "Description"], command_rows, title="Available Protocol Commands"
-    )
+    print_table(["Command", "Description"], command_rows, title="Available Protocol Commands")
     typer.echo("\nFor more information about a command, run:")
     typer.echo("  erasmus protocol <command> --help")
     raise typer.Exit(1)
 
 
-@app.callback(invoke_without_command=True)
+@protocol_app.callback(invoke_without_command=True)
 def protocol_callback(ctx: typer.Context):
     """
     Manage development protocols.
@@ -60,7 +58,7 @@ def protocol_callback(ctx: typer.Context):
         raise typer.Exit(0)
 
 
-@app.command()
+@protocol_app.command()
 def create(
     name: str = typer.Argument(None, help="Name of the protocol to create"),
     content: str = typer.Argument(None, help="Content of the protocol"),
@@ -81,19 +79,17 @@ def create(
             )
             raise typer.Exit(1)
         if content is None:
-            content = typer.prompt(
-                "Enter the protocol content (leave blank to use template)"
-            )
+            content = typer.prompt("Enter the protocol content (leave blank to use template)")
         protocol_manager.create_protocol(name, content)
         logger.info(f"Created protocol: {name}")
         print_table(["Info"], [[f"Created protocol: {name}"]], title="Protocol Created")
         raise typer.Exit(0)
     except ProtocolError as e:
         logger.error(f"Failed to create protocol: {e}")
-        show_help_and_exit()
+        show_protocol_help_and_exit()
 
 
-@app.command()
+@protocol_app.command()
 def update(
     name: str = typer.Argument(None, help="Name of the protocol to update"),
     content: str = typer.Argument(None, help="New content for the protocol"),
@@ -107,17 +103,12 @@ def update(
         if not name:
             protocols = protocol_manager.list_protocols()
             if not protocols:
-                print_table(
-                    ["Info"], [["No protocols found"]], title="Available Protocols"
-                )
+                print_table(["Info"], [["No protocols found"]], title="Available Protocols")
                 raise typer.Exit(1)
             protocol_rows = [
-                [str(index + 1), protocol_name]
-                for index, protocol_name in enumerate(protocols)
+                [str(index + 1), protocol_name] for index, protocol_name in enumerate(protocols)
             ]
-            print_table(
-                ["#", "Protocol Name"], protocol_rows, title="Available Protocols"
-            )
+            print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
             choice = typer.prompt("Select a protocol by number or name")
             selected = None
             if choice.isdigit():
@@ -150,10 +141,10 @@ def update(
         raise typer.Exit(0)
     except ProtocolError as e:
         logger.error(f"Failed to update protocol: {e}")
-        show_help_and_exit()
+        show_protocol_help_and_exit()
 
 
-@app.command()
+@protocol_app.command()
 def delete(name: str = typer.Argument(None, help="Name of the protocol to delete")):
     """Delete a protocol.
 
@@ -164,17 +155,12 @@ def delete(name: str = typer.Argument(None, help="Name of the protocol to delete
         if not name:
             protocols = protocol_manager.list_protocols()
             if not protocols:
-                print_table(
-                    ["Info"], [["No protocols found"]], title="Available Protocols"
-                )
+                print_table(["Info"], [["No protocols found"]], title="Available Protocols")
                 raise typer.Exit(1)
             protocol_rows = [
-                [str(index + 1), protocol_name]
-                for index, protocol_name in enumerate(protocols)
+                [str(index + 1), protocol_name] for index, protocol_name in enumerate(protocols)
             ]
-            print_table(
-                ["#", "Protocol Name"], protocol_rows, title="Available Protocols"
-            )
+            print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
             choice = typer.prompt("Select a protocol by number or name")
             selected = None
             if choice.isdigit():
@@ -201,7 +187,7 @@ def delete(name: str = typer.Argument(None, help="Name of the protocol to delete
         raise typer.Exit(1)
 
 
-@app.command()
+@protocol_app.command()
 def list():
     """List all protocols.
 
@@ -219,10 +205,10 @@ def list():
         print_table(["Protocol Name"], protocol_rows, title="Available Protocols")
     except ProtocolError as e:
         logger.error(f"Failed to list protocols: {e}")
-        show_help_and_exit()
+        show_protocol_help_and_exit()
 
 
-@app.command()
+@protocol_app.command()
 def show(name: str = typer.Argument(None, help="Name of the protocol to show")):
     """Show details of a protocol.
 
@@ -233,17 +219,12 @@ def show(name: str = typer.Argument(None, help="Name of the protocol to show")):
         if not name:
             protocols = protocol_manager.list_protocols()
             if not protocols:
-                print_table(
-                    ["Info"], [["No protocols found"]], title="Available Protocols"
-                )
+                print_table(["Info"], [["No protocols found"]], title="Available Protocols")
                 raise typer.Exit(1)
             protocol_rows = [
-                [str(index + 1), protocol_name]
-                for index, protocol_name in enumerate(protocols)
+                [str(index + 1), protocol_name] for index, protocol_name in enumerate(protocols)
             ]
-            print_table(
-                ["#", "Protocol Name"], protocol_rows, title="Available Protocols"
-            )
+            print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
             choice = typer.prompt("Select a protocol by number or name")
             selected = None
             if choice.isdigit():
@@ -278,7 +259,7 @@ def show(name: str = typer.Argument(None, help="Name of the protocol to show")):
         raise typer.Exit(1)
 
 
-@app.command("select")
+@protocol_app.command("select")
 def select_protocol():
     """Interactively select a protocol, display its details, and update the rules file with it."""
     try:
@@ -287,8 +268,7 @@ def select_protocol():
             print_table(["Info"], [["No protocols found"]], title="Available Protocols")
             raise typer.Exit(1)
         protocol_rows = [
-            [str(index + 1), protocol_name]
-            for index, protocol_name in enumerate(protocols)
+            [str(index + 1), protocol_name] for index, protocol_name in enumerate(protocols)
         ]
         print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
         choice = typer.prompt("Select a protocol by number or name")
@@ -315,9 +295,7 @@ def select_protocol():
                 title="Protocol Select Failed",
             )
             raise typer.Exit(1)
-        print_table(
-            ["Info"], [[f"Selected protocol: {selected}"]], title="Protocol Selected"
-        )
+        print_table(["Info"], [[f"Selected protocol: {selected}"]], title="Protocol Selected")
         typer.echo(f"Path: {protocol.path}")
         typer.echo(f"Content:\n{protocol.content}")
         # Write the selected protocol name to .erasmus/current_protocol.txt
@@ -357,9 +335,7 @@ def select_protocol():
         meta_rules_content = meta_rules_content.replace(
             "<!--PROGRESS-->\n  <!--/PROGRESS-->", progress
         )
-        meta_rules_content = meta_rules_content.replace(
-            "<!--TASKS-->\n  <!--/TASKS-->", tasks
-        )
+        meta_rules_content = meta_rules_content.replace("<!--TASKS-->\n  <!--/TASKS-->", tasks)
         meta_rules_content = meta_rules_content.replace(
             "<!--PROTOCOL-->\n  <!--/PROTOCOL-->", protocol.content
         )
@@ -383,7 +359,7 @@ def select_protocol():
         raise typer.Exit(1)
 
 
-@app.command("load")
+@protocol_app.command("load")
 def load_protocol(
     name: str = typer.Argument(None, help="Name of the protocol to load"),
 ):
@@ -392,17 +368,12 @@ def load_protocol(
         if not name:
             protocols = protocol_manager.list_protocols()
             if not protocols:
-                print_table(
-                    ["Info"], [["No protocols found"]], title="Available Protocols"
-                )
+                print_table(["Info"], [["No protocols found"]], title="Available Protocols")
                 raise typer.Exit(1)
             protocol_rows = [
-                [str(index + 1), protocol_name]
-                for index, protocol_name in enumerate(protocols)
+                [str(index + 1), protocol_name] for index, protocol_name in enumerate(protocols)
             ]
-            print_table(
-                ["#", "Protocol Name"], protocol_rows, title="Available Protocols"
-            )
+            print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
             choice = typer.prompt("Select a protocol by number or name")
             selected = None
             if choice.isdigit():
@@ -469,9 +440,7 @@ def load_protocol(
         meta_rules_content = re.sub(
             r"<!--PROGRESS-->[\s\S]*?<!--/PROGRESS-->", progress, meta_rules_content
         )
-        meta_rules_content = re.sub(
-            r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, meta_rules_content
-        )
+        meta_rules_content = re.sub(r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, meta_rules_content)
         meta_rules_content = re.sub(
             r"<!--PROTOCOL-->[\s\S]*?<!--/PROTOCOL-->",
             protocol.content,
@@ -480,9 +449,7 @@ def load_protocol(
         # Write to rules file
         rules_file = path_manager.get_rules_file()
         if not rules_file:
-            print_table(
-                ["Error"], [["No rules file configured."]], title="Protocol Load Failed"
-            )
+            print_table(["Error"], [["No rules file configured."]], title="Protocol Load Failed")
             raise typer.Exit(1)
         rules_file.write_text(meta_rules_content)
         print_table(
@@ -496,7 +463,7 @@ def load_protocol(
         raise typer.Exit(1)
 
 
-@app.command()
+@protocol_app.command()
 def edit(
     name: str = typer.Argument(None, help="Name of the protocol to edit"),
     editor: str = typer.Argument(None, help="Editor to use for editing"),
@@ -506,17 +473,12 @@ def edit(
         if not name:
             protocols = protocol_manager.list_protocols()
             if not protocols:
-                print_table(
-                    ["Info"], [["No protocols found"]], title="Available Protocols"
-                )
+                print_table(["Info"], [["No protocols found"]], title="Available Protocols")
                 raise typer.Exit(1)
             protocol_rows = [
-                [str(index + 1), protocol_name]
-                for index, protocol_name in enumerate(protocols)
+                [str(index + 1), protocol_name] for index, protocol_name in enumerate(protocols)
             ]
-            print_table(
-                ["#", "Protocol Name"], protocol_rows, title="Available Protocols"
-            )
+            print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
             choice = typer.prompt("Select a protocol by number or name")
             selected = None
             if choice.isdigit():
@@ -552,7 +514,7 @@ def edit(
         raise typer.Exit(1)
 
 
-@app.command("watch")
+@protocol_app.command("watch")
 def watch_protocol():
     """Monitor .ctx.*.xml files for changes and update the rules file with the current protocol. Does NOT monitor the rules file itself."""
     import time
@@ -576,9 +538,7 @@ def watch_protocol():
             return current_protocol_path.read_text().strip()
         protocols = protocol_manager.list_protocols()
         if not protocols:
-            print_table(
-                ["Error"], [["No protocols found."]], title="Protocol Watch Failed"
-            )
+            print_table(["Error"], [["No protocols found."]], title="Protocol Watch Failed")
             raise typer.Exit(1)
         protocol_rows = [[str(i + 1), p] for i, p in enumerate(protocols)]
         print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
@@ -620,9 +580,7 @@ def watch_protocol():
         meta_rules_content = re.sub(
             r"<!--PROGRESS-->[\s\S]*?<!--/PROGRESS-->", progress, meta_rules_content
         )
-        meta_rules_content = re.sub(
-            r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, meta_rules_content
-        )
+        meta_rules_content = re.sub(r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, meta_rules_content)
         protocol_name = get_protocol_name()
         protocol = protocol_manager.get_protocol(protocol_name)
         if not protocol:
@@ -653,9 +611,7 @@ def watch_protocol():
 
     # Track last modification times for only the .ctx.*.xml files
     last_mtimes = [f.stat().st_mtime if f.exists() else 0 for f in ctx_files]
-    print_table(
-        ["Info"], [["Watching .ctx.*.xml files for changes..."]], title="Protocol Watch"
-    )
+    print_table(["Info"], [["Watching .ctx.*.xml files for changes..."]], title="Protocol Watch")
     try:
         while True:
             changed = False
@@ -669,14 +625,12 @@ def watch_protocol():
                 merge_and_write()
             time.sleep(1)
     except KeyboardInterrupt:
-        print_table(
-            ["Info"], [["Stopped watching context files."]], title="Protocol Watch"
-        )
+        print_table(["Info"], [["Stopped watching context files."]], title="Protocol Watch")
 
 
 if __name__ == "__main__":
     try:
-        app()
+        protocol_app()
     except Exception as error:
         print_table(["Error"], [[str(error)]], title="CLI Error")
         raise typer.Exit(1)

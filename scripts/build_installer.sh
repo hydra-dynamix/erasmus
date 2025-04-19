@@ -19,6 +19,12 @@ if [ -z "$LATEST_BUNDLE" ]; then
     exit 1
 fi
 
+# Check that the input bundle exists
+if [ ! -f "$LATEST_BUNDLE" ]; then
+    echo "Error: $LATEST_BUNDLE not found"
+    exit 1
+fi
+
 # Extract version and release dir
 RELEASE_DIR=$(dirname "$LATEST_BUNDLE")
 VERSION=$(basename "$RELEASE_DIR" | sed 's/^v//')
@@ -29,9 +35,12 @@ echo "Bundling $LATEST_BUNDLE into $INSTALLER"
 # Run the embed script to create the self-extracting installer
 python3 scripts/embed_erasmus.py "$LATEST_BUNDLE" "$INSTALLER"
 
-# Make the installer executable
+# Check that the installer was created
+if [ ! -f "$INSTALLER" ]; then
+    echo "Error: Failed to create installer $INSTALLER"
+    exit 1
+fi
+
 chmod +x "$INSTALLER"
-
 echo "Successfully created installer: $INSTALLER"
-
 echo "Build complete!"

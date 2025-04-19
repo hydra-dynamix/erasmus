@@ -5,10 +5,10 @@ from erasmus.protocol import ProtocolManager
 from erasmus.context import ContextManager
 from erasmus.utils.rich_console import print_table
 
-app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
+setup_app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
 
 
-@app.callback(invoke_without_command=True)
+@setup_app.callback(invoke_without_command=True)
 def setup_callback(ctx: typer.Context):
     if ctx.invoked_subcommand is not None:
         return

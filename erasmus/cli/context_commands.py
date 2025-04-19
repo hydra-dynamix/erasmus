@@ -10,10 +10,10 @@ from erasmus.utils.rich_console import print_table
 import os
 
 context_manager = ContextManager()
-app = typer.Typer(help="Manage development contexts and their files.")
+context_app = typer.Typer(help="Manage development contexts and their files.")
 
 
-@app.command("get")
+@context_app.command("get")
 def get_context(name: str = typer.Argument(..., help="Name of the context to get")):
     """Get detailed information of a development context."""
     try:
@@ -31,7 +31,7 @@ def get_context(name: str = typer.Argument(..., help="Name of the context to get
     raise typer.Exit(0)
 
 
-def show_help_and_exit():
+def show_context_help_and_exit():
     """Show help menu and exit with error code."""
     command_rows = [
         ["erasmus context list", "List all contexts"],
@@ -49,7 +49,7 @@ def show_help_and_exit():
     raise typer.Exit(1)
 
 
-@app.callback(invoke_without_command=True)
+@context_app.callback(invoke_without_command=True)
 def context_callback(ctx: typer.Context):
     """
     Manage development contexts and their files.
@@ -71,7 +71,7 @@ def context_callback(ctx: typer.Context):
         raise typer.Exit(0)
 
 
-@app.command()
+@context_app.command()
 def create(name: str = typer.Argument(None, help="Name of the context to create")):
     """Create a new development context and display its path."""
     try:
@@ -96,7 +96,7 @@ def create(name: str = typer.Argument(None, help="Name of the context to create"
         raise typer.Exit(1)
 
 
-@app.command()
+@context_app.command()
 def delete(name: str = typer.Argument(None, help="Name of the context to delete")):
     """Delete a context.
 
@@ -138,7 +138,7 @@ def delete(name: str = typer.Argument(None, help="Name of the context to delete"
         raise typer.Exit(1)
 
 
-@app.command()
+@context_app.command()
 def list():
     """List all development contexts.
 
@@ -156,7 +156,7 @@ def list():
         print_table(["Context Name"], context_rows, title="Available Contexts")
     except ContextError as error:
         print_table(["Error"], [[str(error)]], title="Context Listing Failed")
-        show_help_and_exit()
+        show_context_help_and_exit()
 
 
 def preview(text, lines=10):
@@ -168,7 +168,7 @@ def preview(text, lines=10):
     return text
 
 
-@app.command()
+@context_app.command()
 def show(name: str = typer.Argument(None, help="Name of the context to show")):
     """Show details of a development context.
 
@@ -226,10 +226,10 @@ def show(name: str = typer.Argument(None, help="Name of the context to show")):
         )
     except ContextError as error:
         print_table(["Error"], [[str(error)]], title="Context Show Failed")
-        show_help_and_exit()
+        show_context_help_and_exit()
 
 
-@app.command()
+@context_app.command()
 def update(
     name: str = typer.Argument(None, help="Name of the context to update"),
     file_type: str = typer.Argument(
@@ -299,10 +299,10 @@ def update(
         raise typer.Exit(0)
     except ContextError as error:
         print_table(["Error"], [[str(error)]], title="Context Update Failed")
-        show_help_and_exit()
+        show_context_help_and_exit()
 
 
-@app.command()
+@context_app.command()
 def cat(
     name: str = typer.Argument(..., help="Name of the context"),
     file_type: str = typer.Argument(
@@ -323,7 +323,7 @@ def cat(
                 title="Context Cat Failed",
             )
             logger.info("Available file types: architecture, progress, tasks, protocol")
-            show_help_and_exit()
+            show_context_help_and_exit()
 
         # Pretty print XML for better readability
         try:
@@ -337,10 +337,10 @@ def cat(
             print(content)
     except ContextError as error:
         print_table(["Error"], [[str(error)]], title="Context Cat Failed")
-        show_help_and_exit()
+        show_context_help_and_exit()
 
 
-@app.command()
+@context_app.command()
 def edit(
     name: str = typer.Argument(None, help="Name of the context"),
     file_type: str = typer.Argument(
@@ -415,7 +415,7 @@ def edit(
     raise typer.Exit(0)
 
 
-@app.command()
+@context_app.command()
 def store():
     """Store the current context by reading the architecture file, parsing the title,
     sanitizing it, and saving the current context files to a new folder.
@@ -436,10 +436,10 @@ def store():
         raise typer.Exit(0)
     except ContextError as error:
         print_table(["Error"], [[str(error)]], title="Context Store Failed")
-        show_help_and_exit()
+        show_context_help_and_exit()
 
 
-@app.command("load")
+@context_app.command("load")
 def load_context(name: str = typer.Argument(None, help="Name of the context to load")):
     """Load a stored context by name into the root .ctx XML files.
 
@@ -481,7 +481,7 @@ def load_context(name: str = typer.Argument(None, help="Name of the context to l
         raise typer.Exit(1)
 
 
-@app.command("select")
+@context_app.command("select")
 def select_context():
     """Interactively select a context and load its XML files."""
     base_dir = context_manager.base_path
