@@ -11,6 +11,8 @@ uv.lock
 erasmus/mcp/servers/*
 !erasmus/mcp/servers/.gitkeep
 
+.temp_context
+
 # IDE
 .vscode/
 .cursorrules

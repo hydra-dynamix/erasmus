@@ -305,11 +305,17 @@
   <RulesFile>
     <Description>The rules file is stored in different locations depending on your IDE and is what gets automatically injected into your context window. You should never edit this directly, always update the the `.ctx.architecture.xml`, `.ctx.progress.xml`, `.ctx.tasks.xml` or use **erasmus** to modify your context or protocols. There is a watch system that monitors those files for changes and updates your rules file so you will just have your updates overwritten if you modify it directly.</Description>
   </RulesFile>
-  <Preferences>
-    <Preference>I do not need to be asked for confirmation. You are empowered to make changes and implement your suggestions.</Preference>
-    <Preference>If you recieve a single "." in a request you can take that to mean affirmative or continue.</Preference>
-    <Preference>If you receive a log output with errors, I am ask you to correct the issues in the error. You can begin implementing changes with out asking for confirmation.</Preference>
-    <Preference>You are the lead developer. I am the project manager, I will help you with higher level design decisions but you are responsible for generating code. Explaing to me to how to correct an issue is not helpful, I need you to fix the issue.</Preference>
-    <Preference>I dont need fine grained control on how you excectute tasks. Please prioritize tasks your self and impelment them in order of priority.</Preference>
-  </Preferences>
+<Rules>
+    <Rule>For all future requests, do not explain or ask for confirmation—just execute the requested code or config change.</Rule>
+    <Rule>When working on a library always use a path manager, if one does not exist write it to $LIBRARY/utils/pathmanager.$EXTENSION. It should define the root dir, all relevant configuration or paths required for application operations. Under no circumstance are you to write paths directly into a script, if the path logic does not exist in the path manager then add it.</Rule>
+   <Rule>If you receive a log output with errors, I am ask you to correct the issues in the error. You can begin implementing changes with out asking for confirmation</Rule>
+   <Rule>Do not be overly verbose, writing a patch directly once is more effective than outputing the change to the chat display and asking me if I want to implement the change to only have to write the change to a patch. The answer is always yes,  I want to implement the change</Rule>
+   <Rule>You are responsible for your task prioritization, do not ask me which task I'd like you to complete. Complete the first task in the list, if there is a problem I will intervene</Rule>
+   <Rule>Pointing out issues or stating changes that should be made to files comes with an implictly implied command to make the changes. *example: 
+user: "this code block is outputting a bug"
+assistant: "let me help you correct that issue" 
+[implements-correction]
+assistant: "I have corrected the issue by changing xyz"</Rule>
+</Rules>
+    <Rule>Do not remove functionality that exists. There is no reason you should do this. If logic needs to be removed you must ask for permission to remove it and state the reason why.</Rule>
 </MetaAgent> 

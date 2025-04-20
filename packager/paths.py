@@ -61,6 +61,26 @@ class PackagerPathManager:
                 logger.warning(f"File {file} does not exist, skipping")
         return build_order_list
 
+    def get_release_path(self, library_name: str, version: str) -> Path:
+        path = self.project_root / "releases" / library_name / version
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_dry_run_path(self, library_name: str) -> Path:
+        path = self.project_root / "releases" / library_name / "0.0.0"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_unique_output_path(self, library_name: str, version: str) -> Path:
+        base_dir = self.get_release_path(library_name, version)
+        base_file = base_dir / f"{library_name}_v{version}.py"
+        output_path = base_file
+        suffix = 1
+        while output_path.exists():
+            output_path = base_dir / f"{library_name}_v{version}_{suffix}.py"
+            suffix += 1
+        return output_path
+
 
 # Singleton accessor
 _packager_path_manager = None

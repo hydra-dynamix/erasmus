@@ -1,6 +1,6 @@
 {
-  "version": "0.2.0",
-  "last_updated": "2025-04-19T14:22:06.333355",
+  "version": "0.2.1",
+  "last_updated": "2025-04-20T15:40:53.099310",
   "changes": [
     {
       "description": "initial release",
@@ -13,9 +13,14 @@
       "timestamp": "2025-04-19T11:47:43.880230"
     },
     {
-      "description": "Bump minor",
+      "description": "Bump minor, v0.2 release",
       "type": "minor",
       "timestamp": "2025-04-19T14:22:06.333355"
+    },
+    {
+      "description": "updated setup menu, added shell detectection and alias, updated packager menu, updated packager versioning, made xml sanatization less strict, updated packaging logic to preserve versions",
+      "type": "patch",
+      "timestamp": "2025-04-20T15:40:53.099310"
     }
   ]
 }

@@ -11,12 +11,14 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional, List
+import subprocess
 
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
 from click import Context, UsageError
 from typer.core import TyperGroup
+from packager.paths import get_packager_path_manager
 
 from packager.builder import generate_script, order_files
 from packager.collector import collect_py_files
@@ -33,6 +35,8 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+
+custom_help_shown = False
 
 
 # Add version-control subcommand group
@@ -88,6 +92,9 @@ def print_packager_help_and_exit():
 
 def handle_error(msg: str):
     """Handle errors by showing the error message and help menu."""
+    global custom_help_shown
+    if custom_help_shown:
+        sys.exit(1)
     console.print(f"\n[red]Error: {msg}[/]")
     print_packager_help_and_exit()
 
@@ -116,14 +123,22 @@ def main(ctx: typer.Context):
 
 @app.command()
 def package(
-    input_path: str = typer.Argument(..., help="Path to Python file or directory to package"),
+    input_path: Optional[str] = typer.Argument(
+        None, help="Path to Python file or directory to package (defaults to 'erasmus')"
+    ),
     output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
     preserve_comments: bool = typer.Option(
         True, "--preserve-comments/--no-comments", help="Preserve comments in output"
     ),
-) -> None:
+    internal_use_version: Optional[str] = None,
+):
     """Package a Python file or directory into a single executable script."""
     try:
+        path_manager = get_packager_path_manager()
+        if input_path is None:
+            input_path = str(path_manager.get_src_dir())
+        else:
+            input_path = str(input_path)
         input_path = Path(input_path)
         if not input_path.exists():
             typer.echo(f"Error: Input path '{input_path}' does not exist.")
@@ -219,36 +234,38 @@ def package(
             file_code = extract_code_body(file, preserve_comments, ignore_modules=ignore_modules)
             code_body.append(f"# Code from {file.name}\n{file_code}")
 
-        # Determine output file path
-        if output_file:
-            output_path = Path(output_file)
-        else:
-            # Read version from version.json
-            version_file = Path("version.json")
-            if version_file.exists():
-                with open(version_file, "r") as vf:
-                    version_data = json.load(vf)
-                    version = version_data.get("version", "0.0.0")
-            else:
-                version = "0.0.0"
-
-            # Determine folder name
-            if input_path.is_file():
-                folder_name = input_path.stem
-            else:
-                folder_name = input_path.name
-
-            build_dir = Path("releases") / version
-            build_dir.mkdir(parents=True, exist_ok=True)
-            output_path = build_dir / f"{folder_name}_v{version}.py"
-
         # Convert py_files to a list of strings
         py_files_str = [str(file) for file in py_files]
 
-        # Generate the script
+        # Determine library name from input_path
+        if input_path.is_file():
+            library_name = input_path.stem
+        else:
+            library_name = input_path.name
+
+        # Determine version
+        version = internal_use_version if internal_use_version is not None else "0.0.0"
+
+        # Use path manager to get output path
+        if version == "0.0.0":
+            # Clean up previous dry run scripts
+            dry_run_dir = path_manager.get_dry_run_path(library_name)
+            for f in dry_run_dir.glob(f"{library_name}_v0.0.0*.py"):
+                f.unlink()
+            output_path = path_manager.get_unique_output_path(library_name, "0.0.0")
+        else:
+            output_path = path_manager.get_unique_output_path(library_name, version)
+
         output_path = generate_script(py_files_str, output_path, preserve_comments)
         logger.debug("Generated script at: %s", output_path)
         typer.echo(f"Successfully packaged to '{output_path}'.")
+
+        # Run the installer build script after packaging, passing the current bundle path
+        try:
+            subprocess.run(["bash", "scripts/build_installer.sh", str(output_path)], check=True)
+            typer.echo("Installer build script completed.")
+        except Exception as e:
+            typer.echo(f"Installer build script failed: {e}")
 
     except Exception as e:
         logger.exception("Error packaging files")
@@ -298,15 +315,21 @@ def version_main(ctx: typer.Context):
 
 
 def print_version_control_help_and_exit():
+    global custom_help_shown
+    custom_help_shown = True
+    console.print("\n[bold]DEBUG: This is the real help menu[/]")
     console.print("\n[bold]Version Control Help Menu[/]")
     command_rows = [
         ["version-control show", "Show the current version and last updated timestamp"],
-        ["version-control bump [major|minor|patch]", "Bump the version and log the change"],
+        [
+            "version-control bump",
+            "Bump the version: specify which part to increment (e.g., 'major', 'minor', or 'patch'). Optionally add --description for a change log.",
+        ],
         ["version-control log", "Show the version change log"],
     ]
     console.print("\n[bold]Available Version Control Commands:[/]")
     for cmd, desc in command_rows:
-        console.print(f"  {cmd:<40} {desc}")
+        console.print(f"  {cmd:<35} {desc}")
     console.print("\nFor more information about a command, run:")
     console.print("  erasmus-packager version-control <command> --help")
     raise typer.Exit(1)
@@ -332,9 +355,14 @@ def bump_version(
         help="Which part to bump: 'major' (1.2.3→2.0.0, breaking changes), 'minor' (1.2.3→1.3.0, new features), or 'patch' (1.2.3→1.2.4, bug fixes). Example: 'packager version-control bump minor --description \"Add feature\"'",
     ),
     description: str = typer.Option("", help="Description of the change"),
+    input_path: Optional[str] = typer.Option(
+        None, "--input", help="Path to Python file or directory to package (defaults to 'erasmus')"
+    ),
 ):
-    """Bump the version (major, minor, or patch) and log the change."""
+    """Bump the version (major, minor, or patch) and log the change, then package the project."""
     try:
+        if not description:
+            description = typer.prompt("Enter a description for this version change")
         version_file = Path("version.json")
         if not version_file.exists():
             typer.echo("version.json not found.")
@@ -358,6 +386,7 @@ def bump_version(
         else:
             typer.echo("Invalid part. Use 'major', 'minor', or 'patch'.")
             print_version_control_help_and_exit()
+            return
         import datetime
 
         now = datetime.datetime.now().isoformat()
@@ -372,8 +401,18 @@ def bump_version(
         with open(version_file, "w") as f:
             json.dump(data, f, indent=2)
         typer.echo(f"Version bumped to {new_version}")
+        # Run the packager after bumping the version
+        from packager.__main__ import package
+
+        # Always pass a string or None for input_path
+        if input_path is not None:
+            input_path_arg = str(input_path)
+        else:
+            input_path_arg = None
+        package(input_path=input_path_arg, internal_use_version=new_version)
     except Exception:
         print_version_control_help_and_exit()
+        return
 
 
 @version_app.command("log")
@@ -412,15 +451,16 @@ def run():
             and sys.argv[1] == "version-control"
             and sys.argv[2] == "bump"
             and (len(sys.argv) == 3 or sys.argv[3].startswith("-"))
+            and not ("--help" in sys.argv or "-h" in sys.argv)
         ):
             print_version_control_help_and_exit()
         app()
     except UsageError as e:
         handle_error(str(e))
-    except Exception as error:
-        handle_error(str(error))
     except SystemExit as e:
         sys.exit(e.code)
+    except Exception as error:
+        handle_error(str(error))
     return 0
 
 

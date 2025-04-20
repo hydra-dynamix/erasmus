@@ -11,29 +11,26 @@ cd "$PROJECT_ROOT" || {
 }
 echo "Changed to project root directory: $PROJECT_ROOT"
 
-# Find the latest erasmus_v*.py in releases
-echo "Locating latest erasmus_v*.py bundle..."
-LATEST_BUNDLE=$(ls -t releases/*/erasmus_v*.py 2>/dev/null | head -n1)
-if [ -z "$LATEST_BUNDLE" ]; then
-    echo "Error: No erasmus_v*.py found in releases directory"
+# Check if a bundle path is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 <path_to_packaged_py>"
     exit 1
 fi
-
-# Check that the input bundle exists
-if [ ! -f "$LATEST_BUNDLE" ]; then
-    echo "Error: $LATEST_BUNDLE not found"
+BUNDLE_PATH="$1"
+if [ ! -f "$BUNDLE_PATH" ]; then
+    echo "Error: Could not find bundle to package: $BUNDLE_PATH"
     exit 1
 fi
 
 # Extract version and release dir
-RELEASE_DIR=$(dirname "$LATEST_BUNDLE")
+RELEASE_DIR=$(dirname "$BUNDLE_PATH")
 VERSION=$(basename "$RELEASE_DIR" | sed 's/^v//')
 INSTALLER="$RELEASE_DIR/erasmus_v${VERSION}.sh"
 
-echo "Bundling $LATEST_BUNDLE into $INSTALLER"
+echo "Bundling $BUNDLE_PATH into $INSTALLER"
 
 # Run the embed script to create the self-extracting installer
-python3 scripts/embed_erasmus.py "$LATEST_BUNDLE" "$INSTALLER"
+python3 scripts/embed_erasmus.py "$BUNDLE_PATH" "$INSTALLER"
 
 # Check that the installer was created
 if [ ! -f "$INSTALLER" ]; then
