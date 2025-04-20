@@ -3,9 +3,70 @@ from pathlib import Path
 from erasmus.utils.paths import get_path_manager
 from erasmus.protocol import ProtocolManager
 from erasmus.context import ContextManager
-from erasmus.utils.rich_console import print_table
+from erasmus.utils.rich_console import print_table, get_console
 
 setup_app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
+
+console = get_console()
+
+
+def set_erasmus_path():
+    import os
+
+    shell = os.environ.get("SHELL", "").split("/")[-1]
+    home = str(Path.home())
+    added = False
+    msg = ""
+    erasmus_func = """erasmus() {
+    if [ -f erasmus.py ]; then
+        uv run erasmus.py "$@"
+    else
+        command erasmus "$@"
+    fi
+}"""
+    erasmus_fish_func = """function erasmus
+    if test -f erasmus.py
+        uv run erasmus.py $argv
+    else
+        command erasmus $argv
+    end
+end"""
+    if shell == "bash":
+        rc = f"{home}/.bashrc"
+        if not Path(rc).read_text(errors="ignore").find("erasmus()") >= 0:
+            with open(rc, "a") as f:
+                f.write(f"\n{erasmus_func}\n")
+            msg = f"Added erasmus function to {rc}"
+            added = True
+    elif shell == "zsh":
+        rc = f"{home}/.zshrc"
+        if not Path(rc).read_text(errors="ignore").find("erasmus()") >= 0:
+            with open(rc, "a") as f:
+                f.write(f"\n{erasmus_func}\n")
+            msg = f"Added erasmus function to {rc}"
+            added = True
+    elif shell == "fish":
+        rc = f"{home}/.config/fish/config.fish"
+        if not Path(rc).read_text(errors="ignore").find("function erasmus") >= 0:
+            with open(rc, "a") as f:
+                f.write(f"\n{erasmus_fish_func}\n")
+            msg = f"Added erasmus function to {rc}"
+            added = True
+    elif shell in ("csh", "tcsh"):
+        rc = f"{home}/.cshrc" if shell == "csh" else f"{home}/.tcshrc"
+        if not Path(rc).read_text(errors="ignore").find("alias erasmus") >= 0:
+            with open(rc, "a") as f:
+                f.write(
+                    '\nalias erasmus "if ( -f erasmus.py ) uv run erasmus.py !*; else command erasmus !*; endif"\n'
+                )
+            msg = f"Added erasmus alias to {rc}"
+            added = True
+    else:
+        msg = f"Unsupported shell: {shell}. Please add the erasmus function to your shell rc file manually."
+    if added:
+        print(msg)
+    else:
+        print(msg or "erasmus function/alias already present in your shell rc file.")
 
 
 @setup_app.callback(invoke_without_command=True)
@@ -43,6 +104,7 @@ def setup_callback(ctx: typer.Context):
     print_table(["Info"], [[f"Template context created: {project_name}"]], title="Setup")
     # Load the new context to root .ctx.*.xml files
     context_manager.load_context(project_name)
+    set_erasmus_path()
     print_table(
         ["Info"],
         [[f"Root .ctx.*.xml files updated for: {project_name}"]],
