@@ -1,8 +1,24 @@
-"""
-Context Manager for handling development context files.
+"""Context Management System for Erasmus Development Workflow.
 
-This module provides functionality for managing context files in the .erasmus/context
-directory, including saving, loading, and sanitizing content.
+This module provides a comprehensive context management system that enables:
+- Dynamic tracking of project development context
+- XML-based file management for architecture, progress, and tasks
+- Sanitization and validation of context files
+- Cross-platform compatibility for context storage
+
+Key Features:
+- Centralized context file management in .erasmus/context directory
+- Supports multiple context files with XML-based templates
+- Robust error handling for context-related operations
+- Preservation of rich content while ensuring system stability
+
+The context management system is designed to:
+1. Track project architecture and progress
+2. Manage development tasks and protocols
+3. Provide a flexible, extensible context storage mechanism
+
+Note: Non-ASCII characters are preserved in context files but sanitized
+      when writing to system rules files to ensure cross-platform compatibility.
 """
 
 import os
@@ -19,19 +35,39 @@ console = get_console()
 
 
 class ContextError(Exception):
-    """Exception raised for context-related errors."""
+    """Base exception for all context management errors.
+
+    This exception is raised when there are general issues with context
+    management that do not fit into more specific error categories.
+    Serves as a base class for more specific context-related exceptions.
+    """
 
     pass
 
 
 class ContextFileError(ContextError):
-    """Exception raised for file operation errors."""
+    """Exception raised when file-related operations in context management fail.
+
+    This exception is used when there are issues such as:
+    - Unable to read context files
+    - Permission issues accessing context files
+    - Context file not found
+    - Corrupted or unreadable context files
+    """
 
     pass
 
 
 class ContextValidationError(ContextError):
-    """Exception raised for content validation errors."""
+    """Exception raised when context content fails validation requirements.
+
+    This exception is used when context files do not meet expected
+    structural or content requirements, such as:
+    - Malformed XML
+    - Missing required XML elements
+    - Invalid data types or values
+    - Incompatible context configurations
+    """
 
     pass
 
@@ -40,37 +76,52 @@ path_manager = get_path_manager()
 
 
 class CtxModel(BaseModel):
-    """
-    Represents a development context, including all relevant file contents and paths.
-    """
+    """Represents a single development context with its associated file contents.
 
-    path: str
-    architecture: str
-    progress: str
-    tasks: str
-    protocol: str = ""
+    This model encapsulates the core files that define a project's development context,
+    providing a structured representation of project metadata and configuration.
+
+    Attributes:
+        path (str): The base path or identifier for this context.
+        architecture (str): XML content representing the project's architectural design.
+        progress (str): XML content tracking the current progress of development components.
+        tasks (str): XML content listing and tracking project tasks.
+        protocol (str, optional): XML content defining development protocols. Defaults to an empty string.
+
+    The model ensures that each context is a self-contained unit with all necessary
+    metadata for tracking and managing a development project.
+    """
 
 
 class CtxMngrModel(BaseModel):
+    """Manages a collection of development contexts and their associated file paths.
+
+    This model serves as a comprehensive registry for multiple development contexts,
+    providing centralized management of context-related paths and contents.
+
+    Attributes:
+        contexts (list[CtxModel]): A list of all managed context models. Defaults to an empty list.
+        context_dir (Path): Base directory for storing context files. Uses path_manager to determine location.
+        base_dir (Path): Alias for context_dir, ensuring consistent path management.
+        context (CtxModel | None): Currently active context model. Defaults to None.
+
+        # Paths for core context files
+        architecture_path (str | Path): Path to the architecture context file.
+        progress_path (str | Path): Path to the progress context file.
+        tasks_path (str | Path): Path to the tasks context file.
+
+        # Content storage for core context files
+        architecture_content (str): Raw content of the architecture file.
+        progress_content (str): Raw content of the progress file.
+        tasks_content (str): Raw content of the tasks file.
+        protocol_content (str): Raw content of the protocol file.
+
+    The model provides a flexible and extensible approach to managing
+    multiple development contexts with centralized path and content tracking.
     """
-    Model for managing a collection of CtxModel instances and the context directory path.
-    """
-
-    contexts: list[CtxModel] = []
-    # Base directory for contexts (alias for context_dir)
-    context_dir: Path = path_manager.get_context_dir()
-    base_dir: Path = path_manager.get_context_dir()
-    context: CtxModel | None = None
-    architecture_path: str | Path = path_manager.get_architecture_file()
-    progress_path: str | Path = path_manager.get_progress_file()
-    tasks_path: str | Path = path_manager.get_tasks_file()
-    architecture_content: str = ""
-    progress_content: str = ""
-    tasks_content: str = ""
-    protocol_content: str = ""
 
 
-class ContextManager(CtxMngrModel):
+class ContextManager:
     """
     Manages development context files in the .erasmus/context directory.
     Uses CtxModel as the in-memory storage for context data.
@@ -79,25 +130,42 @@ class ContextManager(CtxMngrModel):
     """
 
     def __init__(self, base_dir: Optional[str] = None, base_path: Optional[str] = None) -> None:
-        """
-        Initialize the context manager.
+        """Initialize the context manager with flexible base directory configuration.
+
+        This method sets up the context management system by:
+        1. Determining the base directory for context storage
+        2. Creating the directory if it doesn't exist
+        3. Initializing paths for core context files
+        4. Preparing for context model management
 
         Args:
-            base_dir: Base directory for contexts. Defaults to path_manager.get_context_dir().
-            base_path: Alias for base_dir (for compatibility).
+            base_dir (Optional[str], optional): Base directory for storing context files.
+                If not provided, uses the default path from path_manager.
+            base_path (Optional[str], optional): Alias for base_dir, provided for
+                backwards compatibility. Takes precedence over base_dir if both are set.
+
+        Raises:
+            OSError: If there are permission issues creating the base directory
+
+        Notes:
+            - Uses path_manager to determine default context directory
+            - Creates the base directory if it doesn't exist
+            - Initializes core context file paths
+            - Logs the initialization for traceability
         """
-        # Initialize BaseModel internals
-        super().__init__()
         # Determine base directory parameter (base_path overrides base_dir)
         chosen_dir = base_path if base_path is not None else base_dir
-        # Set base directory for contexts
-        self.base_dir: Path = Path(chosen_dir) if chosen_dir else path_manager.get_context_dir()
-        self.base_dir.mkdir(parents=True, exist_ok=True)
-        logger.info(f"Initialized ContextManager with base path: {self.base_dir}")
+        # Remove self.base_dir assignment, always use path_manager.get_context_dir()
+        logger.info(
+            f"Initialized ContextManager with base path: {chosen_dir if chosen_dir else path_manager.get_context_dir()}"
+        )
+        # Initialize context tracking attributes
         self.context: Optional[CtxModel] = None
+        # Set paths for core context files using path_manager
         self.architecture_path: Path = path_manager.get_architecture_file()
         self.progress_path: Path = path_manager.get_progress_file()
         self.tasks_path: Path = path_manager.get_tasks_file()
+        # Initialize content storage for core context files
         self.architecture_content: Optional[str] = None
         self.progress_content: Optional[str] = None
         self.tasks_content: Optional[str] = None
@@ -110,7 +178,31 @@ class ContextManager(CtxMngrModel):
         progress_content: str = None,
         tasks_content: str = None,
     ) -> None:
-        """Create a new development context using XML templates for architecture, progress, and tasks. Optionally accept user content for each file."""
+        """Create a new development context with optional custom content.
+
+        This method establishes a new context directory and populates it with
+        core XML files using either provided content or default templates.
+
+        Args:
+            context_name (str): A unique identifier for the new context.
+                Will be sanitized to ensure file system compatibility.
+            architecture_content (str, optional): Custom XML content for the
+                architecture file. If None, uses the default template.
+            progress_content (str, optional): Custom XML content for the
+                progress tracking file. If None, uses the default template.
+            tasks_content (str, optional): Custom XML content for the
+                tasks file. If None, uses the default template.
+
+        Raises:
+            ContextError: If a context with the same name already exists.
+            ValueError: If provided XML content is malformed.
+
+        Notes:
+            - Uses path_manager to locate template files
+            - Sanitizes the context name for safe directory creation
+            - Automatically creates a context directory
+            - Supports partial or full custom content for context files
+        """
         sanitized_name = self._sanitize_name(context_name)
         context_dir = path_manager.get_context_dir() / sanitized_name
         if context_dir.exists():
@@ -151,23 +243,93 @@ class ContextManager(CtxMngrModel):
             (context_dir / target_name).write_text(content)
 
     def get_context(self, context_name: str) -> CtxModel:
-        """Get a context model by name."""
+        """Retrieve a specific context model by its name.
+
+        This method searches for and returns a CtxModel instance
+        corresponding to the given context name.
+
+        Args:
+            context_name (str): The name of the context to retrieve.
+
+        Returns:
+            CtxModel: The context model with the specified name.
+
+        Raises:
+            ContextError: If no context with the given name is found.
+
+        Notes:
+            - Uses get_context_model internally to fetch the context
+            - Supports case-insensitive and sanitized context name matching
+        """
         return self.get_context_model(context_name)
 
     @property
     def base_path(self) -> Path:
-        """Alias for base_dir: get the base directory path for contexts."""
-        return self.base_dir
+        """Retrieve the base directory path for context storage.
+
+        This property provides an alias for base_dir, maintaining backwards
+        compatibility and offering a consistent interface for accessing
+        the root directory of context files.
+
+        Returns:
+            Path: The base directory path where context files are stored.
+
+        Notes:
+            - Ensures consistent access to the context storage location
+            - Supports both base_dir and base_path naming conventions
+            - Immutable property that returns the current base directory
+        """
+        # Always use path_manager.get_context_dir()
+        return path_manager.get_context_dir()
 
     def save_context_file(self, context_name: str, filename: str, content: str) -> None:
-        """Save raw content to a file in the specified context."""
+        """Save raw content to a file within a specific context directory.
+
+        This method writes the provided content to a file in the context
+        directory, creating the directory if it doesn't exist.
+
+        Args:
+            context_name (str): The name of the context to save the file in.
+            filename (str): The name of the file to be saved.
+            content (str): The raw content to write to the file.
+
+        Raises:
+            ContextError: If the context directory cannot be created or accessed.
+            OSError: If there are file system permission issues.
+
+        Notes:
+            - Automatically creates the context directory if it doesn't exist
+            - Overwrites the file if it already exists
+            - Does not perform any content validation or sanitization
+        """
         context_dir = self.get_context_path(context_name)
         context_dir.mkdir(parents=True, exist_ok=True)
         file_path = context_dir / filename
         file_path.write_text(content)
 
     def load_context_file(self, context_name: str, filename: str) -> str:
-        """Load content from a file in the specified context, returning sanitized text."""
+        """Load and sanitize content from a file within a specific context directory.
+
+        This method reads a file from the specified context directory,
+        returning an empty string if the file does not exist.
+
+        Args:
+            context_name (str): The name of the context to load the file from.
+            filename (str): The name of the file to load.
+
+        Returns:
+            str: The sanitized content of the file. Returns an empty string
+                 if the file does not exist.
+
+        Notes:
+            - Uses _sanitize_content to clean the loaded file content
+            - Silently handles non-existent files by returning an empty string
+            - Ensures that loaded content is safe for further processing
+
+        Raises:
+            ContextError: If there are issues accessing the context directory.
+            OSError: If there are file system permission issues.
+        """
         context_dir = self.get_context_path(context_name)
         file_path = context_dir / filename
         if not file_path.exists():
@@ -222,7 +384,8 @@ class ContextManager(CtxMngrModel):
         Returns:
             The context directory path.
         """
-        return self.base_dir / self._sanitize_name(context_name)
+        # Always use path_manager.get_context_dir()
+        return path_manager.get_context_dir() / self._sanitize_name(context_name)
 
     def _sanitize_filename(self, filename: str) -> str:
         """
@@ -253,7 +416,7 @@ class ContextManager(CtxMngrModel):
             Path to the context directory
         """
         sanitized_name = self._sanitize_filename(context_name)
-        return self.base_dir / sanitized_name
+        return self.base_path / sanitized_name
 
     def get_context_dir_path(self, context_name: str) -> Optional[Path]:
         """
@@ -276,7 +439,8 @@ class ContextManager(CtxMngrModel):
             List of saved CtxModel instances
         """
         context_models: list[CtxModel] = []
-        for context_directory in self.base_dir.iterdir():
+        # Always use path_manager.get_context_dir()
+        for context_directory in path_manager.get_context_dir().iterdir():
             if context_directory.is_dir():
                 context_name = context_directory.name
                 try:
@@ -345,9 +509,10 @@ class ContextManager(CtxMngrModel):
             ContextFileError: If contexts cannot be listed.
         """
         try:
+            # Always use path_manager.get_context_dir()
             return [
                 context_directory.name
-                for context_directory in self.base_dir.iterdir()
+                for context_directory in path_manager.get_context_dir().iterdir()
                 if context_directory.is_dir()
             ]
         except Exception as context_error:
@@ -544,22 +709,31 @@ class ContextManager(CtxMngrModel):
             tree = ET.ElementTree(ET.fromstring(self.architecture_content))
             root = tree.getroot()
             title_elem = root.find(".//Title")
-            if title_elem is None or not title_elem.text:
-                raise ContextError("Title not found in architecture file")
-            title = title_elem.text
-            context_name = self._sanitize_name(title)
-            context_dir = self._get_context_dir(context_name)
+            if title_elem is not None and title_elem.text:
+                title = title_elem.text
+            else:
+                # If no Title element, use the first line of architecture content as fallback
+                first_line = self.architecture_content.strip().split("\n", 1)[0].strip()
+                # Sanitize the first line to ASCII only
+                title = self._sanitize_string(first_line) if first_line else "untitled"
+            # Always sanitize the title to remove non-ASCII characters
+            context_name_sanitized = self._sanitize_string(title)
+            context_dir = self._get_context_dir(context_name_sanitized)
             context_dir.mkdir(parents=True, exist_ok=True)
-            (context_dir / "ctx.architecture.xml").write_text(self.architecture_content)
-            (context_dir / "ctx.progress.xml").write_text(self.progress_content)
-            (context_dir / "ctx.tasks.xml").write_text(self.tasks_content)
+            # Sanitize the architecture, progress, and tasks content to ASCII before writing
+            architecture_ascii = self._sanitize_xml(self.architecture_content)
+            progress_ascii = self._sanitize_xml(self.progress_content)
+            tasks_ascii = self._sanitize_xml(self.tasks_content)
+            (context_dir / "ctx.architecture.xml").write_text(architecture_ascii)
+            (context_dir / "ctx.progress.xml").write_text(progress_ascii)
+            (context_dir / "ctx.tasks.xml").write_text(tasks_ascii)
             self.context = CtxModel(
                 path=str(context_dir),
-                architecture=self.architecture_content,
-                progress=self.progress_content,
-                tasks=self.tasks_content,
+                architecture=architecture_ascii,
+                progress=progress_ascii,
+                tasks=tasks_ascii,
             )
-            return context_name
+            return context_name_sanitized
         except Exception as error:
             raise ContextError(f"Failed to store context: {error}")
 

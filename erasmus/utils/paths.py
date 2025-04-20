@@ -152,11 +152,25 @@ class PathMngrModel(BaseModel):
     global_rules_file: Path | None = None
 
     def __init__(self, **data):
+        """Initialize the PathMngrModel with optional configuration data.
+
+        Args:
+            **data: Keyword arguments for configuring path management.
+                    Supports IDE-specific and custom path configurations.
+        """
         super().__init__(**data)
         # Initialize and time path setup
         self._setup_paths()
 
     def _setup_paths(self):
+        """Set up and configure paths for the current development environment.
+
+        This method handles:
+        - Detecting the current IDE
+        - Creating necessary directories
+        - Setting up symlinks
+        - Ensuring cross-platform path compatibility
+        """
         """Set up paths based on the selected IDE."""
         if self.ide:
             # Set rules file based on IDE

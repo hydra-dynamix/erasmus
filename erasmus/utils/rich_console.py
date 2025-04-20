@@ -14,12 +14,26 @@ def get_console() -> Console:
 
 
 def print_panel(content: str, title: Optional[str] = None, style: str = "bold blue"):
+    """Print a styled panel with optional title using Rich library.
+
+    Args:
+        content (str): The text content to display in the panel.
+        title (Optional[str], optional): Title of the panel. Defaults to None.
+        style (str, optional): Rich styling for the panel. Defaults to "bold blue".
+    """
     console = get_console()
     panel = Panel(content, title=title, style=style)
     console.print(panel)
 
 
 def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] = None):
+    """Print a formatted table using Rich library.
+
+    Args:
+        headers (list[str]): Column headers for the table.
+        rows (list[list[Any]]): Data rows to display in the table.
+        title (Optional[str], optional): Title of the table. Defaults to None.
+    """
     console = get_console()
     table = Table(title=title)
     for header in headers:
@@ -30,6 +44,13 @@ def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] 
 
 
 def print_syntax(code: str, language: str = "python", title: Optional[str] = None):
+    """Print code syntax highlighting using Rich library.
+
+    Args:
+        code (str): Source code to highlight.
+        language (str, optional): Programming language for syntax highlighting. Defaults to "python".
+        title (Optional[str], optional): Title for the syntax block. Defaults to None.
+    """
     console = get_console()
     syntax = Syntax(code, language, theme="monokai", line_numbers=True)
     if title:
@@ -39,20 +60,40 @@ def print_syntax(code: str, language: str = "python", title: Optional[str] = Non
 
 
 def print_success(message: str):
+    """Print a success message in green color.
+
+    Args:
+        message (str): Success message to display.
+    """
     console = get_console()
     console.print(f"[bold green]✔ {message}")
 
 
 def print_error(message: str):
+    """Print an error message in red color.
+
+    Args:
+        message (str): Error message to display.
+    """
     console = get_console()
     console.print(f"[bold red]✖ {message}")
 
 
 def print_warning(message: str):
+    """Print a warning message in yellow color.
+
+    Args:
+        message (str): Warning message to display.
+    """
     console = get_console()
     console.print(f"[bold yellow]! {message}")
 
 
 def print_info(message: str):
+    """Print an informational message in blue color.
+
+    Args:
+        message (str): Informational message to display.
+    """
     console = get_console()
     console.print(f"[bold blue]ℹ {message}")

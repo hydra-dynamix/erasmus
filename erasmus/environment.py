@@ -83,6 +83,11 @@ class EnvironmentConfig(BaseModel):
     _variables: dict[str, any] = {}
 
     def list_variables(self):
+        """List all currently defined environment variables.
+
+        Returns:
+            list: A list of dictionaries containing variable details.
+        """
         for name, definition in self._definitions.items():
             if definition.is_sensitive:
                 print(f"{name}: ****")

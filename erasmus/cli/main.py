@@ -3,9 +3,9 @@ Main CLI entry point for Erasmus.
 """
 
 import typer
-from erasmus.cli.context_commands import app as context_app
-from erasmus.cli.protocol_commands import app as protocol_app
-from erasmus.cli.setup_commands import app as setup_app
+from erasmus.cli.context_commands import context_app
+from erasmus.cli.protocol_commands import protocol_app
+from erasmus.cli.setup_commands import setup_app
 from erasmus.utils.rich_console import print_table
 
 app = typer.Typer(

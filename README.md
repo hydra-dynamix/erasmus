@@ -1,33 +1,82 @@
-# Erasmus: AI Context Watcher for Development
+# Erasmus: Intelligent Context Management System
 
 ## Overview
 
-Erasmus is a powerful context watcher that enhances your development environment by tracking project state and providing intelligent assistance through AI integration. It's designed to work with cursor and windsurf IDEs to provide contextual guidance during development.
+Erasmus is an advanced context management library that revolutionizes software development workflows by providing:
 
-## How It Works
+- 🤖 **Intelligent Context Tracking**: Dynamically manage project context across different development stages
+- 🔍 **Protocol-Driven Development**: Define and execute structured development protocols
+- 🛠 **Multi-IDE Support**: Compatible with Windsurf, Cursor, Codex, and Claude IDEs
+- 📋 **Automated Documentation**: Generate and maintain comprehensive project documentation
 
-Erasmus leverages modern AI IDE capabilities by utilizing their rule injection mechanisms to deliver dynamic context to AI code assistants. The system maintains three core markdown documents that drive AI-assisted development:
+### Key Features
 
-![process flowchart](public/flowchart.png)
+- **Path Management**: Centralized, cross-platform path handling
+- **Environment Configuration**: Type-safe, dynamic environment variable management
+- **File Monitoring**: Real-time tracking of project context files
+- **Protocol Handling**: Define, store, and execute development protocols
+- **Packager**: Universal installer for system and dependencies
 
-### Intelligent Document Management
+## Architecture and Workflow
 
-**.erasmus/.architecture.md** serves as the project blueprint, defining goals and requirements that must be met for project completion.
+### Core Components
 
-**.progress.md** tracks components derived from the architecture document, organizing them into a development schedule.
+1. **Path Management** (`erasmus/utils/paths.py`)
+   - Detect and manage paths across different IDEs
+   - Support for Windsurf, Cursor, Codex, and Claude
+   - Automatic directory and symlink creation
 
-**.tasks.md** breaks down components into manageable sub-tasks, tracking their completion status throughout development.
+2. **Environment Management** (`erasmus/environment.py`)
+   - Dynamic, type-safe environment variable handling
+   - Support for `.env` file loading
+   - Strong type and constraint validation
 
-### Continuous Context Synchronization
+3. **Context Management** (`erasmus/context.py`)
+   - Save and load context files
+   - Sanitize document names
+   - Ensure cross-platform compatibility
 
-As development progresses:
+4. **Protocol Handler** (`erasmus/protocol.py`)
+   - Manage protocol definitions
+   - Preserve context across different development stages
 
-1. Erasmus monitors these files in real-time
-2. When file changes are detected, it updates the IDE rule files
-3. The AI assistant receives the updated context immediately
-4. This allows the AI to maintain awareness of current project state
+5. **File Monitor Service** (`erasmus/file_monitor.py`)
+   - Watch changes in context files
+   - Update IDE rule files dynamically
 
-This continuous context loop ensures your AI assistant always has the most current understanding of your project status, decisions, and remaining work, enabling truly intelligent assistance throughout the development lifecycle.
+### Workflow Overview
+
+1. **Context Definition**
+   - Define project architecture in `.ctx.architecture.xml`
+   - Track progress in `.ctx.progress.xml`
+   - Break down tasks in `.ctx.tasks.xml`
+
+2. **Continuous Synchronization**
+   - Real-time monitoring of context files
+   - Automatic rule file updates
+   - Dynamic context injection for AI assistants
+
+3. **Protocol Execution**
+   - Load predefined development protocols
+   - Execute context-aware development workflows
+
+### Context File Structure
+
+- **`.ctx.architecture.xml`**: Project blueprint
+  - High-level design
+  - Technology stack
+  - User stories
+  - Completion criteria
+
+- **`.ctx.progress.xml`**: Development tracking
+  - Component progress
+  - Blockers
+  - Dependencies
+
+- **`.ctx.tasks.xml`**: Granular task management
+  - Detailed task breakdown
+  - Status tracking
+  - Assignment
 
 ## Quick Installation
 

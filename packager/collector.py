@@ -77,12 +77,9 @@ def collect_py_files(base_path: str, exclude_patterns: Optional[list[str]] = Non
     if not os.path.exists(base_path):
         raise FileNotFoundError(f"The path {base_path} does not exist")
 
-    # If it's a file, return it directly if it's a Python file
+    # If it's a file, raise NotADirectoryError
     if os.path.isfile(base_path):
-        if base_path.endswith(".py"):
-            return [base_path]
-        else:
-            raise ValueError(f"The file {base_path} is not a Python file")
+        raise NotADirectoryError(f"The path {base_path} is a file, not a directory")
 
     # Otherwise, collect all Python files in the directory
     return collect_files_with_extensions(
