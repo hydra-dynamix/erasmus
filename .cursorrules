@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaRules>
+  <?xml version="1.0" encoding="UTF-8"?>
+<Architecture>
+  <Overview>
+    <Description>Project description goes here</Description>
+  </Overview>
+  
+  <CoreComponents>
+    <Component name="Component Name">
+      <Purpose>Component purpose</Purpose>
+      <Responsibilities>
+        <Responsibility>Responsibility 1</Responsibility>
+        <Responsibility>Responsibility 2</Responsibility>
+        <!-- Add more responsibilities as needed -->
+      </Responsibilities>
+      <TestFocus>
+        <Test>Test focus 1</Test>
+        <Test>Test focus 2</Test>
+        <!-- Add more test focuses as needed -->
+      </TestFocus>
+    </Component>
+    <!-- Add more components as needed -->
+  </CoreComponents>
+  
+  <DevelopmentPrinciples>
+    <Principle name="Principle Name">
+      <Detail>Principle detail 1</Detail>
+      <Detail>Principle detail 2</Detail>
+      <!-- Add more details as needed -->
+    </Principle>
+    <!-- Add more principles as needed -->
+  </DevelopmentPrinciples>
+  
+  <Dependencies>
+    <Dependency>Dependency 1</Dependency>
+    <Dependency>Dependency 2</Dependency>
+    <!-- Add more dependencies as needed -->
+  </Dependencies>
+  
+  <DirectoryStructure>
+    <!-- Add directory structure here -->
+  </DirectoryStructure>
+  
+  <DevelopmentWorkflow>
+    <Step>Workflow step 1</Step>
+    <Step>Workflow step 2</Step>
+    <!-- Add more steps as needed -->
+  </DevelopmentWorkflow>
+</Architecture>
+
+  <?xml version="1.0" encoding="UTF-8"?>
+<Progress>
+  <Phase name="Phase Name">
+    <Status>Status (e.g., Completed, In Progress, Planned)</Status>
+    <Tasks>
+      <Task name="Task Name">
+        <Status>Status</Status>
+        <Subtasks>
+          <Subtask name="Subtask Name">
+            <Status>Status</Status>
+          </Subtask>
+          <!-- Add more subtasks as needed -->
+        </Subtasks>
+      </Task>
+      <!-- Add more tasks as needed -->
+    </Tasks>
+  </Phase>
+  <!-- Add more phases as needed -->
+  
+  <CurrentFocus>
+    <Phase>Current phase name</Phase>
+    <Priority>Current priority</Priority>
+    <NextTask>Next task to work on</NextTask>
+  </CurrentFocus>
+  
+  <Notes>
+    <Note>Note 1</Note>
+    <Note>Note 2</Note>
+    <!-- Add more notes as needed -->
+  </Notes>
+</Progress> 
+  <?xml version="1.0" encoding="UTF-8"?>
+<Tasks>
+  <CurrentTasks>
+    <Task name="Task Name">
+      <Description>Task description</Description>
+      <Subtasks>
+        <Subtask name="Subtask Name">
+          <Status>Status (e.g., Pending, In Progress, Completed)</Status>
+          <Subtasks>
+            <Subtask name="Nested Subtask Name">
+              <Status>Status</Status>
+            </Subtask>
+            <!-- Add more nested subtasks as needed -->
+          </Subtasks>
+        </Subtask>
+        <!-- Add more subtasks as needed -->
+      </Subtasks>
+      <Tests>
+        <Test name="Test Name">
+          <Code>
+            <![CDATA[
+            def test_function():
+                # Test code goes here
+            ]]>
+          </Code>
+        </Test>
+        <!-- Add more tests as needed -->
+      </Tests>
+    </Task>
+    <!-- Add more current tasks as needed -->
+  </CurrentTasks>
+  
+  <NextSteps>
+    <Step>Next step 1</Step>
+    <Step>Next step 2</Step>
+    <!-- Add more next steps as needed -->
+  </NextSteps>
+</Tasks> 
+  <?xml version="1.0" encoding="UTF-8"?>
+<AgentProtocol>
+  <Metadata>
+    <Id>00000009</Id>
+    <Role>documentation_management</Role>
+    <Triggers>code_review_passed</Triggers>
+    <Produces>readme, api_docs, inline_comments</Produces>
+    <Consumes>code, architecture, test files, .ctx.progress.xml, .ctx.tasks.xml</Consumes>
+  </Metadata>
+  <Objective>
+    Create and maintain comprehensive documentation for the codebase. Track documentation tasks and progress in <File>.ctx.progress.xml</File> and <File>.ctx.tasks.xml</File>.
+  </Objective>
+  <Workflow>
+    <Step>Monitor <File>.ctx.progress.xml</File> for new code changes requiring documentation.</Step>
+    <Step>For each code change:
+      <Substep>Review the code and identify areas needing documentation.</Substep>
+      <Substep>Document any gaps or improvements needed in <File>.ctx.tasks.xml</File>.</Substep>
+      <Substep>Update <File>.ctx.progress.xml</File> to reflect the status of documentation tasks.</Substep>
+    </Step>
+    <Step>For recurring documentation issues, update <File>.ctx.progress.xml</File> with patterns and recommendations for future improvement.</Step>
+  </Workflow>
+  <Principles>
+    <Principle>Ensure code is well-documented with clear and concise comments.</Principle>
+    <Principle>Track all documentation tasks and improvements in .ctx.tasks.xml.</Principle>
+    <Principle>Update .ctx.progress.xml with documentation status and recommendations.</Principle>
+    <Principle>Communicate documentation gaps or failures in .ctx.tasks.xml for developer follow-up.</Principle>
+  </Principles>
+  <Tracking>
+    <Uses>.ctx.progress.xml</Uses>
+    <Uses>.ctx.tasks.xml</Uses>
+    <Description>All documentation tasks, improvements, and recommendations are tracked in these files. Progress is updated as documentation tasks are completed.</Description>
+  </Tracking>
+</AgentProtocol> 
+</MetaRules> 

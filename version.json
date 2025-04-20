@@ -1,11 +1,26 @@
 {
-  "version": "0.0.1",
-  "last_updated": "2025-04-06T16:09:49.062266",
+  "version": "0.2.1",
+  "last_updated": "2025-04-20T15:40:53.099310",
   "changes": [
     {
       "description": "initial release",
       "type": "patch",
       "timestamp": "2025-04-06T16:09:49.062251"
+    },
+    {
+      "description": "Refactored to multi script project and added protocol manager and context manager to handle dyanmic context changes. Also implemented a packager to bundle the multiscript project into a single file installer.",
+      "type": "minor",
+      "timestamp": "2025-04-19T11:47:43.880230"
+    },
+    {
+      "description": "Bump minor, v0.2 release",
+      "type": "minor",
+      "timestamp": "2025-04-19T14:22:06.333355"
+    },
+    {
+      "description": "updated setup menu, added shell detectection and alias, updated packager menu, updated packager versioning, made xml sanatization less strict, updated packaging logic to preserve versions",
+      "type": "patch",
+      "timestamp": "2025-04-20T15:40:53.099310"
     }
   ]
 }
