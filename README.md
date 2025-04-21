@@ -81,7 +81,7 @@ Erasmus is an advanced context management library that revolutionizes software d
 ## Quick Installation
 
 ```bash
-curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/release/v0.0.1/erasmus_v0.0.1.sh -o erasmus.sh && chmod +x erasmus.sh && ./erasmus.sh
+curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/release/v0.2.1/erasmus_v0.2.1.sh -o erasmus.sh && chmod +x erasmus.sh && ./erasmus.sh
 ```
 
 That's it! The installer will set up everything you need.
