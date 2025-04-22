@@ -114,6 +114,250 @@
         <Name>watch</Name>
         <Description>Monitor project files and update context as needed.</Description>
       </Command>
+      <Command>
+        <Name>mcp github create-pr</Name>
+        <Description>Create a pull request on GitHub using the MCP server and CLI.</Description>
+        <Usage>
+          erasmus mcp github create-pr \
+            --owner &lt;repo-owner&gt; \
+            --repo &lt;repo-name&gt; \
+            --title "Your PR Title" \
+            --head &lt;your-feature-branch&gt; \
+            --base main \
+            --body "Description of your PR"
+        </Usage>
+        <Notes>
+          <Note>--owner: GitHub username or org</Note>
+          <Note>--repo: Repository name</Note>
+          <Note>--title: Title for the pull request</Note>
+          <Note>--head: The branch with your changes (e.g., feature/my-fix)</Note>
+          <Note>--base: The branch you want to merge into (e.g., main)</Note>
+          <Note>--body: (Optional) PR description</Note>
+        </Notes>
+        <Example>
+          erasmus mcp github create-pr \
+            --owner bakobi \
+            --repo erasmus \
+            --title "Fix context file loading and naming consistency" \
+            --head feature/context-fix \
+            --base main \
+            --body "This PR fixes context loading to require .ctx.*.xml files, ensures naming consistency between root and context directories, and improves error handling for missing files."
+        </Example>
+      </Command>
+      <Command>
+        <Name>mcp github get-user</Name>
+        <Description>Get information about a GitHub user.</Description>
+        <Usage>
+          erasmus mcp github get-user --username &lt;username&gt;
+        </Usage>
+        <Notes>
+          <Note>--username: GitHub username to query</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-user-repos</Name>
+        <Description>List repositories for a GitHub user.</Description>
+        <Usage>
+          erasmus mcp github list-user-repos --username &lt;username&gt;
+        </Usage>
+        <Notes>
+          <Note>--username: GitHub username</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-user-orgs</Name>
+        <Description>List organizations for a GitHub user.</Description>
+        <Usage>
+          erasmus mcp github list-user-orgs --username &lt;username&gt;
+        </Usage>
+        <Notes>
+          <Note>--username: GitHub username</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github get-org</Name>
+        <Description>Get information about a GitHub organization.</Description>
+        <Usage>
+          erasmus mcp github get-org --org &lt;orgname&gt;
+        </Usage>
+        <Notes>
+          <Note>--org: Organization name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-org-repos</Name>
+        <Description>List repositories for a GitHub organization.</Description>
+        <Usage>
+          erasmus mcp github list-org-repos --org &lt;orgname&gt;
+        </Usage>
+        <Notes>
+          <Note>--org: Organization name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-org-members</Name>
+        <Description>List members of a GitHub organization.</Description>
+        <Usage>
+          erasmus mcp github list-org-members --org &lt;orgname&gt;
+        </Usage>
+        <Notes>
+          <Note>--org: Organization name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-workflows</Name>
+        <Description>List GitHub Actions workflows for a repository.</Description>
+        <Usage>
+          erasmus mcp github list-workflows --owner &lt;owner&gt; --repo &lt;repo&gt;
+        </Usage>
+        <Notes>
+          <Note>--owner: Repository owner</Note>
+          <Note>--repo: Repository name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github get-workflow</Name>
+        <Description>Get details for a specific GitHub Actions workflow.</Description>
+        <Usage>
+          erasmus mcp github get-workflow --owner &lt;owner&gt; --repo &lt;repo&gt; --workflow-id &lt;id&gt;
+        </Usage>
+        <Notes>
+          <Note>--workflow-id: Workflow ID or file name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-workflow-runs</Name>
+        <Description>List workflow runs for a repository.</Description>
+        <Usage>
+          erasmus mcp github list-workflow-runs --owner &lt;owner&gt; --repo &lt;repo&gt; --workflow-id &lt;id&gt;
+        </Usage>
+        <Notes>
+          <Note>--workflow-id: Workflow ID or file name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github get-workflow-run</Name>
+        <Description>Get details for a specific workflow run.</Description>
+        <Usage>
+          erasmus mcp github get-workflow-run --owner &lt;owner&gt; --repo &lt;repo&gt; --run-id &lt;id&gt;
+        </Usage>
+        <Notes>
+          <Note>--run-id: Workflow run ID</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github rerun-workflow</Name>
+        <Description>Rerun a GitHub Actions workflow run.</Description>
+        <Usage>
+          erasmus mcp github rerun-workflow --owner &lt;owner&gt; --repo &lt;repo&gt; --run-id &lt;id&gt;
+        </Usage>
+        <Notes>
+          <Note>--run-id: Workflow run ID</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-releases</Name>
+        <Description>List releases for a repository.</Description>
+        <Usage>
+          erasmus mcp github list-releases --owner &lt;owner&gt; --repo &lt;repo&gt;
+        </Usage>
+        <Notes>
+          <Note>--owner: Repository owner</Note>
+          <Note>--repo: Repository name</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github get-release</Name>
+        <Description>Get details for a specific release.</Description>
+        <Usage>
+          erasmus mcp github get-release --owner &lt;owner&gt; --repo &lt;repo&gt; --release-id &lt;id&gt;
+        </Usage>
+        <Notes>
+          <Note>--release-id: Release ID</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github create-release</Name>
+        <Description>Create a new release in a repository.</Description>
+        <Usage>
+          erasmus mcp github create-release --owner &lt;owner&gt; --repo &lt;repo&gt; --tag &lt;tag&gt; --name &lt;name&gt; --body "Release notes"
+        </Usage>
+        <Notes>
+          <Note>--tag: Tag name for the release</Note>
+          <Note>--name: Release name</Note>
+          <Note>--body: Release notes</Note>
+        </Notes>
+      </Command>
+      <Command>
+        <Name>mcp github list-labels</Name>
+        <Description>List labels for a repository.</Description>
+        <Usage>
+          erasmus mcp github list-labels --owner &lt;owner&gt; --repo &lt;repo&gt;
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github get-label</Name>
+        <Description>Get details for a specific label.</Description>
+        <Usage>
+          erasmus mcp github get-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt;
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github create-label</Name>
+        <Description>Create a new label in a repository.</Description>
+        <Usage>
+          erasmus mcp github create-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt; --color &lt;hex&gt; --description "desc"
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github update-label</Name>
+        <Description>Update an existing label in a repository.</Description>
+        <Usage>
+          erasmus mcp github update-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt; [--new-name &lt;new-name&gt;] [--color &lt;hex&gt;] [--description "desc"]
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github delete-label</Name>
+        <Description>Delete a label from a repository.</Description>
+        <Usage>
+          erasmus mcp github delete-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt;
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github list-milestones</Name>
+        <Description>List milestones for a repository.</Description>
+        <Usage>
+          erasmus mcp github list-milestones --owner &lt;owner&gt; --repo &lt;repo&gt;
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github get-milestone</Name>
+        <Description>Get details for a specific milestone.</Description>
+        <Usage>
+          erasmus mcp github get-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt;
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github create-milestone</Name>
+        <Description>Create a new milestone in a repository.</Description>
+        <Usage>
+          erasmus mcp github create-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --title &lt;title&gt; [--description "desc"] [--due-on YYYY-MM-DD]
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github update-milestone</Name>
+        <Description>Update an existing milestone in a repository.</Description>
+        <Usage>
+          erasmus mcp github update-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt; [--title &lt;title&gt;] [--description "desc"] [--due-on YYYY-MM-DD] [--state open|closed]
+        </Usage>
+      </Command>
+      <Command>
+        <Name>mcp github delete-milestone</Name>
+        <Description>Delete a milestone from a repository.</Description>
+        <Usage>
+          erasmus mcp github delete-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt;
+        </Usage>
+      </Command>
     </CLICommands>
   </ErasmusContextManager>
   <Protocols>
@@ -287,7 +531,8 @@
   </CorePrinciples>
   <Styling>
     <Description>Styling considerations should be made to present the code in a human-readable format. Since large amounts of code can be generated by the model for human review, ensuring that it is clear and as straightforward as possible for the human operator to read is important.</Description>
-    <Rule>Use clear, descriptive variable names that convey the variable's purpose (e.g., <code>get_file_path</code> for a file path, <code>get_file_content</code> for file content, never just <code>get_file</code>).</Rule>
+    <Rule>Use clear, descriptive variable names that convey the variable's purpose (e.g., <code>get_file_path</code> for a file path, <code>get_file_content</code> for file content, never just <code>get_file</code>).
+    </Rule>
     <Rule>Avoid single-letter variable names; always use full, descriptive names, even if verbose.</Rule>
     <Rule>Avoid heavy abstraction; the logical flow of the code should be clear and easy to follow.</Rule>
     <Rule>Centralize variable creation and organize their use into managers with clear methods for accessing variables where appropriate.</Rule>
@@ -304,17 +549,17 @@
   <RulesFile>
     <Description>The rules file is stored in different locations depending on your IDE and is what gets automatically injected into your context window. You should never edit this directly, always update the the `.ctx.architecture.xml`, `.ctx.progress.xml`, `.ctx.tasks.xml` or use **erasmus** to modify your context or protocols. There is a watch system that monitors those files for changes and updates your rules file so you will just have your updates overwritten if you modify it directly.</Description>
   </RulesFile>
-<Rules>
+  <Rules>
     <Rule>For all future requests, do not explain or ask for confirmation—just execute the requested code or config change.</Rule>
     <Rule>When working on a library always use a path manager, if one does not exist write it to $LIBRARY/utils/pathmanager.$EXTENSION. It should define the root dir, all relevant configuration or paths required for application operations. Under no circumstance are you to write paths directly into a script, if the path logic does not exist in the path manager then add it.</Rule>
-   <Rule>If you receive a log output with errors, I am ask you to correct the issues in the error. You can begin implementing changes with out asking for confirmation</Rule>
-   <Rule>Do not be overly verbose, writing a patch directly once is more effective than outputing the change to the chat display and asking me if I want to implement the change to only have to write the change to a patch. The answer is always yes,  I want to implement the change</Rule>
-   <Rule>You are responsible for your task prioritization, do not ask me which task I'd like you to complete. Complete the first task in the list, if there is a problem I will intervene</Rule>
-   <Rule>Pointing out issues or stating changes that should be made to files comes with an implictly implied command to make the changes. *example: 
+    <Rule>If you receive a log output with errors, I am ask you to correct the issues in the error. You can begin implementing changes with out asking for confirmation</Rule>
+    <Rule>Do not be overly verbose, writing a patch directly once is more effective than outputing the change to the chat display and asking me if I want to implement the change to only have to write the change to a patch. The answer is always yes,  I want to implement the change</Rule>
+    <Rule>You are responsible for your task prioritization, do not ask me which task I'd like you to complete. Complete the first task in the list, if there is a problem I will intervene</Rule>
+    <Rule>Pointing out issues or stating changes that should be made to files comes with an implictly implied command to make the changes. *example: 
 user: "this code block is outputting a bug"
 assistant: "let me help you correct that issue" 
 [implements-correction]
 assistant: "I have corrected the issue by changing xyz"</Rule>
-</Rules>
-    <Rule>Do not remove functionality that exists. There is no reason you should do this. If logic needs to be removed you must ask for permission to remove it and state the reason why.</Rule>
+  </Rules>
+  <Rule>Do not remove functionality that exists. There is no reason you should do this. If logic needs to be removed you must ask for permission to remove it and state the reason why.</Rule>
 </MetaAgent> 

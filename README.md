@@ -53,7 +53,7 @@ Erasmus is an advanced context management library that revolutionizes software d
 ### Quick Install
 
 ```bash
-curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/releases/erasmus/erasmus/erasmus_v0.2.2
+curl -sSL https://raw.githubusercontent.com/hydra-dynamix/erasmus/refs/heads/main/releases/install.sh | bash -s -- 0.2.2
 ```
 
 ### Workflow Overview

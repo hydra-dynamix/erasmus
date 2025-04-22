@@ -6,10 +6,14 @@ import typer
 from loguru import logger
 from erasmus.context import ContextManager, ContextError
 import xml.dom.minidom as minidom
-from erasmus.utils.rich_console import print_table
+from erasmus.utils.rich_console import print_table, get_console
 import os
+from rich.panel import Panel
+import xml.etree.ElementTree as ET
+from erasmus.utils.paths import get_path_manager
 
 context_manager = ContextManager()
+console = get_console()
 context_app = typer.Typer(help="Manage development contexts and their files.")
 
 
@@ -416,28 +420,65 @@ def edit(
     raise typer.Exit(0)
 
 
-@context_app.command()
-def store():
-    """Store the current context by reading the architecture file, parsing the title,
-    sanitizing it, and saving the current context files to a new folder.
+def get_title_from_architecture() -> str | None:
+    """Parse the title from the architecture file.
 
-    This command will:
-    1. Read the current architecture file
-    2. Extract the title from it
-    3. Create a new context folder with the sanitized title
-    4. Copy the current architecture, progress, and tasks files to the new folder
+    Returns:
+        The title if found, None otherwise.
     """
     try:
-        context_name = context_manager.store_context()
-        print_table(
-            ["Info"],
-            [[f"Successfully stored context as: {context_name}"]],
-            title="Context Stored",
+        arch_file = context_manager.pm.get_architecture_file()
+        if not arch_file.exists():
+            return None
+
+        tree = ET.parse(arch_file)
+        root = tree.getroot()
+
+        # Try different possible paths to title
+        title_paths = [
+            ".//Title",  # Direct title tag
+            ".//Architecture/Title",  # Under Architecture
+            ".//Overview/Title",  # Under Overview
+            ".//Architecture/Overview/Title",  # Full path
+        ]
+
+        for path in title_paths:
+            title_elem = root.find(path)
+            if title_elem is not None and title_elem.text:
+                return title_elem.text.strip()
+
+        return None
+    except Exception:
+        return None
+
+
+@context_app.command()
+def store(name: str = typer.Argument(None, help="Optional name to store the context under")):
+    """Store the current context. If no name is provided, uses the title from architecture file or prompts for one."""
+    try:
+        # If name not provided, try to get from architecture
+        if not name:
+            name = get_title_from_architecture()
+
+        # If still no name, prompt user
+        if not name:
+            name = typer.prompt("Enter a name for the context")
+
+        if not name:
+            console.print(
+                Panel("Error: Context name is required", title="Context Store Failed", style="red")
+            )
+            show_context_help_and_exit()
+            raise typer.Exit(1)
+
+        context_manager.store_context(name)
+        console.print(
+            Panel(f"Context stored successfully as '{name}'", title="Context Store", style="green")
         )
-        raise typer.Exit(0)
-    except ContextError as error:
-        print_table(["Error"], [[str(error)]], title="Context Store Failed")
+    except Exception as e:
+        console.print(Panel(f"Error\n{str(e)}", title="Context Store Failed", style="red"))
         show_context_help_and_exit()
+        raise typer.Exit(1)
 
 
 @context_app.command("load")
@@ -524,4 +565,38 @@ def select_context():
         raise typer.Exit(0)
     except ContextError as exception:
         typer.echo(f"Error: Failed to load context: {exception}")
+        raise typer.Exit(1)
+
+
+def setup_callback(ctx: typer.Context):
+    """Initialize the context manager and create initial context."""
+    try:
+        # Get path manager
+        path_manager = get_path_manager()
+
+        # Create erasmus directories
+        erasmus_dir = path_manager.erasmus_dir
+        context_dir = path_manager.context_dir
+        protocol_dir = path_manager.protocol_dir
+        template_dir = path_manager.template_dir
+
+        erasmus_dir.mkdir(parents=True, exist_ok=True)
+        context_dir.mkdir(parents=True, exist_ok=True)
+        protocol_dir.mkdir(parents=True, exist_ok=True)
+        template_dir.mkdir(parents=True, exist_ok=True)
+
+        print_table(["Info"], [[f"Erasmus folders created in: {erasmus_dir}"]], title="Setup")
+
+        # Create a template context in the context folder and update root .ctx.*.xml
+        context_manager = ContextManager(base_path=str(context_dir))
+        project_name = path_manager.root_dir.name
+        context_manager.create_context(project_name)
+        print_table(["Info"], [[f"Template context created: {project_name}"]], title="Setup")
+
+        # Load the new context to root .ctx.*.xml files
+        context_manager.load_context(project_name)
+        print_table(["Info"], [[f"Context loaded: {project_name}"]], title="Setup")
+
+    except Exception as e:
+        print_table(["Error"], [[str(e)]], title="Setup Failed")
         raise typer.Exit(1)

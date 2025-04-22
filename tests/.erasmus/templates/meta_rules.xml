@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaRules>
+  <Rule name="Rule Name">
+    <Description>Rule description</Description>
+    <Conditions>
+      <Condition>Condition 1</Condition>
+      <Condition>Condition 2</Condition>
+    </Conditions>
+    <Actions>
+      <Action>Action 1</Action>
+      <Action>Action 2</Action>
+    </Actions>
+  </Rule>
+  
+  <Validation>
+    <Check name="Check Name">
+      <Description>Check description</Description>
+      <Criteria>
+        <Criterion>Criterion 1</Criterion>
+        <Criterion>Criterion 2</Criterion>
+      </Criteria>
+    </Check>
+  </Validation>
+  
+  <ErrorHandling>
+    <Error code="ERROR_CODE">
+      <Description>Error description</Description>
+      <Resolution>Resolution steps</Resolution>
+    </Error>
+  </ErrorHandling>
+</MetaRules> 

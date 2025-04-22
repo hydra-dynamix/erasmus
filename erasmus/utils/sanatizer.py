@@ -9,25 +9,20 @@ def _sanitize_string(name: str) -> str:
     """
     # First remove emoji using regex pattern
     no_emoji = re.sub(r"[\U0001F300-\U0001F9FF]", "", name)
-    # Allow markdown special chars but remove other non-ASCII
-    allowed_special = r"[#*_\-`~\[\](){}|<>.!]"
-    sanitized = ""
-    for character in no_emoji:
-        # Skip non-ASCII characters entirely
-        if not character.isascii():
-            continue
-        # Allow alphanumeric and certain special characters
-        if character.isalnum() or re.match(allowed_special, character):
-            sanitized += character
-        else:
-            sanitized += "_"
+
+    # Replace any non-alphanumeric character (including special characters like *) with underscore
+    sanitized = re.sub(r"[^a-zA-Z0-9]", "_", no_emoji)
+
     # Collapse multiple underscores
     sanitized = re.sub(r"_+", "_", sanitized)
+
     # Ensure it starts with a letter
-    if not sanitized[0].isalpha():
+    if not sanitized or not sanitized[0].isalpha():
         sanitized = "p_" + sanitized
+
     # Strip trailing underscores
     sanitized = sanitized.rstrip("_")
+
     return sanitized
 
 
@@ -46,9 +41,7 @@ def _sanitize_xml_content(xml_content: str) -> str:
     sanitized = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "", xml_content)
 
     # Replace invalid XML entities
-    sanitized = re.sub(
-        r"&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)", "&amp;", sanitized
-    )
+    sanitized = re.sub(r"&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)", "&amp;", sanitized)
 
     # Ensure the XML is well-formed
     try:

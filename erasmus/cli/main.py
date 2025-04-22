@@ -6,6 +6,7 @@ import typer
 from erasmus.cli.context_commands import context_app
 from erasmus.cli.protocol_commands import protocol_app
 from erasmus.cli.setup_commands import setup_app
+from erasmus.cli.mcp_commands import mcp_app
 from erasmus.utils.rich_console import print_table
 
 app = typer.Typer(
@@ -16,6 +17,9 @@ app = typer.Typer(
 app.add_typer(context_app, name="context", help="Manage development contexts")
 app.add_typer(protocol_app, name="protocol", help="Manage protocols")
 app.add_typer(setup_app, name="setup", help="Setup Erasmus")
+app.add_typer(
+    mcp_app, name="mcp", help="Manage MCP servers, clients, and integrations (including GitHub)"
+)
 
 
 # Custom error handler for unknown commands and argument errors
@@ -100,7 +104,7 @@ def watch():  # pragma: no cover
 
     pm = get_path_manager()
     root = pm.get_root_dir()
-    monitor = FileMonitor(str(root))
+    monitor = FileMonitor()
     monitor.start()
     typer.echo(f"Watching {root} for .ctx file changes (Ctrl+C to stop)...")
     try:

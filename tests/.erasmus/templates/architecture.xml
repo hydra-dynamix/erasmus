@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Architecture>
+  <Overview>
+    <Description>Project description goes here</Description>
+  </Overview>
+  
+  <CoreComponents>
+    <Component name="Component Name">
+      <Purpose>Component purpose</Purpose>
+      <Responsibilities>
+        <Responsibility>Responsibility 1</Responsibility>
+        <Responsibility>Responsibility 2</Responsibility>
+      </Responsibilities>
+      <TestFocus>
+        <Test>Test focus 1</Test>
+        <Test>Test focus 2</Test>
+      </TestFocus>
+    </Component>
+  </CoreComponents>
+  
+  <DevelopmentPrinciples>
+    <Principle name="Principle Name">
+      <Detail>Principle detail 1</Detail>
+      <Detail>Principle detail 2</Detail>
+    </Principle>
+  </DevelopmentPrinciples>
+  
+  <Dependencies>
+    <Dependency>Dependency 1</Dependency>
+    <Dependency>Dependency 2</Dependency>
+  </Dependencies>
+  
+  <DirectoryStructure>
+    <!-- Add directory structure here -->
+  </DirectoryStructure>
+  
+  <DevelopmentWorkflow>
+    <Step>Workflow step 1</Step>
+    <Step>Workflow step 2</Step>
+  </DevelopmentWorkflow>
+</Architecture> 
