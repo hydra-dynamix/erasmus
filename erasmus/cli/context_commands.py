@@ -84,11 +84,12 @@ def create(name: str = typer.Argument(None, help="Name of the context to create"
                 title="Context Creation Failed",
             )
             raise typer.Exit(1)
+        context_path = context_manager.get_context_path(name)
         context_manager.create_context(name)
         # Retrieve created context model for path
         context = context_manager.get_context(name)
         # Display created context in a table
-        context_rows = [[context.path]]
+        context_rows = [[context_path]]
         print_table(["Context Path"], context_rows, title=f"Created Context: {name}")
         raise typer.Exit(0)
     except ContextError as error:

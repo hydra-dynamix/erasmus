@@ -10,7 +10,7 @@
 uv.lock
 erasmus/mcp/servers/*
 !erasmus/mcp/servers/.gitkeep
-
+.code_review.md
 .temp_context
 
 # IDE

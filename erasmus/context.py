@@ -171,20 +171,17 @@ class ContextManager:
         self.tasks_content: str | None = None
 
     def get_default_content(self, file_type: str) -> str:
-        content = None
-        if file_type == "architecture":
-            content = path_manager.architecture_template.read_text()
-        if file_type == "progress":
-            content = path_manager.progress_template.read_text()
-        if file_type == "tasks":
-            content = path_manager.tasks_template.read_text()
-        if file_type == "protocol":
-            content = path_manager.protocol_template.read_text()
-        if file_type == "meta_agent":
-            content = path_manager.meta_agent_template.read_text()
-        if file_type == "meta_rules":
-            content = path_manager.meta_rules_template.read_text()
-        return content
+        template_map = {
+            "architecture": path_manager.architecture_template,
+            "progress": path_manager.progress_template,
+            "tasks": path_manager.tasks_template,
+            "protocol": path_manager.protocol_template,
+            "meta_agent": path_manager.meta_agent_template,
+            "meta_rules": path_manager.meta_rules_template,
+        }
+        if file_type not in template_map:
+            raise ValueError(f"Unsupported file type: {file_type}")
+        return template_map[file_type].read_text()
 
     def create_context(
         self,
@@ -224,11 +221,16 @@ class ContextManager:
             raise ContextError(f"Context already exists: {context_name}")
         # Create context directory
         context_dir.mkdir(parents=True, exist_ok=False)
+        architecture_content = architecture_content or self.get_default_content("architecture")
+        named_architecture_content = architecture_content.replace(
+            "  <Title>Project Title</Title>",
+            f"<Title>{context_name}</Title>",
+        )
         # Use the correct template directory from the path manager
         template_map = {
             "ctx.architecture.xml": (
                 path_manager.architecture_template,
-                architecture_content or self.get_default_content("architecture"),
+                named_architecture_content,
                 "Architecture",
             ),
             "ctx.progress.xml": (

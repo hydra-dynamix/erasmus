@@ -75,7 +75,7 @@ _custom_mappings: dict[str, str] = {}
 _pypi_cache: dict[str, str | None] = {}
 
 # Cache for import to package mappings
-_IMPORT_TO_PACKAGE: dict[str, str] | None = None
+_IMPORT_TO_PACKAGE: Dict[str, str] | None = None
 
 
 def register_mapping(import_name: str, package_name: str) -> None:
