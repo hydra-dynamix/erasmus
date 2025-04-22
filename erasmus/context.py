@@ -156,7 +156,7 @@ class ContextManager:
         # Remove self.base_dir assignment, always use path_manager.get_context_dir()
         logger.info(
             f"Initialized ContextManager with base path: {
-                chosen_dir if chosen_dir else path_manager.get_context_dir()
+                chosen_dir or path_manager.get_context_dir()
             }",
         )
         # Initialize context tracking attributes
