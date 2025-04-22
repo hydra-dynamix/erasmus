@@ -30,7 +30,7 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Start the MCP server process
         process = subprocess.Popen(
-            ["github-mcp-server", "stdio"],
+            ["./erasmus/mcp/servers/github/server", "stdio"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -46,14 +46,20 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
             raise typer.Exit(1)
 
         # Parse the response
-        response = json.loads(
-            stdout.split("\n")[1]
-        )  # Skip the "GitHub MCP Server running on stdio" line
-
+        response = None
+        for line in stdout.split("\n"):
+            try:
+                obj = json.loads(line)
+                response = obj
+                break
+            except Exception:
+                continue
+        if not response:
+            logger.error(f"No valid JSON response from MCP server. Raw output: {stdout}")
+            raise typer.Exit(1)
         if "error" in response:
             logger.error(f"MCP server error: {response['error']}")
             raise typer.Exit(1)
-
         return response["result"]
 
     except Exception as e:

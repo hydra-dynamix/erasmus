@@ -115,10 +115,10 @@
         <Description>Monitor project files and update context as needed.</Description>
       </Command>
       <Command>
-        <Name>github-mcp create-pr</Name>
+        <Name>mcp github create-pr</Name>
         <Description>Create a pull request on GitHub using the MCP server and CLI.</Description>
         <Usage>
-          erasmus github-mcp create-pr \
+          erasmus mcp github create-pr \
             --owner &lt;repo-owner&gt; \
             --repo &lt;repo-name&gt; \
             --title "Your PR Title" \
@@ -135,7 +135,7 @@
           <Note>--body: (Optional) PR description</Note>
         </Notes>
         <Example>
-          erasmus github-mcp create-pr \
+          erasmus mcp github create-pr \
             --owner bakobi \
             --repo erasmus \
             --title "Fix context file loading and naming consistency" \
@@ -145,70 +145,70 @@
         </Example>
       </Command>
       <Command>
-        <Name>github-mcp get-user</Name>
+        <Name>mcp github get-user</Name>
         <Description>Get information about a GitHub user.</Description>
         <Usage>
-          erasmus github-mcp get-user --username &lt;username&gt;
+          erasmus mcp github get-user --username &lt;username&gt;
         </Usage>
         <Notes>
           <Note>--username: GitHub username to query</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-user-repos</Name>
+        <Name>mcp github list-user-repos</Name>
         <Description>List repositories for a GitHub user.</Description>
         <Usage>
-          erasmus github-mcp list-user-repos --username &lt;username&gt;
+          erasmus mcp github list-user-repos --username &lt;username&gt;
         </Usage>
         <Notes>
           <Note>--username: GitHub username</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-user-orgs</Name>
+        <Name>mcp github list-user-orgs</Name>
         <Description>List organizations for a GitHub user.</Description>
         <Usage>
-          erasmus github-mcp list-user-orgs --username &lt;username&gt;
+          erasmus mcp github list-user-orgs --username &lt;username&gt;
         </Usage>
         <Notes>
           <Note>--username: GitHub username</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp get-org</Name>
+        <Name>mcp github get-org</Name>
         <Description>Get information about a GitHub organization.</Description>
         <Usage>
-          erasmus github-mcp get-org --org &lt;orgname&gt;
+          erasmus mcp github get-org --org &lt;orgname&gt;
         </Usage>
         <Notes>
           <Note>--org: Organization name</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-org-repos</Name>
+        <Name>mcp github list-org-repos</Name>
         <Description>List repositories for a GitHub organization.</Description>
         <Usage>
-          erasmus github-mcp list-org-repos --org &lt;orgname&gt;
+          erasmus mcp github list-org-repos --org &lt;orgname&gt;
         </Usage>
         <Notes>
           <Note>--org: Organization name</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-org-members</Name>
+        <Name>mcp github list-org-members</Name>
         <Description>List members of a GitHub organization.</Description>
         <Usage>
-          erasmus github-mcp list-org-members --org &lt;orgname&gt;
+          erasmus mcp github list-org-members --org &lt;orgname&gt;
         </Usage>
         <Notes>
           <Note>--org: Organization name</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-workflows</Name>
+        <Name>mcp github list-workflows</Name>
         <Description>List GitHub Actions workflows for a repository.</Description>
         <Usage>
-          erasmus github-mcp list-workflows --owner &lt;owner&gt; --repo &lt;repo&gt;
+          erasmus mcp github list-workflows --owner &lt;owner&gt; --repo &lt;repo&gt;
         </Usage>
         <Notes>
           <Note>--owner: Repository owner</Note>
@@ -216,50 +216,50 @@
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp get-workflow</Name>
+        <Name>mcp github get-workflow</Name>
         <Description>Get details for a specific GitHub Actions workflow.</Description>
         <Usage>
-          erasmus github-mcp get-workflow --owner &lt;owner&gt; --repo &lt;repo&gt; --workflow-id &lt;id&gt;
+          erasmus mcp github get-workflow --owner &lt;owner&gt; --repo &lt;repo&gt; --workflow-id &lt;id&gt;
         </Usage>
         <Notes>
           <Note>--workflow-id: Workflow ID or file name</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-workflow-runs</Name>
+        <Name>mcp github list-workflow-runs</Name>
         <Description>List workflow runs for a repository.</Description>
         <Usage>
-          erasmus github-mcp list-workflow-runs --owner &lt;owner&gt; --repo &lt;repo&gt; --workflow-id &lt;id&gt;
+          erasmus mcp github list-workflow-runs --owner &lt;owner&gt; --repo &lt;repo&gt; --workflow-id &lt;id&gt;
         </Usage>
         <Notes>
           <Note>--workflow-id: Workflow ID or file name</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp get-workflow-run</Name>
+        <Name>mcp github get-workflow-run</Name>
         <Description>Get details for a specific workflow run.</Description>
         <Usage>
-          erasmus github-mcp get-workflow-run --owner &lt;owner&gt; --repo &lt;repo&gt; --run-id &lt;id&gt;
+          erasmus mcp github get-workflow-run --owner &lt;owner&gt; --repo &lt;repo&gt; --run-id &lt;id&gt;
         </Usage>
         <Notes>
           <Note>--run-id: Workflow run ID</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp rerun-workflow</Name>
+        <Name>mcp github rerun-workflow</Name>
         <Description>Rerun a GitHub Actions workflow run.</Description>
         <Usage>
-          erasmus github-mcp rerun-workflow --owner &lt;owner&gt; --repo &lt;repo&gt; --run-id &lt;id&gt;
+          erasmus mcp github rerun-workflow --owner &lt;owner&gt; --repo &lt;repo&gt; --run-id &lt;id&gt;
         </Usage>
         <Notes>
           <Note>--run-id: Workflow run ID</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-releases</Name>
+        <Name>mcp github list-releases</Name>
         <Description>List releases for a repository.</Description>
         <Usage>
-          erasmus github-mcp list-releases --owner &lt;owner&gt; --repo &lt;repo&gt;
+          erasmus mcp github list-releases --owner &lt;owner&gt; --repo &lt;repo&gt;
         </Usage>
         <Notes>
           <Note>--owner: Repository owner</Note>
@@ -267,20 +267,20 @@
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp get-release</Name>
+        <Name>mcp github get-release</Name>
         <Description>Get details for a specific release.</Description>
         <Usage>
-          erasmus github-mcp get-release --owner &lt;owner&gt; --repo &lt;repo&gt; --release-id &lt;id&gt;
+          erasmus mcp github get-release --owner &lt;owner&gt; --repo &lt;repo&gt; --release-id &lt;id&gt;
         </Usage>
         <Notes>
           <Note>--release-id: Release ID</Note>
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp create-release</Name>
+        <Name>mcp github create-release</Name>
         <Description>Create a new release in a repository.</Description>
         <Usage>
-          erasmus github-mcp create-release --owner &lt;owner&gt; --repo &lt;repo&gt; --tag &lt;tag&gt; --name &lt;name&gt; --body "Release notes"
+          erasmus mcp github create-release --owner &lt;owner&gt; --repo &lt;repo&gt; --tag &lt;tag&gt; --name &lt;name&gt; --body "Release notes"
         </Usage>
         <Notes>
           <Note>--tag: Tag name for the release</Note>
@@ -289,73 +289,73 @@
         </Notes>
       </Command>
       <Command>
-        <Name>github-mcp list-labels</Name>
+        <Name>mcp github list-labels</Name>
         <Description>List labels for a repository.</Description>
         <Usage>
-          erasmus github-mcp list-labels --owner &lt;owner&gt; --repo &lt;repo&gt;
+          erasmus mcp github list-labels --owner &lt;owner&gt; --repo &lt;repo&gt;
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp get-label</Name>
+        <Name>mcp github get-label</Name>
         <Description>Get details for a specific label.</Description>
         <Usage>
-          erasmus github-mcp get-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt;
+          erasmus mcp github get-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt;
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp create-label</Name>
+        <Name>mcp github create-label</Name>
         <Description>Create a new label in a repository.</Description>
         <Usage>
-          erasmus github-mcp create-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt; --color &lt;hex&gt; --description "desc"
+          erasmus mcp github create-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt; --color &lt;hex&gt; --description "desc"
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp update-label</Name>
+        <Name>mcp github update-label</Name>
         <Description>Update an existing label in a repository.</Description>
         <Usage>
-          erasmus github-mcp update-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt; [--new-name &lt;new-name&gt;] [--color &lt;hex&gt;] [--description "desc"]
+          erasmus mcp github update-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt; [--new-name &lt;new-name&gt;] [--color &lt;hex&gt;] [--description "desc"]
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp delete-label</Name>
+        <Name>mcp github delete-label</Name>
         <Description>Delete a label from a repository.</Description>
         <Usage>
-          erasmus github-mcp delete-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt;
+          erasmus mcp github delete-label --owner &lt;owner&gt; --repo &lt;repo&gt; --name &lt;label-name&gt;
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp list-milestones</Name>
+        <Name>mcp github list-milestones</Name>
         <Description>List milestones for a repository.</Description>
         <Usage>
-          erasmus github-mcp list-milestones --owner &lt;owner&gt; --repo &lt;repo&gt;
+          erasmus mcp github list-milestones --owner &lt;owner&gt; --repo &lt;repo&gt;
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp get-milestone</Name>
+        <Name>mcp github get-milestone</Name>
         <Description>Get details for a specific milestone.</Description>
         <Usage>
-          erasmus github-mcp get-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt;
+          erasmus mcp github get-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt;
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp create-milestone</Name>
+        <Name>mcp github create-milestone</Name>
         <Description>Create a new milestone in a repository.</Description>
         <Usage>
-          erasmus github-mcp create-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --title &lt;title&gt; [--description "desc"] [--due-on YYYY-MM-DD]
+          erasmus mcp github create-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --title &lt;title&gt; [--description "desc"] [--due-on YYYY-MM-DD]
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp update-milestone</Name>
+        <Name>mcp github update-milestone</Name>
         <Description>Update an existing milestone in a repository.</Description>
         <Usage>
-          erasmus github-mcp update-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt; [--title &lt;title&gt;] [--description "desc"] [--due-on YYYY-MM-DD] [--state open|closed]
+          erasmus mcp github update-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt; [--title &lt;title&gt;] [--description "desc"] [--due-on YYYY-MM-DD] [--state open|closed]
         </Usage>
       </Command>
       <Command>
-        <Name>github-mcp delete-milestone</Name>
+        <Name>mcp github delete-milestone</Name>
         <Description>Delete a milestone from a repository.</Description>
         <Usage>
-          erasmus github-mcp delete-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt;
+          erasmus mcp github delete-milestone --owner &lt;owner&gt; --repo &lt;repo&gt; --number &lt;milestone-number&gt;
         </Usage>
       </Command>
     </CLICommands>

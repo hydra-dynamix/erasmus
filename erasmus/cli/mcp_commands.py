@@ -7,9 +7,11 @@ from pathlib import Path
 from loguru import logger
 from erasmus.mcp.mcp import MCPClient, MCPServer, MCPRegistry, MCPError
 from erasmus.utils.rich_console import print_table
+from erasmus.cli.github_mcp_commands import github_app
 
 mcp_registry = MCPRegistry()
 mcp_app = typer.Typer(help="Manage MCP servers and clients.")
+mcp_app.add_typer(github_app, name="github", help="Interact with GitHub through the MCP server.")
 
 
 def show_mcp_help_and_exit():
