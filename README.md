@@ -53,7 +53,7 @@ Erasmus is an advanced context management library that revolutionizes software d
 ### Quick Install
 
 ```bash
-curl -L https://raw.githubusercontent.com/Bakobiibizo/Erasmus/main/install.sh | bash -s -- v0.2.2
+curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/releases/erasmus/erasmus/erasmus_v0.2.2
 ```
 
 ### Workflow Overview
@@ -93,14 +93,6 @@ curl -L https://raw.githubusercontent.com/Bakobiibizo/Erasmus/main/install.sh | 
   - Detailed task breakdown
   - Status tracking
   - Assignment
-
-## Quick Installation
-
-```bash
-curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/releases/erasmus/0.2.1/erasmus_v0.2.1.py -o erasmus.py && uv run erasmus.py setup
-```
-
-That's it! The installer will set up everything you need. Just select your IDE environment and create a new project then ask the model to help you design an architecture doc.
 
 \*Note: Cursor users will have to copy their `global_rules.md` that is generated when the setup command is run to their global rules in the settings. I still haven't figured out where that file actually is to automate it. If you know let me know!
 
