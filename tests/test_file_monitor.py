@@ -1,292 +1,288 @@
+"""Tests for file monitoring functionality."""
+
 import os
 import time
 import pytest
 from pathlib import Path
-from erasmus.file_monitor import FileMonitor, FileMonitorError
+from watchdog.events import FileSystemEvent
+from erasmus.file_monitor import ContextFileMonitor, ContextFileHandler
+from erasmus.environment import is_debug_enabled
+
+
+def wait_for_event(timeout: float = 1.0, interval: float = 0.1) -> None:
+    """Wait for file system events to be processed."""
+    time.sleep(timeout)
+
+
+class BaseMockPathManager:
+    """Base mock path manager with all required properties."""
+
+    def __init__(self, root_dir, ide=None):
+        self.root_dir = root_dir
+
+    def get_architecture_file(self):
+        return self.root_dir / ".ctx.architecture.xml"
+
+    def get_rules_file(self):
+        return self.root_dir / ".rules"
+
+    def get_progress_file(self):
+        return self.root_dir / ".ctx.progress.xml"
+
+    def get_tasks_file(self):
+        return self.root_dir / ".ctx.tasks.xml"
+
+    @property
+    def template_dir(self):
+        return self.root_dir / "templates"
+
+    @property
+    def protocol_dir(self):
+        return self.root_dir / "protocols"
+
+    @property
+    def erasmus_dir(self):
+        return self.root_dir / ".erasmus"
 
 
 @pytest.fixture
-def file_monitor(tmp_path):
-    """Create a FileMonitor instance with a temporary watch path."""
-    return FileMonitor(watch_path=str(tmp_path))
+def mock_path_manager(monkeypatch, tmp_path):
+    """Mock path manager to use temporary directory."""
+    ctx_dir = tmp_path / "context"
+    ctx_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create template directory and meta_rules.xml
+    template_dir = ctx_dir / "templates"
+    template_dir.mkdir(parents=True, exist_ok=True)
+    (template_dir / "meta_rules.xml").write_text("<MetaRules></MetaRules>")
+
+    class MockPathManager(BaseMockPathManager):
+        def __init__(self, ide=None):
+            super().__init__(ctx_dir, ide)
+
+    monkeypatch.setattr(
+        "erasmus.file_monitor.get_path_manager", lambda ide=None: MockPathManager(ide)
+    )
+    monkeypatch.setattr("erasmus.utils.paths.detect_ide_from_env", lambda: None)
+    return ctx_dir
 
 
 @pytest.fixture
-def sample_files(tmp_path):
-    """Create sample files for testing."""
-    # Create a test file
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("Initial content")
+def mock_merge(monkeypatch):
+    """Mock the merge_rules_file function."""
 
-    # Create a test directory with a file
-    test_dir = tmp_path / "test_dir"
-    test_dir.mkdir()
-    test_dir_file = test_dir / "test.txt"
-    test_dir_file.write_text("Initial content")
+    def mock_merge_func():
+        mock_merge_func.called = True
+        mock_merge_func.count += 1
+        if getattr(mock_merge_func, "side_effect", None):
+            raise mock_merge_func.side_effect
 
-    return tmp_path, test_file, test_dir, test_dir_file
+    mock_merge_func.called = False
+    mock_merge_func.count = 0
+    mock_merge_func.side_effect = None
 
+    monkeypatch.setattr("erasmus.file_monitor._merge_rules_file", mock_merge_func)
+    return mock_merge_func
 
-def test_add_watch_path(file_monitor, tmp_path):
-    """Test adding a watch path."""
-    watch_path = tmp_path / "watch_path"
-    watch_path.mkdir()
 
-    file_monitor.add_watch_path(str(watch_path))
-    assert str(watch_path) in file_monitor.watch_paths
+@pytest.fixture
+def ctx_files(mock_path_manager):
+    """Create temporary context files."""
+    arch_file = mock_path_manager / ".ctx.architecture.xml"
+    prog_file = mock_path_manager / ".ctx.progress.xml"
+    tasks_file = mock_path_manager / ".ctx.tasks.xml"
 
+    arch_file.write_text("<Architecture></Architecture>")
+    prog_file.write_text("<Progress></Progress>")
+    tasks_file.write_text("<Tasks></Tasks>")
 
-def test_add_nonexistent_watch_path(file_monitor, tmp_path):
-    """Test adding a nonexistent watch path."""
-    watch_path = tmp_path / "nonexistent"
+    return arch_file, prog_file, tasks_file
 
-    with pytest.raises(FileMonitorError):
-        file_monitor.add_watch_path(str(watch_path))
 
+def test_context_file_modified(mock_path_manager, mock_merge, ctx_files):
+    """Test that modifying a context file triggers rules merge."""
+    arch_file, _, _ = ctx_files
 
-def test_remove_watch_path(file_monitor, tmp_path):
-    """Test removing a watch path."""
-    watch_path = tmp_path / "watch_path"
-    watch_path.mkdir()
+    with ContextFileMonitor() as monitor:
+        initial_count = mock_merge.count
+        # Modify architecture file
+        arch_file.write_text("<Architecture><Test/></Architecture>")
+        wait_for_event()
 
-    file_monitor.add_watch_path(str(watch_path))
-    file_monitor.remove_watch_path(str(watch_path))
-    assert str(watch_path) not in file_monitor.watch_paths
+        assert mock_merge.count > initial_count, "Rules merge was not triggered"
 
 
-def test_file_created(file_monitor, tmp_path):
-    """Test file creation event."""
-    events = []
+def test_non_context_file_ignored(mock_path_manager, mock_merge):
+    """Test that non-context files are ignored."""
+    with ContextFileMonitor() as monitor:
+        initial_count = mock_merge.count
+        # Create a non-context file
+        other_file = mock_path_manager / "other.txt"
+        other_file.write_text("test")
+        wait_for_event()
 
-    def on_created(event):
-        events.append(event)
+        assert mock_merge.count == initial_count, "Rules merge was triggered for non-context file"
 
-    file_monitor.on_created = on_created
-    file_monitor.start()
 
-    # Create a new file
-    test_file = tmp_path / "new_file.txt"
-    test_file.write_text("Test content")
+def test_context_file_debounce(mock_path_manager, mock_merge, ctx_files):
+    """Test that rapid context file changes are debounced."""
+    arch_file, _, _ = ctx_files
 
-    # Wait for event
-    time.sleep(1)
-    file_monitor.stop()
+    with ContextFileMonitor() as monitor:
+        initial_count = mock_merge.count
+        # Modify file multiple times rapidly
+        for i in range(5):
+            arch_file.write_text(f"<Architecture><Test>{i}</Test></Architecture>")
+            time.sleep(0.1)  # Small delay between writes
 
-    assert len(events) == 1
-    assert events[0].src_path == str(test_file)
+        wait_for_event()
 
+        # Should be debounced to fewer calls than total changes (5) plus initial merge
+        final_count = mock_merge.count - initial_count
+        assert final_count <= 3, f"Debouncing did not reduce number of merges: {final_count}"
 
-def test_file_modified(file_monitor, sample_files):
-    """Test file modification event."""
-    _, test_file, _, _ = sample_files
-    events = []
 
-    def on_modified(event):
-        events.append(event)
+def test_monitor_cleanup(mock_path_manager, mock_merge, ctx_files):
+    """Test that the monitor cleans up properly."""
+    monitor = ContextFileMonitor()
+    monitor.start()
+    assert monitor.observer.is_alive()
 
-    file_monitor.on_modified = on_modified
-    file_monitor.start()
+    monitor.stop()
+    assert not monitor.observer.is_alive()
 
-    # Modify the file
-    test_file.write_text("Modified content")
 
-    # Wait for event
-    time.sleep(1)
-    file_monitor.stop()
+def test_initial_merge(mock_path_manager, mock_merge, ctx_files):
+    """Test that initial merge is performed on start."""
+    with ContextFileMonitor() as monitor:
+        assert mock_merge.called, "Initial rules merge was not performed"
 
-    assert len(events) == 1
-    assert events[0].src_path == str(test_file)
 
+def test_all_context_files_trigger_merge(mock_path_manager, mock_merge, ctx_files):
+    """Test that changes to any context file triggers a merge."""
+    arch_file, prog_file, tasks_file = ctx_files
 
-def test_file_deleted(file_monitor, sample_files):
-    """Test file deletion event."""
-    _, test_file, _, _ = sample_files
-    events = []
+    with ContextFileMonitor() as monitor:
+        initial_count = mock_merge.count
 
-    def on_deleted(event):
-        events.append(event)
+        # Modify each file with enough delay to avoid debouncing
+        arch_file.write_text("<Architecture><Test/></Architecture>")
+        wait_for_event(2.0)  # Longer wait to ensure debounce period passes
 
-    file_monitor.on_deleted = on_deleted
-    file_monitor.start()
+        prog_file.write_text("<Progress><Test/></Progress>")
+        wait_for_event(2.0)
 
-    # Delete the file
-    test_file.unlink()
+        tasks_file.write_text("<Tasks><Test/></Tasks>")
+        wait_for_event(2.0)
 
-    # Wait for event
-    time.sleep(1)
-    file_monitor.stop()
+        # Should have some merges after initial
+        assert mock_merge.count > initial_count, "No merges triggered for file changes"
 
-    assert len(events) == 1
-    assert events[0].src_path == str(test_file)
 
+def test_error_handling_missing_dir(monkeypatch, tmp_path):
+    """Test handling of missing context directory."""
+    nonexistent = tmp_path / "nonexistent"
 
-def test_directory_created(file_monitor, tmp_path):
-    """Test directory creation event."""
-    events = []
+    class MockPathManager(BaseMockPathManager):
+        def __init__(self, ide=None):
+            super().__init__(nonexistent, ide)
 
-    def on_created(event):
-        events.append(event)
+    monkeypatch.setattr(
+        "erasmus.file_monitor.get_path_manager", lambda ide=None: MockPathManager(ide)
+    )
+    monkeypatch.setattr("erasmus.utils.paths.detect_ide_from_env", lambda: None)
 
-    file_monitor.on_created = on_created
-    file_monitor.start()
+    with ContextFileMonitor() as monitor:
+        assert nonexistent.exists(), "Context directory was not created"
+        assert nonexistent.is_dir(), "Context path is not a directory"
 
-    # Create a new directory
-    test_dir = tmp_path / "new_dir"
-    test_dir.mkdir()
 
-    # Wait for event
-    time.sleep(1)
-    file_monitor.stop()
+def test_error_handling_merge_failure(mock_path_manager, mock_merge, ctx_files):
+    """Test handling of merge failures."""
+    mock_merge.side_effect = Exception("Test merge error")
 
-    assert len(events) == 1
-    assert events[0].src_path == str(test_dir)
+    with pytest.raises(Exception, match="Test merge error"):
+        with ContextFileMonitor():
+            pass  # Exception should be raised during start
 
 
-def test_directory_deleted(file_monitor, sample_files):
-    """Test directory deletion event."""
-    _, _, test_dir, _ = sample_files
-    events = []
+def test_debug_logging(monkeypatch, mock_path_manager, mock_merge, ctx_files):
+    """Test debug logging behavior."""
+    arch_file, _, _ = ctx_files
+    debug_logs = []
 
-    def on_deleted(event):
-        events.append(event)
+    def mock_debug_log(msg):
+        debug_logs.append(str(msg))
 
-    file_monitor.on_deleted = on_deleted
-    file_monitor.start()
+    # Enable debug mode and capture debug logs
+    monkeypatch.setattr("erasmus.file_monitor.is_debug_enabled", lambda: True)
+    monkeypatch.setattr("loguru.logger.debug", mock_debug_log)
 
-    # Delete the directory
-    test_dir.rmdir()
+    with ContextFileMonitor() as monitor:
+        arch_file.write_text("<Architecture><Test/></Architecture>")
+        wait_for_event()
 
-    # Wait for event
-    time.sleep(1)
-    file_monitor.stop()
+        assert any("Received modified event" in log for log in debug_logs), (
+            "Debug log not generated for file modification"
+        )
 
-    assert len(events) == 1
-    assert events[0].src_path == str(test_dir)
 
+def test_monitor_restart(mock_path_manager, mock_merge, ctx_files):
+    """Test stopping and restarting the monitor."""
+    arch_file, _, _ = ctx_files
+    monitor = ContextFileMonitor()
 
-def test_multiple_watch_paths(file_monitor, tmp_path):
-    """Test monitoring multiple paths."""
-    watch_path1 = tmp_path / "watch1"
-    watch_path2 = tmp_path / "watch2"
-    watch_path1.mkdir()
-    watch_path2.mkdir()
+    # First start
+    monitor.start()
+    initial_count = mock_merge.count
+    arch_file.write_text("<Architecture><Test1/></Architecture>")
+    wait_for_event()
+    monitor.stop()
 
-    file_monitor.add_watch_path(str(watch_path1))
-    file_monitor.add_watch_path(str(watch_path2))
+    # Second start
+    monitor.start()  # Should work now that we create a new observer
+    arch_file.write_text("<Architecture><Test2/></Architecture>")
+    wait_for_event()
+    monitor.stop()
 
-    events = []
+    # Should have some merges after initial
+    assert mock_merge.count > initial_count, (
+        f"Unexpected merge count after restart: {mock_merge.count}"
+    )
 
-    def on_created(event):
-        events.append(event)
 
-    file_monitor.on_created = on_created
-    file_monitor.start()
+def test_non_xml_content_handled(mock_path_manager, mock_merge, ctx_files):
+    """Test that non-XML content in context files is still processed."""
+    arch_file, _, _ = ctx_files
 
-    # Create files in both paths
-    test_file1 = watch_path1 / "test1.txt"
-    test_file2 = watch_path2 / "test2.txt"
-    test_file1.write_text("Test 1")
-    test_file2.write_text("Test 2")
+    with ContextFileMonitor() as monitor:
+        initial_count = mock_merge.count
+        # Write non-XML content to architecture file
+        arch_file.write_text("This is not XML but should still trigger a merge")
+        wait_for_event()
 
-    # Wait for events
-    time.sleep(1)
-    file_monitor.stop()
+        assert mock_merge.count > initial_count, "Rules merge was not triggered for non-XML content"
 
-    assert len(events) == 2
-    assert str(test_file1) in [e.src_path for e in events]
-    assert str(test_file2) in [e.src_path for e in events]
 
+def test_only_context_files_trigger_merge(mock_path_manager, mock_merge):
+    """Test that only specific context files trigger merges."""
+    with ContextFileMonitor() as monitor:
+        initial_count = mock_merge.count
 
-def test_ignore_patterns(file_monitor, tmp_path):
-    """Test ignoring files based on patterns."""
-    file_monitor.ignore_patterns = ["*.tmp"]
-    events = []
+        # Create files with similar names but not context files
+        other_xml = mock_path_manager / "other.xml"
+        other_xml.write_text("<xml>Test</xml>")
+        wait_for_event()
 
-    def on_created(event):
-        events.append(event)
+        ctx_file = mock_path_manager / "ctx.architecture.xml"  # missing dot
+        ctx_file.write_text("<Architecture></Architecture>")
+        wait_for_event()
 
-    file_monitor.on_created = on_created
-    file_monitor.start()
+        assert mock_merge.count == initial_count, "Merge triggered for non-context files"
 
-    # Create files with different extensions
-    test_file1 = tmp_path / "test.txt"
-    test_file2 = tmp_path / "test.tmp"
-    test_file1.write_text("Test 1")
-    test_file2.write_text("Test 2")
+        # Now create a real context file
+        arch_file = mock_path_manager / ".ctx.architecture.xml"
+        arch_file.write_text("Any content")
+        wait_for_event()
 
-    # Wait for events
-    time.sleep(1)
-    file_monitor.stop()
-
-    assert len(events) == 1
-    assert events[0].src_path == str(test_file1)
-
-
-def test_recursive_watching(file_monitor, tmp_path):
-    """Test recursive directory watching."""
-    events = []
-
-    def on_created(event):
-        events.append(event)
-
-    file_monitor.on_created = on_created
-    file_monitor.start()
-
-    # Create a nested directory structure
-    nested_dir = tmp_path / "nested" / "dir" / "structure"
-    nested_dir.mkdir(parents=True)
-    test_file = nested_dir / "test.txt"
-    test_file.write_text("Test content")
-
-    # Wait for events
-    time.sleep(1)
-    file_monitor.stop()
-
-    assert len(events) == 4  # 3 directories + 1 file
-    assert str(test_file) in [e.src_path for e in events]
-
-
-def test_stop_and_start(file_monitor, tmp_path):
-    """Test stopping and starting the monitor."""
-    events = []
-
-    def on_created(event):
-        events.append(event)
-
-    file_monitor.on_created = on_created
-
-    # Start monitor
-    file_monitor.start()
-
-    # Create a file
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("Test content")
-
-    # Wait for event
-    time.sleep(1)
-
-    # Stop monitor
-    file_monitor.stop()
-
-    # Create another file
-    test_file2 = tmp_path / "test2.txt"
-    test_file2.write_text("Test content 2")
-
-    # Wait
-    time.sleep(1)
-
-    # Start monitor again
-    file_monitor.start()
-
-    # Create another file
-    test_file3 = tmp_path / "test3.txt"
-    test_file3.write_text("Test content 3")
-
-    # Wait for event
-    time.sleep(1)
-    file_monitor.stop()
-
-    assert len(events) == 2  # Only events while monitor was running
-    assert str(test_file) in [e.src_path for e in events]
-    assert str(test_file3) in [e.src_path for e in events]
-    assert str(test_file2) not in [e.src_path for e in events]
+        assert mock_merge.count > initial_count, "Merge not triggered for context file"

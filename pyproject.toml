@@ -49,7 +49,7 @@ packages = ["erasmus"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-v --cov=src"
+addopts = "-v --cov=erasmus"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 

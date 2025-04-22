@@ -2,11 +2,14 @@
 
 import re
 import os
+import sys
 from pathlib import Path
 from typing_extensions import Callable
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from getpass import getpass
 from dotenv import load_dotenv
+from typing import Optional, Dict, Any
+from loguru import logger
 
 load_dotenv()
 
@@ -68,6 +71,9 @@ class VariableDefinition(BaseModel):
     required: bool = True
     default: any = None
     validator: Callable[[any], bool] | None = None
+    min_value: any = None
+    max_value: any = None
+    pattern: str | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
@@ -81,6 +87,11 @@ class EnvironmentConfig(BaseModel):
 
     definitions: dict[str, VariableDefinition] = {}
     _variables: dict[str, any] = {}
+    GITHUB_TOKEN: Optional[str] = Field(None, description="GitHub personal access token")
+    ERASMUS_DEBUG: bool = Field(False, description="Enable debug logging")
+    ERASMUS_LOG_LEVEL: str = Field(
+        "INFO", description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+    )
 
     def list_variables(self):
         """List all currently defined environment variables.
@@ -223,3 +234,45 @@ class EnvironmentConfig(BaseModel):
         """
         self.definitions.update(other.definitions)
         self._variables.update(other._variables)
+
+    @classmethod
+    def load(cls) -> "EnvironmentConfig":
+        """Load environment configuration from environment variables."""
+        env_vars = {
+            "GITHUB_TOKEN": os.getenv("GITHUB_TOKEN"),
+            "ERASMUS_DEBUG": os.getenv("ERASMUS_DEBUG", "false").lower() == "true",
+            "ERASMUS_LOG_LEVEL": os.getenv("ERASMUS_LOG_LEVEL", "INFO").upper(),
+        }
+
+        # Configure logging based on environment
+        logger.remove()  # Remove default handler
+        log_level = env_vars["ERASMUS_LOG_LEVEL"]
+        if env_vars["ERASMUS_DEBUG"]:
+            log_level = "DEBUG"
+
+        # Add a new handler with the correct level
+        logger.add(
+            sys.stderr,
+            level=log_level,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+            filter=lambda record: record["level"].name >= log_level,
+        )
+
+        return cls(**env_vars)
+
+
+# Global environment configuration instance
+_env_config: Optional[EnvironmentConfig] = None
+
+
+def get_env_config() -> EnvironmentConfig:
+    """Get the environment configuration singleton."""
+    global _env_config
+    if _env_config is None:
+        _env_config = EnvironmentConfig.load()
+    return _env_config
+
+
+def is_debug_enabled() -> bool:
+    """Check if debug mode is enabled."""
+    return get_env_config().ERASMUS_DEBUG

@@ -99,7 +99,7 @@ def setup_callback(ctx: typer.Context):
     print_table(["Info"], [[f"Erasmus folders created in: {erasmus_dir}"]], title="Setup")
 
     # Step 5: Create a template context in the context folder and update root .ctx.*.xml files
-    context_manager = ContextManager(base_dir=str(context_dir))
+    context_manager = ContextManager(base_path=str(context_dir))
     context_manager.create_context(project_name)
     print_table(["Info"], [[f"Template context created: {project_name}"]], title="Setup")
     # Load the new context to root .ctx.*.xml files

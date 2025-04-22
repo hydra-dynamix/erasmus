@@ -6,7 +6,6 @@ from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from loguru import logger
 from pathlib import Path
 from erasmus.utils.paths import get_path_manager
-from erasmus.environment import is_debug_enabled
 import re
 from erasmus.protocol import ProtocolManager
 import xml.etree.ElementTree as ET
@@ -189,7 +188,7 @@ class FileEventHandler(FileSystemEventHandler):
         self.on_created = None
         self.on_modified = None
         self.on_deleted = None
-        self.ignore_directory_events = False
+        self.ignore_directory_events = True
 
     def _should_process_event(self, event: FileSystemEvent) -> bool:
         """
@@ -204,14 +203,14 @@ class FileEventHandler(FileSystemEventHandler):
             return False
 
         current_time = time.time()
-        event_key = f"{event.event_type}:{event.src_path}"
+        file_path = event.src_path
 
         # Check if this is a duplicate event within debounce time
-        if event_key in self.last_processed:
-            if current_time - self.last_processed[event_key] < self.debounce_time:
+        if file_path in self.last_processed:
+            if current_time - self.last_processed[file_path] < self.debounce_time:
                 return False
 
-        self.last_processed[event_key] = current_time
+        self.last_processed[file_path] = current_time
         return True
 
     def on_created(self, event: FileSystemEvent) -> None:
@@ -223,15 +222,6 @@ class FileEventHandler(FileSystemEventHandler):
         if self._should_process_event(event):
             if self.on_created:
                 self.on_created(event)
-                # For directory creation, also emit an event for the parent directory
-                if event.is_directory:
-                    parent_dir = os.path.dirname(event.src_path)
-                    if parent_dir:
-                        parent_event = FileSystemEvent(
-                            event_type="created", src_path=parent_dir, is_directory=True
-                        )
-                        if self.on_created:
-                            self.on_created(parent_event)
 
     def on_modified(self, event: FileSystemEvent) -> None:
         """
@@ -242,15 +232,6 @@ class FileEventHandler(FileSystemEventHandler):
         if self._should_process_event(event):
             if self.on_modified:
                 self.on_modified(event)
-                # For file modification, also emit an event for the parent directory
-                if not event.is_directory:
-                    parent_dir = os.path.dirname(event.src_path)
-                    if parent_dir:
-                        parent_event = FileSystemEvent(
-                            event_type="modified", src_path=parent_dir, is_directory=True
-                        )
-                        if self.on_modified:
-                            self.on_modified(parent_event)
 
     def on_deleted(self, event: FileSystemEvent) -> None:
         """
@@ -260,24 +241,7 @@ class FileEventHandler(FileSystemEventHandler):
         """
         if self._should_process_event(event):
             if self.on_deleted:
-                # Process the original event first
                 self.on_deleted(event)
-                # For file deletion, also emit an event for the parent directory
-                if not event.is_directory:
-                    parent_dir = os.path.dirname(event.src_path)
-                    if parent_dir:
-                        parent_event = FileSystemEvent(
-                            event_type="deleted", src_path=parent_dir, is_directory=True
-                        )
-                        self.on_deleted(parent_event)
-                # For directory deletion, also emit an event for the parent directory
-                elif event.is_directory:
-                    parent_dir = os.path.dirname(event.src_path)
-                    if parent_dir:
-                        parent_event = FileSystemEvent(
-                            event_type="deleted", src_path=parent_dir, is_directory=True
-                        )
-                        self.on_deleted(parent_event)
 
 
 class FileMonitor:
@@ -287,62 +251,21 @@ class FileMonitor:
 
     def __init__(self) -> None:
         """Initialize the file monitor."""
-        self.pm = get_path_manager()
-        self.debug = is_debug_enabled()
-        if self.debug:
-            logger.info(f"Initialized FileMonitor with path manager: {self.pm}")
         self.observer = Observer()
         self.event_handler = FileEventHandler()
-        self.watch_paths: dict[str, bool] = {
-            str(self.pm.architecture_file): True,
-            str(self.pm.progress_file): True,
-            str(self.pm.tasks_file): True,
-        }  # path -> recursive
-        if self.debug:
-            logger.info(f"Watch paths configured: {self.watch_paths}")
+        self.watch_paths: Set[str] = set()
         self.ignore_patterns: list[str] = []
         self.on_created = None
         self.on_modified = None
         self.on_deleted = None
         self._is_running = False
-        self._last_merge_time = 0
-        self._merge_debounce = 0.5  # Debounce time for merging rules
-
-    def _should_merge_rules(self) -> bool:
-        """Check if enough time has passed since last merge."""
-        current_time = time.time()
-        should_merge = current_time - self._last_merge_time > self._merge_debounce
-        if should_merge:
-            if self.debug:
-                logger.debug("Debounce period passed, will merge rules")
-            self._last_merge_time = current_time
-        elif self.debug:
-            logger.debug("Within debounce period, skipping merge")
-        return should_merge
-
-    def _handle_context_change(self, event: FileSystemEvent) -> None:
-        """Handle changes to context files."""
-        if self.debug:
-            logger.info(f"Handling context change event: {event.event_type} - {event.src_path}")
-        if self._matches_rules_file(event.src_path):
-            if self.debug:
-                logger.debug(f"Ignoring rules file change: {event.src_path}")
-            return
-
-        if self._should_merge_rules():
-            logger.info(f"Merging rules due to context file change: {event.src_path}")
-            try:
-                _merge_rules_file()
-                logger.info("Rules merge completed successfully")
-            except Exception as e:
-                logger.error(f"Error merging rules: {e}")
 
     def add_watch_path(self, watch_path: str | Path, recursive: bool = False) -> None:
         """Add a path to monitor."""
         watch_path = str(Path(watch_path).resolve())
         if not os.path.exists(watch_path):
             raise FileMonitorError(f"Watch path does not exist: {watch_path}")
-        self.watch_paths[watch_path] = recursive
+        self.watch_paths.add(watch_path)
         if self._is_running:
             self.observer.schedule(self.event_handler, watch_path, recursive=recursive)
             logger.info(f"Added watch path: {watch_path}")
@@ -351,7 +274,7 @@ class FileMonitor:
         """Remove a monitored path."""
         watch_path = str(Path(watch_path).resolve())
         if watch_path in self.watch_paths:
-            del self.watch_paths[watch_path]
+            self.watch_paths.remove(watch_path)
             if self._is_running:
                 # Find and remove the watch for this path
                 for watch in list(self.observer._watches.values()):
@@ -377,10 +300,7 @@ class FileMonitor:
             r"\.windsurfrules$",
             r"CLAUDE\.md$",
         ]
-        matches = any(re.search(pattern, file_path) for pattern in rules_patterns)
-        if matches and self.debug:
-            logger.debug(f"File matches rules pattern: {file_path}")
-        return matches
+        return any(re.search(pattern, file_path) for pattern in rules_patterns)
 
     def start(self) -> None:
         """Start monitoring."""
@@ -391,39 +311,22 @@ class FileMonitor:
             logger.warning("Monitor is already running")
             return
 
-        logger.info("Starting file monitor...")
-
         # Set up event handlers
         def on_created_wrapper(event):
-            if self.debug:
-                logger.debug(f"Created event received: {event.src_path}")
             if self._matches_ignore_pattern(event.src_path):
-                if self.debug:
-                    logger.debug(f"Ignoring created event due to pattern match: {event.src_path}")
                 return
-            self._handle_context_change(event)
             if self.on_created:
                 self.on_created(event)
 
         def on_modified_wrapper(event):
-            if self.debug:
-                logger.debug(f"Modified event received: {event.src_path}")
             if self._matches_ignore_pattern(event.src_path):
-                if self.debug:
-                    logger.debug(f"Ignoring modified event due to pattern match: {event.src_path}")
                 return
-            self._handle_context_change(event)
             if self.on_modified:
                 self.on_modified(event)
 
         def on_deleted_wrapper(event):
-            if self.debug:
-                logger.debug(f"Deleted event received: {event.src_path}")
             if self._matches_ignore_pattern(event.src_path):
-                if self.debug:
-                    logger.debug(f"Ignoring deleted event due to pattern match: {event.src_path}")
                 return
-            self._handle_context_change(event)
             if self.on_deleted:
                 self.on_deleted(event)
 
@@ -432,38 +335,12 @@ class FileMonitor:
         self.event_handler.on_deleted = on_deleted_wrapper
 
         # Start observer for each watch path
-        for watch_path, recursive in self.watch_paths.items():
-            # Ensure the watch path exists
-            if not os.path.exists(watch_path):
-                logger.warning(f"Watch path does not exist, creating: {watch_path}")
-                os.makedirs(os.path.dirname(watch_path), exist_ok=True)
-                Path(watch_path).touch()
+        for watch_path in self.watch_paths:
+            self.observer.schedule(self.event_handler, watch_path, recursive=True)
+            logger.info(f"Started monitoring: {watch_path}")
 
-            # Schedule the watch
-            try:
-                self.observer.schedule(
-                    self.event_handler, os.path.dirname(watch_path), recursive=recursive
-                )
-                logger.info(f"Started monitoring: {watch_path} (recursive={recursive})")
-            except Exception as e:
-                logger.error(f"Failed to schedule watch for {watch_path}: {e}")
-
-        try:
-            self.observer.start()
-            logger.info("File monitor observer started successfully")
-        except Exception as e:
-            logger.error(f"Failed to start observer: {e}")
-            return
-
+        self.observer.start()
         self._is_running = True
-
-        # Initial merge of rules
-        logger.info("Performing initial rules merge...")
-        try:
-            _merge_rules_file()
-            logger.info("Initial rules merge completed successfully")
-        except Exception as e:
-            logger.error(f"Error during initial rules merge: {e}")
 
     def stop(self) -> None:
         """Stop monitoring."""
@@ -471,17 +348,12 @@ class FileMonitor:
             logger.warning("Monitor is not running")
             return
 
-        logger.info("Stopping file monitor...")
         if self.observer.is_alive():
-            try:
-                self.observer.stop()
-                self.observer.join()
-                self.observer = Observer()  # Create a new observer for next start
-                for watch_path in self.watch_paths:
-                    logger.info(f"Stopped monitoring: {watch_path}")
-                logger.info("File monitor stopped successfully")
-            except Exception as e:
-                logger.error(f"Error stopping observer: {e}")
+            self.observer.stop()
+            self.observer.join()
+            self.observer = Observer()  # Create a new observer for next start
+            for watch_path in self.watch_paths:
+                logger.info(f"Stopped monitoring: {watch_path}")
         self._is_running = False
 
     def __enter__(self) -> "FileMonitor":
@@ -497,129 +369,4 @@ class FileMonitor:
 class FileMonitorError(Exception):
     """Base exception for file monitor errors."""
 
-
-class ContextFileHandler(FileSystemEventHandler):
-    """Handles file system events for .ctx files."""
-
-    def __init__(self, debounce_time: float = 0.5) -> None:
-        """Initialize the event handler.
-
-        Args:
-            debounce_time: Time in seconds to wait before processing duplicate events
-        """
-        super().__init__()
-        self.debounce_time = debounce_time
-        self.last_processed: dict[str, float] = {}
-        self.debug = is_debug_enabled()
-        self.context_files = {".ctx.architecture.xml", ".ctx.progress.xml", ".ctx.tasks.xml"}
-
-    def _should_process_event(self, event: FileSystemEvent) -> bool:
-        """Check if an event should be processed based on debouncing.
-
-        Args:
-            event: The file system event
-        Returns:
-            bool: True if event should be processed
-        """
-        # Only process context files
-        file_name = Path(event.src_path).name
-        if file_name not in self.context_files:
-            if self.debug:
-                logger.debug(f"Ignoring non-context file: {event.src_path}")
-            return False
-
-        current_time = time.time()
-        event_key = f"{event.event_type}:{event.src_path}"
-
-        # Check if this is a duplicate event within debounce time
-        if event_key in self.last_processed:
-            if current_time - self.last_processed[event_key] < self.debounce_time:
-                if self.debug:
-                    logger.debug(f"Debouncing event: {event_key}")
-                return False
-
-        self.last_processed[event_key] = current_time
-        return True
-
-    def on_modified(self, event: FileSystemEvent) -> None:
-        """Handle file modification events."""
-        if self.debug:
-            logger.debug(f"Received modified event: {event.src_path}")
-
-        if not self._should_process_event(event):
-            return
-
-        if self.debug:
-            logger.debug(f"Processing modified event: {event.src_path}")
-
-        try:
-            _merge_rules_file()
-            if self.debug:
-                logger.debug("Successfully merged rules file")
-        except Exception as e:
-            logger.error(f"Error merging rules file: {e}")
-
-
-class ContextFileMonitor:
-    """Monitors .ctx files and updates rules files."""
-
-    def __init__(self) -> None:
-        """Initialize the context file monitor."""
-        self.pm = get_path_manager()
-        self.debug = is_debug_enabled()
-        self.observer = None  # Initialize observer in start()
-        self.handler = ContextFileHandler()
-
-        # Directory containing .ctx files
-        self.ctx_dir = self.pm.get_architecture_file().parent
-
-        if self.debug:
-            logger.debug(f"Initialized ContextFileMonitor watching: {self.ctx_dir}")
-
-    def start(self) -> None:
-        """Start monitoring context files."""
-        try:
-            if not self.ctx_dir.exists():
-                if self.debug:
-                    logger.debug(f"Creating context directory: {self.ctx_dir}")
-                    self.ctx_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.exception(f"Failed to create context directory: {e}")
-            raise
-
-        try:
-            # Create a new observer each time we start
-            self.observer = Observer()
-            self.observer.schedule(self.handler, str(self.ctx_dir), recursive=False)
-            self.observer.start()
-            logger.info(f"Started monitoring context files in: {self.ctx_dir}")
-
-            # Initial merge of rules
-            if self.debug:
-                logger.debug("Performing initial rules merge")
-            _merge_rules_file()
-
-        except Exception as e:
-            logger.exception(f"Failed to start context file monitor")
-            if self.observer and self.observer.is_alive():
-                self.observer.stop()
-                self.observer.join()
-            raise
-
-    def stop(self) -> None:
-        """Stop monitoring context files."""
-        if self.observer and self.observer.is_alive():
-            if self.debug:
-                logger.debug("Stopping context file monitor")
-            self.observer.stop()
-            self.observer.join()
-            logger.info("Stopped monitoring context files")
-
-    def __enter__(self) -> "ContextFileMonitor":
-        """Start monitoring when entering context."""
-        self.start()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Stop monitoring when exiting context."""
-        self.stop()
+    pass

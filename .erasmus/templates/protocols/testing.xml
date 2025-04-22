@@ -31,7 +31,58 @@
     <Principle>Track all test requirements and results in .ctx.tasks.xml.</Principle>
     <Principle>Ensure comprehensive coverage for each task and milestone.</Principle>
     <Principle>Communicate test gaps or failures in .ctx.tasks.xml for developer follow-up.</Principle>
+    <Principle>Use timeout mechanisms for tests that might hang or take too long to execute.</Principle>
   </Principles>
+  <BestPractices>
+    <Practice name="Timeout Mechanism">
+      <Description>Implement a timeout decorator for tests that might hang or take too long to execute.</Description>
+      <Code>
+        <![CDATA[
+import signal
+from functools import wraps
+
+def timeout(seconds=5):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            def handler(signum, frame):
+                raise TimeoutError(f"Test timed out after {seconds} seconds")
+            
+            # Set the timeout handler
+            original_handler = signal.signal(signal.SIGALRM, handler)
+            signal.alarm(seconds)
+            
+            try:
+                result = func(*args, **kwargs)
+                return result
+            finally:
+                # Restore the original handler
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, original_handler)
+        return wrapper
+    return decorator
+
+# Usage example:
+@timeout(5)
+def test_example():
+    # Test code here
+    pass
+        ]]>
+      </Code>
+      <Usage>
+        <Step>Import the timeout decorator in your test file.</Step>
+        <Step>Apply the decorator to tests that might hang or take too long.</Step>
+        <Step>Set an appropriate timeout value based on the expected execution time.</Step>
+        <Step>Handle TimeoutError in your test framework if needed.</Step>
+      </Usage>
+      <Benefits>
+        <Benefit>Prevents tests from hanging indefinitely</Benefit>
+        <Benefit>Provides clear error messages when tests time out</Benefit>
+        <Benefit>Helps identify performance issues in tests</Benefit>
+        <Benefit>Improves CI/CD pipeline reliability</Benefit>
+      </Benefits>
+    </Practice>
+  </BestPractices>
   <Tracking>
     <Uses>.ctx.tasks.xml</Uses>
     <Uses>.ctx.progress.xml</Uses>

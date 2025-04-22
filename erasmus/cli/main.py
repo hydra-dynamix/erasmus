@@ -100,7 +100,7 @@ def watch():  # pragma: no cover
 
     pm = get_path_manager()
     root = pm.get_root_dir()
-    monitor = FileMonitor(str(root))
+    monitor = FileMonitor()
     monitor.start()
     typer.echo(f"Watching {root} for .ctx file changes (Ctrl+C to stop)...")
     try:

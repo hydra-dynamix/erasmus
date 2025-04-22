@@ -30,15 +30,16 @@ TEST_VAR2=value2
 def test_define_required(env_config):
     """Test defining a required environment variable."""
     env_config.define_required("TEST_VAR", str)
-    assert "TEST_VAR" in env_config._definitions
-    assert env_config._definitions["TEST_VAR"].required is True
+    assert "TEST_VAR" in env_config.definitions
+    assert env_config.definitions["TEST_VAR"].required
+    assert env_config.definitions["TEST_VAR"].type == str
 
 
 def test_define_optional(env_config):
     """Test defining an optional environment variable."""
     env_config.define_optional("TEST_VAR", str)
-    assert "TEST_VAR" in env_config._definitions
-    assert env_config._definitions["TEST_VAR"].required is False
+    assert "TEST_VAR" in env_config.definitions
+    assert env_config.definitions["TEST_VAR"].required is False
 
 
 def test_set_variable(env_config):
