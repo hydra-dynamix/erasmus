@@ -60,7 +60,7 @@ class IndentNode:
 
     content: str
     children: list["IndentNode"]
-    parent: Optional["IndentNode"]
+    parent: "IndentNode" | None
     indent_level: int
     is_empty: bool = False
     original_indent: str = ""
@@ -69,7 +69,7 @@ class IndentNode:
         self,
         content: str,
         indent_level: int,
-        parent: Optional["IndentNode"] = None,
+        parent: "IndentNode" | None = None,
         is_empty: bool = False,
         original_indent: str = "",
     ):
@@ -303,7 +303,7 @@ def order_files(dependencies: dict[Path, ImportSet], files: list[Path]) -> list[
 
 
 def collect_python_files(
-    paths: list[Union[str, Path]], exclude_patterns: Optional[list[str]] = None
+    paths: list[Union[str, Path]], exclude_patterns: list[str] | None = None
 ) -> list[Path]:
     """Collect valid Python files from the given paths.
 
@@ -701,7 +701,7 @@ def generate_script(
     paths: list[Union[str, Path]],
     output_path: Union[str, Path],
     preserve_comments: bool = True,
-    exclude_patterns: Optional[list[str]] = None,
+    exclude_patterns: list[str] | None = None,
 ) -> Path:
     """Generate a script from Python files, inlining all local imports and placing them at the top."""
     # Initialize path manager

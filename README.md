@@ -215,7 +215,7 @@ class ScriptPackager:
         self.import_set = set()
         self.script_bodies = []
 
-    def package_scripts(self, output_path: Optional[Path] = None) -> str:
+    def package_scripts(self, output_path: Path | None = None) -> str:
         """Package all scripts into a single file."""
 ```
 

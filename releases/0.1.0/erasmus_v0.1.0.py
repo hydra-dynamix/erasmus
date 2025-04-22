@@ -636,7 +636,7 @@ def get_element_texts(root: ET.Element, xpath: str) -> list[str]:
     return [element.text for element in elements if element.text]
 
 
-def get_architecture_title(file_path: Union[str, Path]) -> Optional[str]:
+def get_architecture_title(file_path: Union[str, Path]) -> str | None:
     """
     Extract the title from an architecture XML document.
 
@@ -666,7 +666,7 @@ def get_architecture_title(file_path: Union[str, Path]) -> Optional[str]:
         return None
 
 
-def get_protocol_name(file_path: Union[str, Path]) -> Optional[str]:
+def get_protocol_name(file_path: Union[str, Path]) -> str | None:
     """
     Extract the protocol name from a protocol XML document.
 
@@ -755,13 +755,13 @@ def get_console() -> Console:
     return get_console._console
 
 
-def print_panel(content: str, title: Optional[str] = None, style: str = "bold blue"):
+def print_panel(content: str, title: str | None = None, style: str = "bold blue"):
     console = get_console()
     panel = Panel(content, title=title, style=style)
     console.print(panel)
 
 
-def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] = None):
+def print_table(headers: list[str], rows: list[list[Any]], title: str | None = None):
     console = get_console()
     table = Table(title=title)
     for header in headers:
@@ -771,7 +771,7 @@ def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] 
     console.print(table)
 
 
-def print_syntax(code: str, language: str = "python", title: Optional[str] = None):
+def print_syntax(code: str, language: str = "python", title: str | None = None):
     console = get_console()
     syntax = Syntax(code, language, theme="monokai", line_numbers=True)
     if title:
@@ -1119,7 +1119,7 @@ class ContextManager(CtxMngrModel):
     Protocol handling is managed by erasmus/protocol.py.
     """
 
-    def __init__(self, base_dir: Optional[str] = None, base_path: Optional[str] = None) -> None:
+    def __init__(self, base_dir: str | None = None, base_path: str | None = None) -> None:
         """
         Initialize the context manager.
 
@@ -1135,13 +1135,13 @@ class ContextManager(CtxMngrModel):
         self.base_dir: Path = Path(chosen_dir) if chosen_dir else path_manager.get_context_dir()
         self.base_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Initialized ContextManager with base path: {self.base_dir}")
-        self.context: Optional[CtxModel] = None
+        self.context: CtxModel | None = None
         self.architecture_path: Path = path_manager.get_architecture_file()
         self.progress_path: Path = path_manager.get_progress_file()
         self.tasks_path: Path = path_manager.get_tasks_file()
-        self.architecture_content: Optional[str] = None
-        self.progress_content: Optional[str] = None
-        self.tasks_content: Optional[str] = None
+        self.architecture_content: str | None = None
+        self.progress_content: str | None = None
+        self.tasks_content: str | None = None
         # Initialization complete
 
     def create_context(
@@ -1296,7 +1296,7 @@ class ContextManager(CtxMngrModel):
         sanitized_name = self._sanitize_filename(context_name)
         return self.base_dir / sanitized_name
 
-    def get_context_dir_path(self, context_name: str) -> Optional[Path]:
+    def get_context_dir_path(self, context_name: str) -> Path | None:
         """
         Get the directory path for a context if it exists.
         Args:
@@ -1523,7 +1523,7 @@ class ContextManager(CtxMngrModel):
         except Exception as error:
             raise ContextError(f"Failed to update file: {error}")
 
-    def read_file(self, context_name: str, file_type: str) -> Optional[str]:
+    def read_file(self, context_name: str, file_type: str) -> str | None:
         """
         Read a file from a development context.
         Args:
@@ -1543,7 +1543,7 @@ class ContextManager(CtxMngrModel):
         except Exception as error:
             raise ContextError(f"Failed to read file: {error}")
 
-    def edit_file(self, context_name: str, file_type: str, editor: Optional[str] = None) -> None:
+    def edit_file(self, context_name: str, file_type: str, editor: str | None = None) -> None:
         """
         Edit a file in a development context using the specified editor.
         Args:
@@ -1724,7 +1724,7 @@ class ProtocolManager:
     Provides methods to list, get, create, update, and delete protocols.
     """
 
-    def __init__(self, base_dir: Optional[str] = None, user_dir: Optional[str] = None) -> None:
+    def __init__(self, base_dir: str | None = None, user_dir: str | None = None) -> None:
         # Always use path_manager.template_dir / 'protocols' unless base_dir is explicitly provided
         self.base_template_dir: Path = (
             Path(base_dir) if base_dir is not None else path_manager.template_dir / "protocols"
@@ -1775,7 +1775,7 @@ class ProtocolManager:
             )
         return sorted(protocol_names)
 
-    def get_protocol(self, protocol_name: str) -> Optional[ProtocolModel]:
+    def get_protocol(self, protocol_name: str) -> ProtocolModel | None:
         """
         Get a protocol by name, searching user protocols first, then templates.
         Args:
@@ -2127,7 +2127,7 @@ class FileMonitor:
 
         self.watch_path: str = watch_path
         self.event_handler: FileEventHandler = FileEventHandler()
-        self.observer: Optional[ObserverType] = None
+        self.observer: ObserverType | None = None
         self._is_running: bool = False
 
     def _matches_rules_file(self, file_path: str) -> bool:

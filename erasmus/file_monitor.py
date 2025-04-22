@@ -31,9 +31,7 @@ def _merge_rules_file() -> None:
     rules_file_path = path_manager.get_rules_file()
     if not template_path.exists():
         # No template available: fallback to raw merge of ctx files
-        logger.warning(
-            f"Template file not found: {template_path}; falling back to raw merge"
-        )
+        logger.warning(f"Template file not found: {template_path}; falling back to raw merge")
         try:
             architecture_text = path_manager.get_architecture_file().read_text()
             progress_text = path_manager.get_progress_file().read_text()
@@ -75,9 +73,7 @@ def _merge_rules_file() -> None:
         merged_content = re.sub(
             r"<!--PROGRESS-->[\s\S]*?<!--/PROGRESS-->", progress, merged_content
         )
-        merged_content = re.sub(
-            r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, merged_content
-        )
+        merged_content = re.sub(r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, merged_content)
         # Get protocol value from the current_protocol.txt file, or prompt if missing/invalid
         protocol_value = ""
         current_protocol_path = Path(path_manager.erasmus_dir) / "current_protocol.txt"
@@ -99,9 +95,7 @@ def _merge_rules_file() -> None:
                 template_protocol_file = (
                     path_manager.template_dir / "protocols" / f"{protocol_name}.xml"
                 )
-                print(
-                    f"[DEBUG] Checking template protocol file: {template_protocol_file}"
-                )
+                print(f"[DEBUG] Checking template protocol file: {template_protocol_file}")
                 if template_protocol_file.exists():
                     protocol_file = template_protocol_file
         if not protocol_name or not protocol_file or not protocol_file.exists():
@@ -138,17 +132,13 @@ def _merge_rules_file() -> None:
                     if selected:
                         protocol_name = selected.strip()
                         current_protocol_path.write_text(protocol_name)
-                        protocol_file = (
-                            path_manager.protocol_dir / f"{protocol_name}.xml"
-                        )
+                        protocol_file = path_manager.protocol_dir / f"{protocol_name}.xml"
                         print(f"[DEBUG] User selected protocol: '{protocol_name}'")
                         print(f"[DEBUG] Checking protocol file: {protocol_file}")
                         # Fallback to template protocols if not found in user protocol dir
                         if not protocol_file.exists():
                             template_protocol_file = (
-                                path_manager.template_dir
-                                / "protocols"
-                                / f"{protocol_name}.xml"
+                                path_manager.template_dir / "protocols" / f"{protocol_name}.xml"
                             )
                             print(
                                 f"[DEBUG] Checking template protocol file: {template_protocol_file}"
@@ -208,9 +198,7 @@ class FileEventHandler(FileSystemEventHandler):
         file_path = file_event.src_path
 
         # Ignore changes to rules files (e.g., .codex.md, .cursorrules, .windsurfrules, CLAUDE.md)
-        if file_path.endswith(
-            (".codex.md", ".cursorrules", ".windsurfrules", "CLAUDE.md")
-        ):
+        if file_path.endswith((".codex.md", ".cursorrules", ".windsurfrules", "CLAUDE.md")):
             return
 
         # Check if this is a duplicate event within debounce time
@@ -253,7 +241,7 @@ class FileMonitor:
 
         self.watch_path: str = watch_path
         self.event_handler: FileEventHandler = FileEventHandler()
-        self.observer: Optional[ObserverType] = None
+        self.observer: ObserverType | None = None
         self._is_running: bool = False
 
     def _matches_rules_file(self, file_path: str) -> bool:

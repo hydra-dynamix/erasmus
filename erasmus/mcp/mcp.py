@@ -233,7 +233,7 @@ class MCPRegistry:
         del self.registry["servers"][name]
         self._save_registry()
 
-    def get_server(self, name: str) -> Optional[dict[str, Any]]:
+    def get_server(self, name: str) -> dict[str, any] | None:
         """
         Get the details of a registered MCP server.
 
@@ -291,7 +291,7 @@ class MCPRegistry:
         del self.registry["clients"][name]
         self._save_registry()
 
-    def get_client(self, name: str) -> Optional[dict[str, Any]]:
+    def get_client(self, name: str) -> dict[str, any] | None:
         """
         Get the details of a registered MCP client.
 

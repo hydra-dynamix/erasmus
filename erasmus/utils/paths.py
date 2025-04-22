@@ -151,6 +151,26 @@ class PathMngrModel(BaseModel):
     rules_file: Path | None = None
     global_rules_file: Path | None = None
 
+    # Templates
+    architecture_template: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "architecture.xml"
+    )
+    progress_template: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "progress.xml"
+    )
+    tasks_template: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "tasks.xml"
+    )
+    protocol_template: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "protocol.xml"
+    )
+    meta_agent_template: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_agent.xml"
+    )
+    meta_rules_template: Path = Field(
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_rules.xml"
+    )
+
     def __init__(self, **data):
         """Initialize the PathMngrModel with optional configuration data.
 

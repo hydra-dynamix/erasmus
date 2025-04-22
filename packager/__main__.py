@@ -123,14 +123,14 @@ def main(ctx: typer.Context):
 
 @app.command()
 def package(
-    input_path: Optional[str] = typer.Argument(
+    input_path: str | None = typer.Argument(
         None, help="Path to Python file or directory to package (defaults to 'erasmus')"
     ),
-    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+    output_file: str | None = typer.Option(None, "--output", "-o", help="Output file path"),
     preserve_comments: bool = typer.Option(
         True, "--preserve-comments/--no-comments", help="Preserve comments in output"
     ),
-    internal_use_version: Optional[str] = None,
+    internal_use_version: str | None = None,
 ):
     """Package a Python file or directory into a single executable script."""
     try:
@@ -355,7 +355,7 @@ def bump_version(
         help="Which part to bump: 'major' (1.2.3→2.0.0, breaking changes), 'minor' (1.2.3→1.3.0, new features), or 'patch' (1.2.3→1.2.4, bug fixes). Example: 'packager version-control bump minor --description \"Add feature\"'",
     ),
     description: str = typer.Option("", help="Description of the change"),
-    input_path: Optional[str] = typer.Option(
+    input_path: str | None = typer.Option(
         None, "--input", help="Path to Python file or directory to package (defaults to 'erasmus')"
     ),
 ):

@@ -24,12 +24,13 @@ Note: Non-ASCII characters are preserved in context files but sanitized
 import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from pydantic import BaseModel
+
 from loguru import logger
+from pydantic import BaseModel
+
 from erasmus.utils.paths import get_path_manager
-from erasmus.utils.sanatizer import _sanitize_string, _sanitize_xml_content
 from erasmus.utils.rich_console import get_console
-from typing import Optional
+from erasmus.utils.sanatizer import _sanitize_string, _sanitize_xml_content
 
 console = get_console()
 
@@ -42,8 +43,6 @@ class ContextError(Exception):
     Serves as a base class for more specific context-related exceptions.
     """
 
-    pass
-
 
 class ContextFileError(ContextError):
     """Exception raised when file-related operations in context management fail.
@@ -54,8 +53,6 @@ class ContextFileError(ContextError):
     - Context file not found
     - Corrupted or unreadable context files
     """
-
-    pass
 
 
 class ContextValidationError(ContextError):
@@ -68,8 +65,6 @@ class ContextValidationError(ContextError):
     - Invalid data types or values
     - Incompatible context configurations
     """
-
-    pass
 
 
 path_manager = get_path_manager()
@@ -86,7 +81,8 @@ class CtxModel(BaseModel):
         architecture (str): XML content representing the project's architectural design.
         progress (str): XML content tracking the current progress of development components.
         tasks (str): XML content listing and tracking project tasks.
-        protocol (str, optional): XML content defining development protocols. Defaults to an empty string.
+        protocol (str, optional): XML content defining development protocols. Defaults to an empty
+            string.
 
     The model ensures that each context is a self-contained unit with all necessary
     metadata for tracking and managing a development project.
@@ -101,7 +97,8 @@ class CtxMngrModel(BaseModel):
 
     Attributes:
         contexts (list[CtxModel]): A list of all managed context models. Defaults to an empty list.
-        context_dir (Path): Base directory for storing context files. Uses path_manager to determine location.
+        context_dir (Path): Base directory for storing context files. Uses path_manager to determine
+            location.
         base_dir (Path): Alias for context_dir, ensuring consistent path management.
         context (CtxModel | None): Currently active context model. Defaults to None.
 
@@ -125,11 +122,12 @@ class ContextManager:
     """
     Manages development context files in the .erasmus/context directory.
     Uses CtxModel as the in-memory storage for context data.
-    Handles context selection, loading, saving, and file operations for architecture, progress, and tasks only.
+    Handles context selection, loading, saving, and file operations for architecture, progress, and
+        tasks only.
     Protocol handling is managed by erasmus/protocol.py.
     """
 
-    def __init__(self, base_dir: Optional[str] = None, base_path: Optional[str] = None) -> None:
+    def __init__(self, base_dir: str | None = None, base_path: str | None = None) -> None:
         """Initialize the context manager with flexible base directory configuration.
 
         This method sets up the context management system by:
@@ -139,9 +137,9 @@ class ContextManager:
         4. Preparing for context model management
 
         Args:
-            base_dir (Optional[str], optional): Base directory for storing context files.
+            base_dir (str | None, optional): Base directory for storing context files.
                 If not provided, uses the default path from path_manager.
-            base_path (Optional[str], optional): Alias for base_dir, provided for
+            base_path (str | None, optional): Alias for base_dir, provided for
                 backwards compatibility. Takes precedence over base_dir if both are set.
 
         Raises:
@@ -157,26 +155,43 @@ class ContextManager:
         chosen_dir = base_path if base_path is not None else base_dir
         # Remove self.base_dir assignment, always use path_manager.get_context_dir()
         logger.info(
-            f"Initialized ContextManager with base path: {chosen_dir if chosen_dir else path_manager.get_context_dir()}"
+            f"Initialized ContextManager with base path: {
+                chosen_dir if chosen_dir else path_manager.get_context_dir()
+            }",
         )
         # Initialize context tracking attributes
-        self.context: Optional[CtxModel] = None
+        self.context: CtxModel | None = None
         # Set paths for core context files using path_manager
         self.architecture_path: Path = path_manager.get_architecture_file()
         self.progress_path: Path = path_manager.get_progress_file()
         self.tasks_path: Path = path_manager.get_tasks_file()
         # Initialize content storage for core context files
-        self.architecture_content: Optional[str] = None
-        self.progress_content: Optional[str] = None
-        self.tasks_content: Optional[str] = None
-        # Initialization complete
+        self.architecture_content: str | None = None
+        self.progress_content: str | None = None
+        self.tasks_content: str | None = None
+
+    def get_default_content(self, file_type: str) -> str:
+        content = None
+        if file_type == "architecture":
+            content = path_manager.architecture_template.read_text()
+        if file_type == "progress":
+            content = path_manager.progress_template.read_text()
+        if file_type == "tasks":
+            content = path_manager.tasks_template.read_text()
+        if file_type == "protocol":
+            content = path_manager.protocol_template.read_text()
+        if file_type == "meta_agent":
+            content = path_manager.meta_agent_template.read_text()
+        if file_type == "meta_rules":
+            content = path_manager.meta_rules_template.read_text()
+        return content
 
     def create_context(
         self,
         context_name: str,
-        architecture_content: str = None,
-        progress_content: str = None,
-        tasks_content: str = None,
+        architecture_content: str | None = None,
+        progress_content: str | None = None,
+        tasks_content: str | None = None,
     ) -> None:
         """Create a new development context with optional custom content.
 
@@ -210,19 +225,22 @@ class ContextManager:
         # Create context directory
         context_dir.mkdir(parents=True, exist_ok=False)
         # Use the correct template directory from the path manager
-        template_dir = path_manager.template_dir
         template_map = {
             "ctx.architecture.xml": (
-                template_dir / "architecture.xml",
-                architecture_content,
+                path_manager.architecture_template,
+                architecture_content or self.get_default_content("architecture"),
                 "Architecture",
             ),
             "ctx.progress.xml": (
-                template_dir / "progress.xml",
-                progress_content,
+                path_manager.progress_template,
+                progress_content or self.get_default_content("progress"),
                 "Progress",
             ),
-            "ctx.tasks.xml": (template_dir / "tasks.xml", tasks_content, "Tasks"),
+            "ctx.tasks.xml": (
+                path_manager.tasks_template,
+                tasks_content or self.get_default_content("tasks"),
+                "Tasks",
+            ),
         }
         for target_name, (
             template_path,
@@ -235,11 +253,11 @@ class ContextManager:
                     ET.fromstring(user_content)
                     content = user_content
                 except Exception:
-                    content = f'<?xml version="1.0" encoding="UTF-8"?>\n<{root_tag}>{user_content}</{root_tag}>'
+                    content = f"<{root_tag}>{user_content}</{root_tag}>"
             elif template_path.exists():
                 content = template_path.read_text()
             else:
-                content = f'<?xml version="1.0" encoding="UTF-8"?>\n<{root_tag}></{root_tag}>'
+                content = f"<{root_tag}></{root_tag}>"
             (context_dir / target_name).write_text(content)
 
     def get_context(self, context_name: str) -> CtxModel:
@@ -418,7 +436,7 @@ class ContextManager:
         sanitized_name = self._sanitize_filename(context_name)
         return self.base_path / sanitized_name
 
-    def get_context_dir_path(self, context_name: str) -> Optional[Path]:
+    def get_context_dir_path(self, context_name: str) -> Path | None:
         """
         Get the directory path for a context if it exists.
         Args:
@@ -430,7 +448,9 @@ class ContextManager:
             context_dir = self._get_context_dir(context_name)
             return context_dir if context_dir.exists() else None
         except Exception as context_error:
-            raise ContextFileError(f"Failed to get context path: {context_error}")
+            raise ContextFileError(
+                f"Failed to get context path: {context_error}",
+            ) from context_error
 
     def save_contexts(self) -> list[CtxModel]:
         """
@@ -461,15 +481,13 @@ class ContextManager:
         """
         try:
             context_dir = self._get_context_dir(context_name)
-            if not context_dir.exists():
-                raise ContextFileError(f"Context does not exist: {context_name}")
             for file_path in context_dir.iterdir():
                 if file_path.is_file():
                     file_path.unlink()
             context_dir.rmdir()
             logger.info(f"Deleted context: {context_name}")
         except Exception as context_error:
-            raise ContextFileError(f"Failed to delete context: {context_error}")
+            raise ContextFileError(f"Failed to delete context: {context_error}") from context_error
 
     def display_context(self, context_name: str) -> None:
         """
@@ -481,24 +499,38 @@ class ContextManager:
         """
         try:
             context_dir = self.get_context_dir_path(context_name)
-            if not context_dir:
-                raise ContextFileError(f"Context does not exist: {context_name}")
-            print(f"Context: {context_name}")
-            print(f"Path: {context_dir}")
-            print(
-                f"Architecture: {len(self.read_file(context_name, 'architecture')) if self.read_file(context_name, 'architecture') else 'N/A'}"
+            console.print(f"Context: {context_name}")
+            console.print(f"Path: {context_dir}")
+            console.print(
+                f"Architecture: {
+                    len(self.read_file(context_name, 'architecture'))
+                    if self.read_file(context_name, 'architecture')
+                    else 'N/A'
+                }",
             )
-            print(
-                f"Progress: {len(self.read_file(context_name, 'progress')) if self.read_file(context_name, 'progress') else 'N/A'}"
+            console.print(
+                f"Progress: {
+                    len(self.read_file(context_name, 'progress'))
+                    if self.read_file(context_name, 'progress')
+                    else 'N/A'
+                }",
             )
-            print(
-                f"Tasks: {len(self.read_file(context_name, 'tasks')) if self.read_file(context_name, 'tasks') else 'N/A'}"
+            console.print(
+                f"Tasks: {
+                    len(self.read_file(context_name, 'tasks'))
+                    if self.read_file(context_name, 'tasks')
+                    else 'N/A'
+                }",
             )
-            print(
-                f"Protocol: {len(self.read_file(context_name, 'protocol')) if self.read_file(context_name, 'protocol') else 'N/A'}"
+            console.print(
+                f"Protocol: {
+                    len(self.read_file(context_name, 'protocol'))
+                    if self.read_file(context_name, 'protocol')
+                    else 'N/A'
+                }",
             )
         except Exception as context_error:
-            raise ContextFileError(f"Failed to display context: {context_error}")
+            raise ContextFileError(f"Failed to display context: {context_error}") from context_error
 
     def list_contexts(self) -> list[str]:
         """
@@ -516,11 +548,12 @@ class ContextManager:
                 if context_directory.is_dir()
             ]
         except Exception as context_error:
-            raise ContextFileError(f"Failed to list contexts: {context_error}")
+            raise ContextFileError(f"Failed to list contexts: {context_error}") from context_error
 
     def select_context(self) -> CtxModel:
         """
-        Interactively select a context, loading it into memory and saving the current context if needed.
+        Interactively select a context, loading it into memory and saving the current context if
+            needed.
         Returns:
             The selected CtxModel instance
         Raises:
@@ -529,9 +562,9 @@ class ContextManager:
         context_models = self.save_contexts()
         if not context_models:
             raise ContextFileError("No contexts exist")
-        print("Available contexts:")
+        console.print("Available contexts:")
         for context_index, context_model in enumerate(context_models):
-            print(f"{context_index + 1}. {context_model.path}")
+            console.print(f"{context_index + 1}. {context_model.path}")
         while True:
             try:
                 user_choice = int(input("Select a context (number): "))
@@ -543,9 +576,9 @@ class ContextManager:
                     self.context = selected_context
                     self._load_context_to_memory(selected_context)
                     return selected_context
-                print("Invalid choice. Please try again.")
+                console.print("Invalid choice. Please try again.")
             except ValueError:
-                print("Please enter a number.")
+                console.print("Please enter a number.")
 
     def _write_context_to_files(self) -> None:
         """
@@ -571,63 +604,6 @@ class ContextManager:
         self.progress_content = context_model.progress
         self.tasks_content = context_model.tasks
 
-    def update_architecture(self, context_name: str, architecture_content: str) -> CtxModel:
-        """
-        Update a context's architecture file and in-memory content.
-        Args:
-            context_name: Name of the context
-            architecture_content: New architecture content
-        Returns:
-            Updated CtxModel instance
-        Raises:
-            ContextFileError: If update fails
-        """
-        try:
-            self.update_file(context_name, "architecture", architecture_content)
-            if self.context and self.context.path.endswith(context_name):
-                self.architecture_content = architecture_content
-            return self.get_context_model(context_name)
-        except Exception as error:
-            raise ContextFileError(f"Failed to update architecture: {error}")
-
-    def update_progress(self, context_name: str, progress_content: str) -> CtxModel:
-        """
-        Update a context's progress file and in-memory content.
-        Args:
-            context_name: Name of the context
-            progress_content: New progress content
-        Returns:
-            Updated CtxModel instance
-        Raises:
-            ContextFileError: If update fails
-        """
-        try:
-            self.update_file(context_name, "progress", progress_content)
-            if self.context and self.context.path.endswith(context_name):
-                self.progress_content = progress_content
-            return self.get_context_model(context_name)
-        except Exception as error:
-            raise ContextFileError(f"Failed to update progress: {error}")
-
-    def update_tasks(self, context_name: str, tasks_content: str) -> CtxModel:
-        """
-        Update a context's tasks file and in-memory content.
-        Args:
-            context_name: Name of the context
-            tasks_content: New tasks content
-        Returns:
-            Updated CtxModel instance
-        Raises:
-            ContextFileError: If update fails
-        """
-        try:
-            self.update_file(context_name, "tasks", tasks_content)
-            if self.context and self.context.path.endswith(context_name):
-                self.tasks_content = tasks_content
-            return self.get_context_model(context_name)
-        except Exception as error:
-            raise ContextFileError(f"Failed to update tasks: {error}")
-
     def update_file(self, context_name: str, file_type: str, content: str) -> None:
         """
         Update a file in a development context.
@@ -645,9 +621,9 @@ class ContextManager:
         try:
             file_path.write_text(content)
         except Exception as error:
-            raise ContextError(f"Failed to update file: {error}")
+            raise ContextError(f"Failed to update file: {error}") from error
 
-    def read_file(self, context_name: str, file_type: str) -> Optional[str]:
+    def read_file(self, context_name: str, file_type: str) -> str | None:
         """
         Read a file from a development context.
         Args:
@@ -665,9 +641,9 @@ class ContextManager:
         try:
             return file_path.read_text() if file_path.exists() else None
         except Exception as error:
-            raise ContextError(f"Failed to read file: {error}")
+            raise ContextError(f"Failed to read file: {error}") from error
 
-    def edit_file(self, context_name: str, file_type: str, editor: Optional[str] = None) -> None:
+    def edit_file(self, context_name: str, file_type: str, editor: str | None = None) -> None:
         """
         Edit a file in a development context using the specified editor.
         Args:
@@ -687,12 +663,13 @@ class ContextManager:
             editor_cmd = editor or os.environ.get("EDITOR", "nano")
             os.system(f"{editor_cmd} {file_path}")
         except Exception as error:
-            raise ContextError(f"Failed to edit file: {error}")
+            raise ContextError(f"Failed to edit file: {error}") from error
 
     def store_context(self) -> str:
         """
-        Store the current context by reading the architecture, progress, and tasks files into memory,
-        then writing those values to the context directory files and updating the in-memory CtxModel.
+        Store the current context by reading the architecture, progress, and tasks files into
+            memory, then writing those values to the context directory files and updating the
+            in-memory CtxModel.
         Returns:
             The name of the stored context
         Raises:
@@ -700,12 +677,20 @@ class ContextManager:
         """
         try:
             self.architecture_content = (
-                self.architecture_path.read_text() if self.architecture_path.exists() else ""
+                self.architecture_path.read_text()
+                if self.architecture_path.exists()
+                else self.get_default_content("architecture")
             )
             self.progress_content = (
-                self.progress_path.read_text() if self.progress_path.exists() else ""
+                self.progress_path.read_text()
+                if self.progress_path.exists()
+                else self.get_default_content("progress")
             )
-            self.tasks_content = self.tasks_path.read_text() if self.tasks_path.exists() else ""
+            self.tasks_content = (
+                self.tasks_path.read_text()
+                if self.tasks_path.exists()
+                else self.get_default_content("tasks")
+            )
             tree = ET.ElementTree(ET.fromstring(self.architecture_content))
             root = tree.getroot()
             title_elem = root.find(".//Title")
@@ -733,9 +718,9 @@ class ContextManager:
                 progress=progress_ascii,
                 tasks=tasks_ascii,
             )
-            return context_name_sanitized
         except Exception as error:
-            raise ContextError(f"Failed to store context: {error}")
+            raise ContextError(f"Failed to store context: {error}") from error
+        return context_name_sanitized
 
     def load_context(self, context_name: str) -> None:
         """
@@ -760,10 +745,11 @@ class ContextManager:
                     dst.write_text(src.read_text())
                 else:
                     logger.warning(
-                        f"No {file_type} file found for context '{context_name}' (expected ctx.{file_type}.xml)"
+                        f"No {file_type} file found for context '{context_name}' \
+                            (expected ctx.{file_type}.xml)",
                     )
         except Exception as error:
-            raise ContextError(f"Failed to load context '{context_name}': {error}")
+            raise ContextError(f"Failed to load context '{context_name}': {error}") from error
         # After loading context files, update IDE rules and global rules
         try:
             from erasmus.file_monitor import _merge_rules_file
@@ -771,7 +757,8 @@ class ContextManager:
             _merge_rules_file()
         except Exception as merge_error:
             logger.error(
-                f"Failed to update rules file after loading context '{context_name}': {merge_error}"
+                f"Failed to update rules file after loading context \
+                    '{context_name}': {merge_error}",
             )
 
     def get_context_model(self, context_name: str) -> CtxModel:
@@ -786,8 +773,6 @@ class ContextManager:
         """
         try:
             context_dir = self._get_context_dir(context_name)
-            if not context_dir.exists():
-                raise ContextFileError(f"Context does not exist: {context_name}")
             architecture = self.read_file(context_name, "architecture") or ""
             progress = self.read_file(context_name, "progress") or ""
             tasks = self.read_file(context_name, "tasks") or ""
@@ -798,7 +783,7 @@ class ContextManager:
                 tasks=tasks,
             )
         except Exception as context_error:
-            raise ContextFileError(f"Failed to get context: {context_error}")
+            raise ContextFileError(f"Failed to get context: {context_error}") from context_error
 
     def _sanitize_string(self, filename: str) -> str:
         """

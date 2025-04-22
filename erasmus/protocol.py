@@ -35,7 +35,7 @@ class ProtocolManager:
     Provides methods to list, get, create, update, and delete protocols.
     """
 
-    def __init__(self, base_dir: Optional[str] = None, user_dir: Optional[str] = None) -> None:
+    def __init__(self, base_dir: str | None = None, user_dir: str | None = None) -> None:
         # Always use path_manager.template_dir / 'protocols' unless base_dir is explicitly provided
         self.base_template_dir: Path = (
             Path(base_dir) if base_dir is not None else path_manager.template_dir / "protocols"
@@ -86,7 +86,7 @@ class ProtocolManager:
             )
         return sorted(protocol_names)
 
-    def get_protocol(self, protocol_name: str) -> Optional[ProtocolModel]:
+    def get_protocol(self, protocol_name: str) -> ProtocolModel | None:
         """
         Get a protocol by name, searching user protocols first, then templates.
         Args:

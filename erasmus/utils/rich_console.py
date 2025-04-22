@@ -13,12 +13,12 @@ def get_console() -> Console:
     return get_console._console
 
 
-def print_panel(content: str, title: Optional[str] = None, style: str = "bold blue"):
+def print_panel(content: str, title: str | None = None, style: str = "bold blue"):
     """Print a styled panel with optional title using Rich library.
 
     Args:
         content (str): The text content to display in the panel.
-        title (Optional[str], optional): Title of the panel. Defaults to None.
+        title (str | None, optional): Title of the panel. Defaults to None.
         style (str, optional): Rich styling for the panel. Defaults to "bold blue".
     """
     console = get_console()
@@ -26,13 +26,13 @@ def print_panel(content: str, title: Optional[str] = None, style: str = "bold bl
     console.print(panel)
 
 
-def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] = None):
+def print_table(headers: list[str], rows: list[list[Any]], title: str | None = None):
     """Print a formatted table using Rich library.
 
     Args:
         headers (list[str]): Column headers for the table.
         rows (list[list[Any]]): Data rows to display in the table.
-        title (Optional[str], optional): Title of the table. Defaults to None.
+        title (str | None, optional): Title of the table. Defaults to None.
     """
     console = get_console()
     table = Table(title=title)
@@ -43,13 +43,13 @@ def print_table(headers: list[str], rows: list[list[Any]], title: Optional[str] 
     console.print(table)
 
 
-def print_syntax(code: str, language: str = "python", title: Optional[str] = None):
+def print_syntax(code: str, language: str = "python", title: str | None = None):
     """Print code syntax highlighting using Rich library.
 
     Args:
         code (str): Source code to highlight.
         language (str, optional): Programming language for syntax highlighting. Defaults to "python".
-        title (Optional[str], optional): Title for the syntax block. Defaults to None.
+        title (str | None, optional): Title for the syntax block. Defaults to None.
     """
     console = get_console()
     syntax = Syntax(code, language, theme="monokai", line_numbers=True)
