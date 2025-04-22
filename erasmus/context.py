@@ -24,6 +24,8 @@ Note: Non-ASCII characters are preserved in context files but sanitized
 import os
 import xml.etree.ElementTree as ET
 from pathlib import Path
+import re
+import shutil
 
 from loguru import logger
 from pydantic import BaseModel
@@ -88,6 +90,12 @@ class CtxModel(BaseModel):
     metadata for tracking and managing a development project.
     """
 
+    path: str
+    architecture: str
+    progress: str
+    tasks: str
+    protocol: str = ""
+
 
 class CtxMngrModel(BaseModel):
     """Manages a collection of development contexts and their associated file paths.
@@ -151,33 +159,54 @@ class ContextManager:
             - Initializes core context file paths
             - Logs the initialization for traceability
         """
+        # Initialize path manager
+        self.path_manager = get_path_manager()
         # Determine base directory parameter (base_path overrides base_dir)
         chosen_dir = base_path if base_path is not None else base_dir
         # Remove self.base_dir assignment, always use path_manager.get_context_dir()
         logger.info(
             f"Initialized ContextManager with base path: {
-                chosen_dir or path_manager.get_context_dir()
+                chosen_dir or self.path_manager.get_context_dir()
             }",
         )
         # Initialize context tracking attributes
-        self.context: CtxModel | None = None
-        # Set paths for core context files using path_manager
-        self.architecture_path: Path = path_manager.get_architecture_file()
-        self.progress_path: Path = path_manager.get_progress_file()
-        self.tasks_path: Path = path_manager.get_tasks_file()
-        # Initialize content storage for core context files
-        self.architecture_content: str | None = None
-        self.progress_content: str | None = None
-        self.tasks_content: str | None = None
+        self.current_context: str | None = None
+        self.architecture: str | None = None
+        self.progress: str | None = None
+        self.tasks: str | None = None
+
+    def update_architecture(self, content: str) -> None:
+        """Update the architecture file content."""
+        if not self.current_context:
+            raise ContextError("No context selected")
+        arch_file = self._get_context_dir(self.current_context) / ".ctx.architecture.xml"
+        arch_file.write_text(content)
+        self.architecture = content
+
+    def update_progress(self, content: str) -> None:
+        """Update the progress file content."""
+        if not self.current_context:
+            raise ContextError("No context selected")
+        progress_file = self._get_context_dir(self.current_context) / ".ctx.progress.xml"
+        progress_file.write_text(content)
+        self.progress = content
+
+    def update_tasks(self, content: str) -> None:
+        """Update the tasks file content."""
+        if not self.current_context:
+            raise ContextError("No context selected")
+        tasks_file = self._get_context_dir(self.current_context) / ".ctx.tasks.xml"
+        tasks_file.write_text(content)
+        self.tasks = content
 
     def get_default_content(self, file_type: str) -> str:
         template_map = {
-            "architecture": path_manager.architecture_template,
-            "progress": path_manager.progress_template,
-            "tasks": path_manager.tasks_template,
-            "protocol": path_manager.protocol_template,
-            "meta_agent": path_manager.meta_agent_template,
-            "meta_rules": path_manager.meta_rules_template,
+            "architecture": self.path_manager.architecture_template,
+            "progress": self.path_manager.progress_template,
+            "tasks": self.path_manager.tasks_template,
+            "protocol": self.path_manager.protocol_template,
+            "meta_agent": self.path_manager.meta_agent_template,
+            "meta_rules": self.path_manager.meta_rules_template,
         }
         if file_type not in template_map:
             raise ValueError(f"Unsupported file type: {file_type}")
@@ -216,51 +245,60 @@ class ContextManager:
             - Supports partial or full custom content for context files
         """
         sanitized_name = self._sanitize_name(context_name)
-        context_dir = path_manager.get_context_dir() / sanitized_name
+        context_dir = self.path_manager.get_context_dir() / sanitized_name
         if context_dir.exists():
             raise ContextError(f"Context already exists: {context_name}")
+
         # Create context directory
         context_dir.mkdir(parents=True, exist_ok=False)
+
+        # Prepare architecture content
         architecture_content = architecture_content or self.get_default_content("architecture")
         named_architecture_content = architecture_content.replace(
             "  <Title>Project Title</Title>",
-            f"<Title>{context_name}</Title>",
+            f"  <Title>{context_name}</Title>",
         )
-        # Use the correct template directory from the path manager
-        template_map = {
-            "ctx.architecture.xml": (
-                path_manager.architecture_template,
+
+        # Define file mappings
+        file_mappings = {
+            ".ctx.architecture.xml": (
+                self.path_manager.architecture_template,
                 named_architecture_content,
                 "Architecture",
             ),
-            "ctx.progress.xml": (
-                path_manager.progress_template,
+            ".ctx.progress.xml": (
+                self.path_manager.progress_template,
                 progress_content or self.get_default_content("progress"),
                 "Progress",
             ),
-            "ctx.tasks.xml": (
-                path_manager.tasks_template,
+            ".ctx.tasks.xml": (
+                self.path_manager.tasks_template,
                 tasks_content or self.get_default_content("tasks"),
                 "Tasks",
             ),
         }
-        for target_name, (
-            template_path,
-            user_content,
-            root_tag,
-        ) in template_map.items():
-            content = None
-            if user_content is not None and user_content.strip():
-                try:
-                    ET.fromstring(user_content)
-                    content = user_content
-                except Exception:
-                    content = f"<{root_tag}>{user_content}</{root_tag}>"
-            elif template_path.exists():
-                content = template_path.read_text()
-            else:
-                content = f"<{root_tag}></{root_tag}>"
-            (context_dir / target_name).write_text(content)
+
+        # Create each file
+        for filename, (template_path, content, root_tag) in file_mappings.items():
+            file_path = context_dir / filename
+            try:
+                # Validate XML content
+                ET.fromstring(content)
+                file_path.write_text(content)
+            except ET.ParseError:
+                # If content is not valid XML, wrap it in the appropriate root tag
+                wrapped_content = f"<{root_tag}>{content}</{root_tag}>"
+                file_path.write_text(wrapped_content)
+            except Exception as e:
+                raise ContextError(f"Failed to create {filename}: {str(e)}")
+
+        # Create a CtxModel instance for the new context
+        self.context = CtxModel(
+            path=str(context_dir),
+            architecture=named_architecture_content,
+            progress=progress_content or self.get_default_content("progress"),
+            tasks=tasks_content or self.get_default_content("tasks"),
+        )
 
     def get_context(self, context_name: str) -> CtxModel:
         """Retrieve a specific context model by its name.
@@ -300,7 +338,7 @@ class ContextManager:
             - Immutable property that returns the current base directory
         """
         # Always use path_manager.get_context_dir()
-        return path_manager.get_context_dir()
+        return self.path_manager.get_context_dir()
 
     def save_context_file(self, context_name: str, filename: str, content: str) -> None:
         """Save raw content to a file within a specific context directory.
@@ -389,12 +427,20 @@ class ContextManager:
     def _sanitize_name(self, context_name: str) -> str:
         """
         Sanitize a context name for filesystem use.
+
         Args:
             context_name: The context name to sanitize.
+
         Returns:
             The sanitized name.
         """
-        return _sanitize_string(context_name)
+        # Replace any non-alphanumeric characters with underscores
+        sanitized = re.sub(r"[^a-zA-Z0-9]", "_", context_name)
+        # Remove multiple consecutive underscores
+        sanitized = re.sub(r"_+", "_", sanitized)
+        # Remove leading/trailing underscores
+        sanitized = sanitized.strip("_")
+        return sanitized
 
     def _get_context_dir(self, context_name: str) -> Path:
         """
@@ -405,7 +451,7 @@ class ContextManager:
             The context directory path.
         """
         # Always use path_manager.get_context_dir()
-        return path_manager.get_context_dir() / self._sanitize_name(context_name)
+        return self.path_manager.get_context_dir() / self._sanitize_name(context_name)
 
     def _sanitize_filename(self, filename: str) -> str:
         """
@@ -462,7 +508,7 @@ class ContextManager:
         """
         context_models: list[CtxModel] = []
         # Always use path_manager.get_context_dir()
-        for context_directory in path_manager.get_context_dir().iterdir():
+        for context_directory in self.path_manager.get_context_dir().iterdir():
             if context_directory.is_dir():
                 context_name = context_directory.name
                 try:
@@ -474,137 +520,90 @@ class ContextManager:
         return context_models
 
     def delete_context(self, context_name: str) -> None:
-        """
-        Delete a context and all its files.
-        Args:
-            context_name: Name of the context to delete
-        Raises:
-            ContextFileError: If deletion fails
-        """
-        try:
-            context_dir = self._get_context_dir(context_name)
-            for file_path in context_dir.iterdir():
-                if file_path.is_file():
-                    file_path.unlink()
-            context_dir.rmdir()
-            logger.info(f"Deleted context: {context_name}")
-        except Exception as context_error:
-            raise ContextFileError(f"Failed to delete context: {context_error}") from context_error
+        """Delete a context and all its files."""
+        context_dir = self._get_context_dir(context_name)
+        if not context_dir.exists():
+            raise ContextError(f"Context not found: {context_name}")
+        if context_dir.is_dir():
+            shutil.rmtree(context_dir)
+        else:
+            context_dir.unlink()
+        if self.current_context == context_name:
+            self.current_context = None
+            self.architecture = None
+            self.progress = None
+            self.tasks = None
 
     def display_context(self, context_name: str) -> None:
-        """
-        Display a context's information, including file sizes and paths.
-        Args:
-            context_name: Name of the context to display
-        Raises:
-            ContextFileError: If context doesn't exist
-        """
-        try:
-            context_dir = self.get_context_dir_path(context_name)
-            console.print(f"Context: {context_name}")
-            console.print(f"Path: {context_dir}")
-            console.print(
-                f"Architecture: {
-                    len(self.read_file(context_name, 'architecture'))
-                    if self.read_file(context_name, 'architecture')
-                    else 'N/A'
-                }",
-            )
-            console.print(
-                f"Progress: {
-                    len(self.read_file(context_name, 'progress'))
-                    if self.read_file(context_name, 'progress')
-                    else 'N/A'
-                }",
-            )
-            console.print(
-                f"Tasks: {
-                    len(self.read_file(context_name, 'tasks'))
-                    if self.read_file(context_name, 'tasks')
-                    else 'N/A'
-                }",
-            )
-            console.print(
-                f"Protocol: {
-                    len(self.read_file(context_name, 'protocol'))
-                    if self.read_file(context_name, 'protocol')
-                    else 'N/A'
-                }",
-            )
-        except Exception as context_error:
-            raise ContextFileError(f"Failed to display context: {context_error}") from context_error
+        """Display the contents of a context."""
+        context_dir = self._get_context_dir(context_name)
+        if not context_dir.exists():
+            raise ContextError(f"Context not found: {context_name}")
+
+        arch_file = context_dir / ".ctx.architecture.xml"
+        progress_file = context_dir / ".ctx.progress.xml"
+        tasks_file = context_dir / ".ctx.tasks.xml"
+
+        if not all(f.exists() for f in [arch_file, progress_file, tasks_file]):
+            raise ContextError(f"Missing required files in context: {context_name}")
+
+        print(f"\nContext: {context_name}")
+        print("\nArchitecture:")
+        print(arch_file.read_text())
+        print("\nProgress:")
+        print(progress_file.read_text())
+        print("\nTasks:")
+        print(tasks_file.read_text())
 
     def list_contexts(self) -> list[str]:
-        """
-        List all development contexts by name.
-        Returns:
-            A list of context names.
-        Raises:
-            ContextFileError: If contexts cannot be listed.
-        """
-        try:
-            # Always use path_manager.get_context_dir()
-            return [
-                context_directory.name
-                for context_directory in path_manager.get_context_dir().iterdir()
-                if context_directory.is_dir()
-            ]
-        except Exception as context_error:
-            raise ContextFileError(f"Failed to list contexts: {context_error}") from context_error
+        """List all available contexts."""
+        contexts = []
+        for item in self.base_path.iterdir():
+            if item.is_dir():
+                arch_file = item / ".ctx.architecture.xml"
+                if arch_file.exists():
+                    contexts.append(item.name)
+        return contexts
 
-    def select_context(self) -> CtxModel:
-        """
-        Interactively select a context, loading it into memory and saving the current context if
-            needed.
-        Returns:
-            The selected CtxModel instance
-        Raises:
-            ContextFileError: If no contexts exist
-        """
-        context_models = self.save_contexts()
-        if not context_models:
-            raise ContextFileError("No contexts exist")
-        console.print("Available contexts:")
-        for context_index, context_model in enumerate(context_models):
-            console.print(f"{context_index + 1}. {context_model.path}")
-        while True:
-            try:
-                user_choice = int(input("Select a context (number): "))
-                if 1 <= user_choice <= len(context_models):
-                    selected_context = context_models[user_choice - 1]
-                    # Write current in-memory context to files before switching
-                    if self.context:
-                        self._write_context_to_files()
-                    self.context = selected_context
-                    self._load_context_to_memory(selected_context)
-                    return selected_context
-                console.print("Invalid choice. Please try again.")
-            except ValueError:
-                console.print("Please enter a number.")
+    def select_context(self, context_name: str | None = None) -> None:
+        """Select a context to work with."""
+        if context_name is None:
+            contexts = self.list_contexts()
+            if not contexts:
+                raise ContextError("No contexts available")
+            print("\nAvailable contexts:")
+            for i, ctx in enumerate(contexts, 1):
+                print(f"{i}. {ctx}")
+            while True:
+                try:
+                    choice = int(input("\nSelect a context (number): "))
+                    if 1 <= choice <= len(contexts):
+                        context_name = contexts[choice - 1]
+                        break
+                    print("Invalid choice. Please try again.")
+                except ValueError:
+                    print("Please enter a number.")
 
-    def _write_context_to_files(self) -> None:
-        """
-        Write the in-memory context content to the working files.
-        """
-        if self.context:
-            if self.architecture_content is not None:
-                self.architecture_path.write_text(self.architecture_content)
-            if self.progress_content is not None:
-                self.progress_path.write_text(self.progress_content)
-            if self.tasks_content is not None:
-                self.tasks_path.write_text(self.tasks_content)
-            if self.protocol_content is not None:
-                self.protocol_path.write_text(self.protocol_content)
+        if self.current_context:
+            self.save_context()
 
-    def _load_context_to_memory(self, context_model: CtxModel) -> None:
-        """
-        Load the content of a CtxModel into the in-memory fields.
-        Args:
-            context_model: The CtxModel to load
-        """
-        self.architecture_content = context_model.architecture
-        self.progress_content = context_model.progress
-        self.tasks_content = context_model.tasks
+        self._load_context(context_name)
+        print(f"Selected context: {context_name}")
+
+    def _load_context(self, context_name: str) -> None:
+        """Load a context into memory."""
+        context_dir = self._get_context_dir(context_name)
+        arch_file = context_dir / ".ctx.architecture.xml"
+        progress_file = context_dir / ".ctx.progress.xml"
+        tasks_file = context_dir / ".ctx.tasks.xml"
+
+        if not all(f.exists() for f in [arch_file, progress_file, tasks_file]):
+            raise ContextError(f"Missing required files in context: {context_name}")
+
+        self.current_context = context_name
+        self.architecture = arch_file.read_text()
+        self.progress = progress_file.read_text()
+        self.tasks = tasks_file.read_text()
 
     def update_file(self, context_name: str, file_type: str, content: str) -> None:
         """
@@ -775,9 +774,13 @@ class ContextManager:
         """
         try:
             context_dir = self._get_context_dir(context_name)
+            if not context_dir.exists():
+                raise ContextFileError(f"Context does not exist: {context_name}")
+
             architecture = self.read_file(context_name, "architecture") or ""
             progress = self.read_file(context_name, "progress") or ""
             tasks = self.read_file(context_name, "tasks") or ""
+
             return CtxModel(
                 path=str(context_dir),
                 architecture=architecture,

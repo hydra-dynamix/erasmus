@@ -1,40 +1,57 @@
 #!/usr/bin/env python3
-from pathlib import Path
+import os
 import json
 import re
 
+# Get the project root directory
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+VERSION_FILE = os.path.join(PROJECT_ROOT, "version.json")
+README_FILE = os.path.join(PROJECT_ROOT, "README.md")
+
 
 def update_readme_curl_command():
-    # Resolve paths using pathlib
-    base_path = Path.cwd()
-    version_file = base_path / "version.json"
-    readme_path = base_path / "README.md"
+    """
+    Updates the curl command in README.md with the latest version from version.json.
+    The curl command is expected to be in the format:
+    curl -sSL https://raw.githubusercontent.com/hydra-dynamix/erasmus/refs/heads/main/releases/install.sh | bash -s -- 0.2.1
+    """
+    # Read version from version.json
+    if not os.path.exists(VERSION_FILE):
+        raise FileNotFoundError(f"Version file not found: {VERSION_FILE}")
 
-    target_one = "### Quick Install\n\n```bash\ncurl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/releases/erasmus/"
-    target_two = "/erasmus_v"
+    with open(VERSION_FILE, "r") as f:
+        version_data = json.load(f)
+        version = version_data.get("version")
+        if not version:
+            raise ValueError("No version found in version.json")
 
-    # Get version
-    version = json.loads(version_file.read_text())["version"]
+    # Read README.md
+    if not os.path.exists(README_FILE):
+        raise FileNotFoundError(f"README file not found: {README_FILE}")
 
-    # Read README
-    readme_content = readme_path.read_text()
+    with open(README_FILE, "r") as f:
+        readme_lines = f.readlines()
 
-    # Regex to match the install block
-    pattern = re.compile(
-        re.escape(target_one) + r"[^/]+" + re.escape(target_two) + r"(\d+\.\d+\.\d+)[^`]*```",
-        re.MULTILINE,
-    )
+    # Find and update the curl command line
+    curl_pattern = "curl -sSL https://raw.githubusercontent.com/hydra-dynamix/erasmus/refs/heads/main/releases/install.sh | bash -s --"
+    updated = False
 
-    # Replacement string
-    replacement = f"{target_one}erasmus{target_two}{version}\n```"
+    for i, line in enumerate(readme_lines):
+        if curl_pattern in line:
+            # Extract the old version and replace it with the new one
+            old_version = re.search(r"\d+\.\d+\.\d+", line)
+            if old_version:
+                readme_lines[i] = line.replace(old_version.group(), version)
+                updated = True
+                break
 
-    # Replace the block
-    new_content, count = pattern.subn(replacement, readme_content)
-    if count > 0:
-        readme_path.write_text(new_content)
+    if updated:
+        with open(README_FILE, "w") as f:
+            f.writelines(readme_lines)
         print(f"Updated README.md with version {version}")
     else:
-        print("No install block found or no update needed.")
+        print("Could not find the expected curl command pattern in README.md")
+        print(f"Expected pattern: {curl_pattern} X.Y.Z")
 
 
 if __name__ == "__main__":

@@ -88,7 +88,7 @@ class EnvironmentConfig(BaseModel):
         Returns:
             list: A list of dictionaries containing variable details.
         """
-        for name, definition in self._definitions.items():
+        for name, definition in self.definitions.items():
             if definition.is_sensitive:
                 print(f"{name}: ****")
             else:
@@ -96,20 +96,18 @@ class EnvironmentConfig(BaseModel):
 
     def define_required(self, name: str, type_: type, **kwargs) -> None:
         """Define a required environment variable."""
-        self._definitions[name] = VariableDefinition(name=name, type=type_, required=True, **kwargs)
+        self.definitions[name] = VariableDefinition(name=name, type=type_, required=True, **kwargs)
 
     def define_optional(self, name: str, type_: type, **kwargs) -> None:
         """Define an optional environment variable."""
-        self._definitions[name] = VariableDefinition(
-            name=name, type=type_, required=False, **kwargs
-        )
+        self.definitions[name] = VariableDefinition(name=name, type=type_, required=False, **kwargs)
 
     def set(self, name: str, value: str) -> None:
         """Set an environment variable value."""
-        if name not in self._definitions:
+        if name not in self.definitions:
             raise EnvironmentError(f"Variable {name} not defined")
 
-        definition = self._definitions[name]
+        definition = self.definitions[name]
         try:
             # Convert value to the specified type
             converted_value = definition.type(value)
@@ -166,7 +164,7 @@ class EnvironmentConfig(BaseModel):
             return ""
 
         value = self._variables[name]
-        definition = self._definitions[name]
+        definition = self.definitions[name]
 
         if definition.is_sensitive and isinstance(value, str):
             return mask_sensitive_value(value)
@@ -192,45 +190,36 @@ class EnvironmentConfig(BaseModel):
 
     def load_from_system(self) -> None:
         """Load environment variables from system environment."""
-        for name, definition in self._definitions.items():
+        for name, definition in self.definitions.items():
             if name in os.environ:
                 self.set(name, os.environ[name])
 
     def prompt_for_missing(self) -> None:
         """Prompt for missing required variables."""
-        for name, definition in self._definitions.items():
-            if definition.required and name not in self._variables:
+        for name, definition in self.definitions.items():
+            if name not in self._variables and definition.required:
                 if definition.is_sensitive:
-                    value = getpass(f"Enter {name}: ")
+                    value = getpass(f"Enter value for {name}: ")
                 else:
-                    value = input(f"Enter {name}: ")
+                    value = input(f"Enter value for {name}: ")
                 self.set(name, value)
 
     def validate(self) -> None:
-        """Validate all environment variables according to their definitions."""
-        for variable_key, variable_definition in self._definitions.items():
-            variable_value = self._variables.get(variable_key)
-            if variable_definition.required and variable_value is None:
-                raise EnvironmentError(f"Missing required environment variable: {variable_key}")
-            if variable_value is not None:
-                if not isinstance(variable_value, variable_definition.type):
-                    raise TypeError(
-                        f"Environment variable '{variable_key}' should be of type {variable_definition.type.__name__}"
-                    )
-                if variable_definition.validator and not variable_definition.validator(
-                    variable_value
-                ):
-                    raise ValueError(
-                        f"Environment variable '{variable_key}' failed custom validation."
-                    )
+        """Validate all required variables are set."""
+        missing = []
+        for name, definition in self.definitions.items():
+            if definition.required and name not in self._variables:
+                missing.append(name)
+
+        if missing:
+            raise EnvironmentError(f"Missing required variables: {', '.join(missing)}")
 
     def merge(self, other: "EnvironmentConfig") -> None:
-        """Merge another environment configuration into this one."""
-        # First merge definitions
-        for name, definition in other._definitions.items():
-            if name not in self._definitions:
-                self._definitions[name] = definition
+        """
+        Merge another config into this one.
 
-        # Then merge values
-        for name, value in other._variables.items():
-            self.set(name, str(value))
+        Args:
+            other: The other config to merge
+        """
+        self.definitions.update(other.definitions)
+        self._variables.update(other._variables)

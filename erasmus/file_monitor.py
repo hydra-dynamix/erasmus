@@ -223,77 +223,100 @@ class FileEventHandler(FileSystemEventHandler):
 
 class FileMonitor:
     """
-    Monitors a path for file changes.
+    Monitors file system events and updates rules files.
     """
 
-    def __init__(self, watch_path: str | Path) -> None:
-        """
-        Initialize the file monitor.
-        Args:
-            watch_path: Path to monitor for changes
-        Raises:
-            FileNotFoundError: If watch_path does not exist
-        """
-        if isinstance(watch_path, str):
-            watch_path = Path(watch_path)
-        if not watch_path.exists():
-            raise FileNotFoundError(f"Watch path does not exist: {watch_path}")
+    def __init__(self) -> None:
+        """Initialize the file monitor."""
+        self.observer = Observer()
+        self.event_handler = FileEventHandler()
+        self.watch_paths: Set[str] = set()
+        self.ignore_patterns: list[str] = []
+        self.on_created = None
+        self.on_modified = None
+        self.on_deleted = None
 
-        self.watch_path: str = watch_path
-        self.event_handler: FileEventHandler = FileEventHandler()
-        self.observer: ObserverType | None = None
-        self._is_running: bool = False
+    def add_watch_path(self, watch_path: str | Path) -> None:
+        """Add a path to monitor."""
+        watch_path = str(Path(watch_path).resolve())
+        if not os.path.exists(watch_path):
+            raise FileMonitorError(f"Watch path does not exist: {watch_path}")
+        self.watch_paths.add(watch_path)
+        if self.observer.is_alive():
+            self.observer.schedule(self.event_handler, watch_path, recursive=True)
+            logger.info(f"Added watch path: {watch_path}")
+
+    def remove_watch_path(self, watch_path: str | Path) -> None:
+        """Remove a monitored path."""
+        watch_path = str(Path(watch_path).resolve())
+        if watch_path in self.watch_paths:
+            self.watch_paths.remove(watch_path)
+            if self.observer.is_alive():
+                # Find and remove the watch for this path
+                for watch in list(self.observer._watches.values()):
+                    if watch.path == watch_path:
+                        self.observer.unschedule(watch)
+                        logger.info(f"Removed watch path: {watch_path}")
+                        break
 
     def _matches_rules_file(self, file_path: str) -> bool:
-        """
-        Check if a path matches rules file patterns.
-        Args:
-            file_path: Path to check
-        Returns:
-            bool: True if path matches rules file patterns
-        """
-        return file_path.endswith((".windsurfrules", ".cursorrules"))
+        """Check if a file path matches any rules file pattern."""
+        rules_patterns = [
+            r"\.codex\.md$",
+            r"\.cursorrules$",
+            r"\.windsurfrules$",
+            r"CLAUDE\.md$",
+        ]
+        return any(re.search(pattern, file_path) for pattern in rules_patterns)
 
     def start(self) -> None:
-        """
-        Start monitoring the watch path.
-        """
-        if self._is_running:
-            logger.warning("Monitor is already running")
-            return
+        """Start monitoring."""
+        if not self.watch_paths:
+            raise FileMonitorError("No watch paths configured")
 
-        self.observer = Observer()
-        self.observer.schedule(self.event_handler, self.watch_path, recursive=False)
+        # Set up event handlers
+        def on_created_wrapper(event):
+            if not event.is_directory and self.on_created:
+                self.on_created(event)
+
+        def on_modified_wrapper(event):
+            if not event.is_directory and self.on_modified:
+                self.on_modified(event)
+
+        def on_deleted_wrapper(event):
+            if not event.is_directory and self.on_deleted:
+                self.on_deleted(event)
+
+        self.event_handler.on_created = on_created_wrapper
+        self.event_handler.on_modified = on_modified_wrapper
+        self.event_handler.on_deleted = on_deleted_wrapper
+
+        # Start observer for each watch path
+        for watch_path in self.watch_paths:
+            self.observer.schedule(self.event_handler, watch_path, recursive=True)
+            logger.info(f"Started monitoring: {watch_path}")
+
         self.observer.start()
-        self._is_running = True
-        logger.info(f"Started monitoring: {self.watch_path}")
 
     def stop(self) -> None:
-        """
-        Stop monitoring the watch path.
-        """
-        if not self._is_running:
-            logger.warning("Monitor is not running")
-            return
-
-        if self.observer:
+        """Stop monitoring."""
+        if self.observer.is_alive():
             self.observer.stop()
             self.observer.join()
-            self.observer = None
-            self._is_running = False
-            logger.info(f"Stopped monitoring: {self.watch_path}")
+            for watch_path in self.watch_paths:
+                logger.info(f"Stopped monitoring: {watch_path}")
 
     def __enter__(self) -> "FileMonitor":
-        """
-        Context manager entry.
-        Returns:
-            FileMonitor: The monitor instance
-        """
+        """Start monitoring when entering context."""
         self.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        """
-        Context manager exit.
-        """
+        """Stop monitoring when exiting context."""
         self.stop()
+
+
+class FileMonitorError(Exception):
+    """Base exception for file monitor errors."""
+
+    pass

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MetaAgent>
+  <Overview>
+    <Description>Meta agent description</Description>
+    <Capabilities>
+      <Capability>Capability 1</Capability>
+      <Capability>Capability 2</Capability>
+    </Capabilities>
+  </Overview>
+  
+  <Configuration>
+    <Settings>
+      <Setting name="Setting Name">
+        <Value>Setting value</Value>
+        <Description>Setting description</Description>
+      </Setting>
+    </Settings>
+  </Configuration>
+  
+  <Protocols>
+    <Protocol name="Protocol Name">
+      <Description>Protocol description</Description>
+      <Triggers>
+        <Trigger>Trigger 1</Trigger>
+        <Trigger>Trigger 2</Trigger>
+      </Triggers>
+      <Actions>
+        <Action>Action 1</Action>
+        <Action>Action 2</Action>
+      </Actions>
+    </Protocol>
+  </Protocols>
+  
+  <ErrorHandling>
+    <Error code="ERROR_CODE">
+      <Description>Error description</Description>
+      <Resolution>Resolution steps</Resolution>
+    </Error>
+  </ErrorHandling>
+</MetaAgent> 

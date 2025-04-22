@@ -42,12 +42,7 @@ test = [
     "pytest-mock>=3.12.0",
     "hypothesis>=6.95.0",
 ]
-dev = [
-    "black>=24.0.0",
-    "isort>=5.13.0",
-    "mypy>=1.8.0",
-    "ruff>=0.2.0",
-]
+dev = ["black>=24.0.0", "isort>=5.13.0", "mypy>=1.8.0", "ruff>=0.2.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["erasmus"]
@@ -55,13 +50,11 @@ packages = ["erasmus"]
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = "-v --cov=src"
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 python_files = ["test_*.py"]
 
 [tool.coverage.run]
-source = ["src"]
+source = ["erasmus"]
 branch = true
 
 [tool.coverage.report]
@@ -77,14 +70,40 @@ line-length = 100
 target-version = "py310"
 src = ["erasmus"]
 ignore = ["G004", "TRY003", "TRY002"]
-
 # Enable Pyflakes (`F`), isort (`I`), and many other linters
-select = ["E", "F", "I", "W", "N", "B", "A", "COM", "C4", "DTZ", "T10", "ISC", "ICN", "G", "PIE", "PYI", "PT", "RET", "SIM", "TID", "ARG", "PTH", "ERA", "PD", "PL", "TRY", "UP", "RUF"]
-
+select = [
+    "E",
+    "F",
+    "I",
+    "W",
+    "N",
+    "B",
+    "A",
+    "COM",
+    "C4",
+    "DTZ",
+    "T10",
+    "ISC",
+    "ICN",
+    "G",
+    "PIE",
+    "PYI",
+    "PT",
+    "RET",
+    "SIM",
+    "TID",
+    "ARG",
+    "PTH",
+    "ERA",
+    "PD",
+    "PL",
+    "TRY",
+    "UP",
+    "RUF"
+]
 # Allow autofix for all enabled rules (when `--fix`) is provided
 fixable = ["ALL"]
 unfixable = []
-
 # Exclude a variety of commonly ignored directories
 exclude = [
     ".bzr",
@@ -109,7 +128,6 @@ exclude = [
     "node_modules",
     "venv",
 ]
-
 # Allow unused variables when underscore-prefixed
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
@@ -158,11 +176,7 @@ warn_no_return = true
 warn_unreachable = true
 
 [tool.uv.workspace]
-members = [
-    "erasmus",
-    "packager"
-]
+members = ["erasmus", "packager"]
+
 [dependency-groups]
-dev = [
-    "pytest-asyncio>=0.24.0",
-]
+dev = ["pytest-asyncio>=0.24.0"]
