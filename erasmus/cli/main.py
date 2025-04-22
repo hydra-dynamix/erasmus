@@ -44,7 +44,7 @@ def print_main_help_and_exit():
 | |__| | | (_| \__ \ | | | | | |_| \__ \
 \____/_|  \__,_|___/_| |_| |_|\__,_|___/
 """)
-    typer.echo("\nErasmus - Development Context Management System")
+    typer.echo("\n Development Context Management System\n")
     command_rows = [
         ["erasmus context", "Manage development contexts"],
         ["erasmus protocol", "Manage protocols"],

@@ -1,6 +1,6 @@
 {
-  "version": "0.2.1",
-  "last_updated": "2025-04-20T15:40:53.099310",
+  "version": "0.2.2",
+  "last_updated": "2025-04-21T18:40:11.061207",
   "changes": [
     {
       "description": "initial release",
@@ -21,6 +21,11 @@
       "description": "updated setup menu, added shell detectection and alias, updated packager menu, updated packager versioning, made xml sanatization less strict, updated packaging logic to preserve versions",
       "type": "patch",
       "timestamp": "2025-04-20T15:40:53.099310"
+    },
+    {
+      "description": "updated erasmus main menu styling, refactored packager context to conform to styling guides and reduce complexity, updated the default context templating and pathing",
+      "type": "patch",
+      "timestamp": "2025-04-21T18:40:11.061207"
     }
   ]
 }

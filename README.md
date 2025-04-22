@@ -48,6 +48,14 @@ Erasmus is an advanced context management library that revolutionizes software d
    - Watch changes in context files
    - Update IDE rule files dynamically
 
+## Installation
+
+### Quick Install
+
+```bash
+curl -L https://raw.githubusercontent.com/Bakobiibizo/Erasmus/main/install.sh | bash -s -- v0.2.2
+```
+
 ### Workflow Overview
 
 1. **Context Definition**

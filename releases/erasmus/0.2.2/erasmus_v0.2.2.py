@@ -1101,6 +1101,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 
+
 console = get_console()
 
 
@@ -1883,6 +1884,7 @@ from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
 from loguru import logger
+
 
 
 path_manager = get_path_manager()
@@ -2917,7 +2919,6 @@ import typer
 from pathlib import Path
 from loguru import logger
 
-
 import os
 import re
 
@@ -3432,7 +3433,6 @@ def watch_protocol():
 
 
 
-
     path_manager = get_path_manager()
     protocol_manager = ProtocolManager()
     ctx_files = [
@@ -3715,7 +3715,6 @@ setup_callback = setup_callback
 import typer
 
 
-
 app = typer.Typer(
     help="Erasmus - Development Context Management System\n\nA tool for managing development contexts, protocols, and Model Context Protocol (MCP) interactions.\n\nFor more information, visit: https://github.com/hydra-dynamics/erasmus"
 )
@@ -3822,8 +3821,6 @@ def watch():  # pragma: no cover
 @app.command()
 def status():
     """Show the current Erasmus context and protocol status."""
-
-
 
     import os
 
