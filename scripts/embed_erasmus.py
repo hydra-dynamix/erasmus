@@ -47,7 +47,7 @@ export PATH="$HOME/.local/bin:$PATH"
 uv run erasmus.py setup
 
 echo "Erasmus setup complete."
-echo "Restart your shell and ask your AI to help you craft an architecture context file."
+echo "Restart your shell and run 'erasmus watch' to start."
 
 exit 0
 """
