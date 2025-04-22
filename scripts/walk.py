@@ -8,10 +8,10 @@ import argparse
 class DirectoryMapper:
     def __init__(
         self,
-        ignore_patterns: Optional[list[str]] = None,
+        ignore_patterns: list[str] | None = None,
         max_depth: int = 10,
         include_content: bool = False,
-        content_extensions: Optional[list[str]] = None,
+        content_extensions: list[str] | None = None,
         ignore_hidden: bool = True,
     ):
         self.ignore_patterns = ignore_patterns or [

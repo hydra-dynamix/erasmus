@@ -46,7 +46,8 @@ export PATH="$HOME/.local/bin:$PATH"
 # Run erasmus.py setup with uv
 uv run erasmus.py setup
 
-echo "Erasmus setup complete. Restart your shell and run 'erasmus setup' to start."
+echo "Erasmus setup complete."
+echo "Restart your shell and run 'erasmus watch' to start."
 
 exit 0
 """

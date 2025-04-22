@@ -148,8 +148,8 @@ def parse_file(file_path: Union[str, Path]) -> FileImports:
 
 
 def resolve_relative_import(
-    base_path: Union[str, Path], import_info: ImportInfo, package_name: Optional[str] = None
-) -> Optional[str]:
+    base_path: Union[str, Path], import_info: ImportInfo, package_name: str | None = None
+) -> str | None:
     """Resolve a relative import to its absolute form.
 
     Args:
@@ -191,7 +191,7 @@ def resolve_relative_import(
 
 
 def normalize_imports(
-    file_imports: FileImports, base_path: Union[str, Path], package_name: Optional[str] = None
+    file_imports: FileImports, base_path: Union[str, Path], package_name: str | None = None
 ) -> Tuple[Set[str], list[str]]:
     """Convert collected imports into a normalized set of import strings.
 
@@ -289,7 +289,7 @@ def parse_imports(content: str) -> Tuple[ImportSet, list[str]]:
 
 
 def extract_imports(
-    file_path: Union[str, Path], package_name: Optional[str] = None
+    file_path: Union[str, Path], package_name: str | None = None
 ) -> Tuple[ImportSet, list[str]]:
     """Extract and normalize imports from a Python file.
 

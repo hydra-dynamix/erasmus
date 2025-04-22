@@ -55,7 +55,7 @@ DEFAULT_EXCLUDE_PATTERNS = [
 ]
 
 
-def collect_py_files(base_path: str, exclude_patterns: Optional[list[str]] = None) -> list[str]:
+def collect_py_files(base_path: str, exclude_patterns: list[str] | None = None) -> list[str]:
     """
     Recursively collect all Python files in a directory or a single Python file.
 
@@ -88,7 +88,7 @@ def collect_py_files(base_path: str, exclude_patterns: Optional[list[str]] = Non
 
 
 def collect_files_with_extensions(
-    base_path: str, extensions: list[str], exclude_patterns: Optional[list[str]] = None
+    base_path: str, extensions: list[str], exclude_patterns: list[str] | None = None
 ) -> list[str]:
     """
     Recursively collect files with specific extensions in a directory or a single file.
@@ -149,7 +149,7 @@ def collect_files_with_extensions(
 
 
 def collect_files_with_filter(
-    base_path: str, filter_func: Callable[[str], bool], exclude_patterns: Optional[list[str]] = None
+    base_path: str, filter_func: Callable[[str], bool], exclude_patterns: list[str] | None = None
 ) -> list[str]:
     """
     Recursively collect files that pass a custom filter function.

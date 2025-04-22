@@ -30,7 +30,10 @@ INSTALLER="$RELEASE_DIR/erasmus_v${VERSION}.sh"
 echo "Bundling $BUNDLE_PATH into $INSTALLER"
 
 # Run the embed script to create the self-extracting installer
-python3 scripts/embed_erasmus.py "$BUNDLE_PATH" "$INSTALLER"
+uv run scripts/embed_erasmus.py "$BUNDLE_PATH" "$INSTALLER" || {
+    echo "Error: Failed to create installer $INSTALLER"
+    exit 1
+}
 
 # Check that the installer was created
 if [ ! -f "$INSTALLER" ]; then
@@ -40,4 +43,7 @@ fi
 
 chmod +x "$INSTALLER"
 echo "Successfully created installer: $INSTALLER"
+
+uv run scripts/update_readme.py
+
 echo "Build complete!"

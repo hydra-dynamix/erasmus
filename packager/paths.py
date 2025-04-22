@@ -8,7 +8,7 @@ class PackagerPathManager:
     Centralized path manager for the packager. Handles project root, build directory, and source paths.
     """
 
-    def __init__(self, project_root: Optional[Path] = None, build_dir: Optional[Path] = None):
+    def __init__(self, project_root: Path | None = None, build_dir: Path | None = None):
         self.project_root = Path(project_root or Path.cwd()).resolve()
         self.build_dir = Path(build_dir or self.project_root / "build").resolve()
         self.erasmus_dir = self.project_root / ".erasmus"
@@ -87,7 +87,7 @@ _packager_path_manager = None
 
 
 def get_packager_path_manager(
-    project_root: Optional[Path] = None, build_dir: Optional[Path] = None
+    project_root: Path | None = None, build_dir: Path | None = None
 ) -> PackagerPathManager:
     global _packager_path_manager
     if _packager_path_manager is None:

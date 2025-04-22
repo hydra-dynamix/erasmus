@@ -113,7 +113,7 @@ def get_element_texts(root: ET.Element, xpath: str) -> list[str]:
     return [element.text for element in elements if element.text]
 
 
-def get_architecture_title(file_path: Union[str, Path]) -> Optional[str]:
+def get_architecture_title(file_path: Union[str, Path]) -> str | None:
     """
     Extract the title from an architecture XML document.
 
@@ -143,7 +143,7 @@ def get_architecture_title(file_path: Union[str, Path]) -> Optional[str]:
         return None
 
 
-def get_protocol_name(file_path: Union[str, Path]) -> Optional[str]:
+def get_protocol_name(file_path: Union[str, Path]) -> str | None:
     """
     Extract the protocol name from a protocol XML document.
 

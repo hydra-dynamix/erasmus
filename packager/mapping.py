@@ -37,7 +37,7 @@ class PackageMapping:
 
     name: str
     package: str
-    version: Optional[str] = None
+    version: str | None = None
 
 
 # Common mappings for packages where import name differs from package name
@@ -72,10 +72,10 @@ COMMON_MAPPINGS: dict[str, PackageMapping] = {
 _custom_mappings: dict[str, str] = {}
 
 # Cache for PyPI package info
-_pypi_cache: dict[str, Optional[str]] = {}
+_pypi_cache: dict[str, str | None] = {}
 
 # Cache for import to package mappings
-_IMPORT_TO_PACKAGE: Optional[dict[str, str]] = None
+_IMPORT_TO_PACKAGE: Dict[str, str] | None = None
 
 
 def register_mapping(import_name: str, package_name: str) -> None:
@@ -93,7 +93,7 @@ def register_mapping(import_name: str, package_name: str) -> None:
     logger.info(f"Registered custom mapping: {import_name} -> {package_name}")
 
 
-def query_pypi(module_name: str) -> Optional[str]:
+def query_pypi(module_name: str) -> str | None:
     """Query PyPI's JSON API to find the package name for a module.
 
     Args:
@@ -161,7 +161,7 @@ def _load_import_to_package() -> dict[str, str]:
     return _IMPORT_TO_PACKAGE
 
 
-def get_package_name(import_name: str) -> Optional[str]:
+def get_package_name(import_name: str) -> str | None:
     """Get the PyPI package name for an import name.
 
     Args:
@@ -293,7 +293,7 @@ def clear_custom_mappings() -> None:
     logger.info("Cleared all custom mappings")
 
 
-def get_required_packages(import_set: ImportSet) -> dict[str, Optional[str]]:
+def get_required_packages(import_set: ImportSet) -> dict[str, str | None]:
     """Get required PyPI packages from an ImportSet.
 
     Args:

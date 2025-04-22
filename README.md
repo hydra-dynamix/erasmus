@@ -22,21 +22,25 @@ Erasmus is an advanced context management library that revolutionizes software d
 ### Core Components
 
 1. **Path Management** (`erasmus/utils/paths.py`)
+
    - Detect and manage paths across different IDEs
    - Support for Windsurf, Cursor, Codex, and Claude
    - Automatic directory and symlink creation
 
 2. **Environment Management** (`erasmus/environment.py`)
+
    - Dynamic, type-safe environment variable handling
    - Support for `.env` file loading
    - Strong type and constraint validation
 
 3. **Context Management** (`erasmus/context.py`)
+
    - Save and load context files
    - Sanitize document names
    - Ensure cross-platform compatibility
 
 4. **Protocol Handler** (`erasmus/protocol.py`)
+
    - Manage protocol definitions
    - Preserve context across different development stages
 
@@ -44,14 +48,24 @@ Erasmus is an advanced context management library that revolutionizes software d
    - Watch changes in context files
    - Update IDE rule files dynamically
 
+## Installation
+
+### Quick Install
+
+```bash
+curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/main/releases/erasmus/erasmus/erasmus_v0.2.2
+```
+
 ### Workflow Overview
 
 1. **Context Definition**
+
    - Define project architecture in `.ctx.architecture.xml`
    - Track progress in `.ctx.progress.xml`
    - Break down tasks in `.ctx.tasks.xml`
 
 2. **Continuous Synchronization**
+
    - Real-time monitoring of context files
    - Automatic rule file updates
    - Dynamic context injection for AI assistants
@@ -63,12 +77,14 @@ Erasmus is an advanced context management library that revolutionizes software d
 ### Context File Structure
 
 - **`.ctx.architecture.xml`**: Project blueprint
+
   - High-level design
   - Technology stack
   - User stories
   - Completion criteria
 
 - **`.ctx.progress.xml`**: Development tracking
+
   - Component progress
   - Blockers
   - Dependencies
@@ -78,13 +94,18 @@ Erasmus is an advanced context management library that revolutionizes software d
   - Status tracking
   - Assignment
 
-## Quick Installation
+\*Note: Cursor users will have to copy their `global_rules.md` that is generated when the setup command is run to their global rules in the settings. I still haven't figured out where that file actually is to automate it. If you know let me know!
 
-```bash
-curl -L https://raw.githubusercontent.com/Bakobiibizo/erasmus/refs/heads/main/releases/erasmus/0.2.1/erasmus_v0.2.1.sh -o erasmus.sh && chmod +x erasmus.sh && ./erasmus.sh
-```
+## Release Packaging Path Changes
 
-That's it! The installer will set up everything you need.
+**Packager output path logic:**
+
+- When packaging with a version bump (e.g., via `version-control bump`), the output is written to:
+  - `releases/**<library_name>**/**<version>**/**<library_name>**_v**<version>**.py`
+- For dry runs (not bumping), the output is written to:
+  - `releases/**<library_name>**/0.0.0/**<library_name>**_v0.0.0.py`
+
+The resolved output path is always passed to the installer build script (`build_installer.sh`).
 
 ## What Does Erasmus Do?
 
@@ -102,51 +123,28 @@ Erasmus sits in the background of your development environment and:
 - **.tasks.md** - Granular task management
 - **.IDErules** - Bundled context for IDE integration
 
-## Usage
+## Command Line Usage
 
-### Basic Commands
-
-```bash
-# Start the context watcher
-uv run erasmus.py --watch
-
-# Set up a new project environment
-uv run erasmus.py --setup [cursor|windsurf]
-
-# View project status
-uv run erasmus.py --status
-```
-
-### Advanced Usage
+Erasmus provides a powerful CLI for managing development contexts, protocols, and project setup. Here are a few key examples:
 
 ```bash
-# Initialize a new project with specific IDE
-uv run erasmus.py --init --ide cursor
+# List all contexts
+erasmus context list
 
-# Update project documentation
-uv run erasmus.py --update-docs
+# Create a new protocol
+erasmus protocol create my-protocol
 
-# Generate a new release
-uv run erasmus.py --release
+# Setup a new project interactively
+erasmus setup
 
-# Convert scripts for different platforms
-uv run erasmus.py --convert-scripts
+# Watch for .ctx file changes
+erasmus watch
+
+# Show current status
+erasmus status
 ```
 
-### Command Line Options
-
-```bash
---watch              # Start the context watcher
---setup IDE          # Set up IDE environment (cursor/windsurf)
---status            # Show project status
---init              # Initialize new project
---ide IDE           # Specify IDE (cursor/windsurf)
---update-docs       # Update project documentation
---release           # Generate new release
---convert-scripts   # Convert scripts for different platforms
---version           # Show version information
---help              # Show help message
-```
+For a full list of commands and detailed usage, see [docs/CLI_COMMANDS.md](docs/CLI_COMMANDS.md).
 
 ## Code Structure
 
@@ -217,7 +215,7 @@ class ScriptPackager:
         self.import_set = set()
         self.script_bodies = []
 
-    def package_scripts(self, output_path: Optional[Path] = None) -> str:
+    def package_scripts(self, output_path: Path | None = None) -> str:
         """Package all scripts into a single file."""
 ```
 
@@ -374,3 +372,24 @@ python main.py test
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to Erasmus.
+
+> **Note:** After running `erasmus setup`, you can use the `erasmus` command directly in your shell. The setup process automatically adds an alias or function for `erasmus` to your shell configuration (e.g., `.bashrc`, `.zshrc`, or `config.fish`).
+
+For example:
+
+```bash
+# List all contexts
+erasmus context list
+
+# Create a new protocol
+erasmus protocol create my-protocol
+
+# Setup a new project interactively
+erasmus setup
+
+# Watch for .ctx file changes
+erasmus watch
+
+# Show current status
+erasmus status
+```

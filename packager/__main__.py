@@ -123,14 +123,17 @@ def main(ctx: typer.Context):
 
 @app.command()
 def package(
-    input_path: Optional[str] = typer.Argument(
+    input_path: str | None = typer.Argument(
         None, help="Path to Python file or directory to package (defaults to 'erasmus')"
     ),
-    output_file: Optional[str] = typer.Option(None, "--output", "-o", help="Output file path"),
+    output_file: str | None = typer.Option(None, "--output", "-o", help="Output file path"),
     preserve_comments: bool = typer.Option(
         True, "--preserve-comments/--no-comments", help="Preserve comments in output"
     ),
-    internal_use_version: Optional[str] = None,
+    internal_use_version: str | None = None,
+    release: bool = typer.Option(
+        False, "--release", help="Use the current version from version.json for output"
+    ),
 ):
     """Package a Python file or directory into a single executable script."""
     try:
@@ -245,6 +248,16 @@ def package(
 
         # Determine version
         version = internal_use_version if internal_use_version is not None else "0.0.0"
+        if release:
+            # Read version from version.json
+            version_file = Path("version.json")
+            if version_file.exists():
+                with open(version_file) as f:
+                    data = json.load(f)
+                    version = data.get("version", "0.0.0")
+            else:
+                typer.echo("version.json not found. Using 0.0.0.")
+                version = "0.0.0"
 
         # Use path manager to get output path
         if version == "0.0.0":
@@ -254,7 +267,16 @@ def package(
                 f.unlink()
             output_path = path_manager.get_unique_output_path(library_name, "0.0.0")
         else:
-            output_path = path_manager.get_unique_output_path(library_name, version)
+            # For release, always use the canonical output path in the release directory
+            release_dir = path_manager.get_release_path(library_name, version)
+            output_path = release_dir / f"{library_name}_v{version}.py"
+            if output_path.exists():
+                confirm = typer.confirm(
+                    f"Output file {output_path} already exists. Overwrite?", default=False
+                )
+                if not confirm:
+                    typer.echo("Aborted by user. No file was overwritten.")
+                    raise typer.Exit(1)
 
         output_path = generate_script(py_files_str, output_path, preserve_comments)
         logger.debug("Generated script at: %s", output_path)
@@ -355,7 +377,7 @@ def bump_version(
         help="Which part to bump: 'major' (1.2.3→2.0.0, breaking changes), 'minor' (1.2.3→1.3.0, new features), or 'patch' (1.2.3→1.2.4, bug fixes). Example: 'packager version-control bump minor --description \"Add feature\"'",
     ),
     description: str = typer.Option("", help="Description of the change"),
-    input_path: Optional[str] = typer.Option(
+    input_path: str | None = typer.Option(
         None, "--input", help="Path to Python file or directory to package (defaults to 'erasmus')"
     ),
 ):
