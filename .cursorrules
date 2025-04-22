@@ -1,72 +1,1243 @@
 <MetaRules>
-  <?xml version="1.0" encoding="UTF-8"?>
-<Architecture>
-    <Overview>
-        <Description>Test architecture</Description>
-    </Overview>
-</Architecture>
-  <?xml version="1.0" encoding="UTF-8"?>
-<Progress>
-    <Phase name="Test Phase">
+  <Architecture>
+  <Version>0.2.2</Version> 
+  <Title>Erasmus: Context Management and Prtocol Handling</Title>
+  <Overview>
+    <Description>Erasmus is a library for managing development context, protocols, and Model Context Protocol (MCP) interactions. It provides a robust, testable, and maintainable solution for handling development rules and context management.</Description>
+  </Overview> 
+  <CoreComponents> 
+    <Component>
+      <Name>Path Management</Name>
+      <Purpose>Centralized path management for different IDE environments</Purpose>
+      <Features>
+        <Feature>IDE environment detection from environment variables</Feature>
+        <Feature>Interactive IDE selection when environment variable is not set</Feature>
+        <Feature>Consistent path structure across different IDEs</Feature>
+        <Feature>Automatic directory and file creation</Feature>
+        <Feature>Symlink management for cross-IDE compatibility</Feature>
+      </Features>
+      <Implementation>
+        <Detail>PathMngrModel for managing all paths</Detail>
+        <Detail>IDE enum with metadata for each supported IDE</Detail>
+        <Detail>Environment variable detection with fallback to user input</Detail>
+        <Detail>Singleton pattern for global path access</Detail>
+      </Implementation>
+      <SupportedIDEs>
+        <IDE>
+          <Name>Windsurf</Name>
+          <RulesFile>.windsurfrules</RulesFile>
+          <GlobalRulesPath>~/.codeium/windsurf/memories/global_rules.md</GlobalRulesPath>
+          <SymlinkToCursor>true</SymlinkToCursor>
+        </IDE>
+        <IDE>
+          <Name>Cursor</Name>
+          <RulesFile>.cursorrules</RulesFile>
+          <GlobalRulesPath>~/.cursor/global_rules.md</GlobalRulesPath>
+          <SymlinkToCursor>false</SymlinkToCursor>
+        </IDE>
+        <IDE>
+          <Name>Codex</Name>
+          <RulesFile>codex.md</RulesFile>
+          <GlobalRulesPath>~/.codex/instructions.md</GlobalRulesPath>
+          <SymlinkToCursor>false</SymlinkToCursor>
+        </IDE>
+        <IDE>
+          <Name>Claude</Name>
+          <RulesFile>CLAUDE.md</RulesFile>
+          <GlobalRulesPath>~/.claude/CLAUDE.md</GlobalRulesPath>
+          <SymlinkToCursor>false</SymlinkToCursor>
+        </IDE>
+      </SupportedIDEs>
+    </Component>
+    <Component>
+      <Name>Environment Management</Name>
+      <Purpose>Generic, type-safe environment variable management</Purpose>
+      <Features>
+        <Feature>Dynamic variable definition (required/optional)</Feature>
+        <Feature>Strong type validation</Feature>
+        <Feature>Value constraints (min/max, patterns)</Feature>
+        <Feature>Custom validation functions</Feature>
+        <Feature>File-based loading (.env)</Feature>
+        <Feature>System environment loading</Feature>
+        <Feature>Configuration merging</Feature>
+      </Features>
+      <Implementation>
+        <Detail>EnvironmentConfig class for managing variables</Detail>
+        <Detail>VariableDefinition for type and constraint definitions</Detail>
+        <Detail>Comprehensive validation system</Detail>
+        <Detail>Error handling with descriptive messages</Detail>
+      </Implementation>
+    </Component>
+    <Component>
+      <Name>File Monitor Service</Name>
+      <Purpose>Monitors changes in ctx.architecture.md, ctx.progress.md, and ctx.tasks.md and applies the changes to .windsurfrules and/or .cursorrules files</Purpose>
+      <Responsibilities>
+        <Responsibility>Watch for changes in architecture, progress, and tasks files</Responsibility>
+        <Responsibility>Update rules file when changes are detected</Responsibility>
+        <Responsibility>Maintain file system event listeners</Responsibility>
+      </Responsibilities>
+      <Implementation>
+        <Detail>Uses watchdog for file system events</Detail>
+        <Detail>Efficient event handling</Detail>
+        <Detail>Robust error recovery</Detail>
+      </Implementation>
+    </Component>
+    <Component>
+      <Name>Context Manager</Name>
+      <Purpose>Manages development context files</Purpose>
+      <Responsibilities>
+        <Responsibility>Save/load context files to/from .erasmus/context directory</Responsibility>
+        <Responsibility>Parse and sanitize document names</Responsibility>
+        <Responsibility>Ensure ASCII-only characters</Responsibility>
+        <Responsibility>Handle file operations safely</Responsibility>
+      </Responsibilities>
+      <Implementation>
+        <Detail>Safe file operations</Detail>
+        <Detail>Content sanitization</Detail>
+        <Detail>Error handling</Detail>
+      </Implementation>
+    </Component>
+    <Component>
+      <Name>Protocol Handler</Name>
+      <Purpose>Manages protocol definitions</Purpose>
+      <Responsibilities>
+        <Responsibility>Add protocols to context objects</Responsibility>
+        <Responsibility>Preserve existing content</Responsibility>
+        <Responsibility>Load/save protocols from/to .erasmus/protocol folder</Responsibility>
+      </Responsibilities>
+      <Implementation>
+        <Detail>Protocol validation</Detail>
+        <Detail>Content preservation</Detail>
+        <Detail>File operations</Detail>
+      </Implementation>
+    </Component>
+    <Component>
+      <Name>MCP Integration</Name>
+      <Purpose>Model Context Protocol management</Purpose>
+      <Components>
+        <SubComponent>
+          <Name>Registry Manager</Name>
+          <Detail>Load from JSON configuration</Detail>
+          <Detail>Server registration</Detail>
+        </SubComponent>
+        <SubComponent>
+          <Name>Client Implementation</Name>
+          <Detail>Python SDK integration</Detail>
+          <Detail>Request handling</Detail>
+        </SubComponent>
+        <SubComponent>
+          <Name>Server Implementation</Name>
+          <Detail>CLI mirroring</Detail>
+          <Detail>Request processing</Detail>
+        </SubComponent>
+      </Components>
+    </Component>
+    <Component>
+      <Name>CLI Interface</Name>
+      <Purpose>User interaction layer</Purpose>
+      <Responsibilities>
+        <Responsibility>Context management</Responsibility>
+        <Responsibility>Protocol management</Responsibility>
+        <Responsibility>MCP server management</Responsibility>
+      </Responsibilities>
+    </Component>
+  </CoreComponents>
+  <DevelopmentPrinciples>
+    <Principle>
+      <Name>Testing Strategy</Name>
+      <Detail>Unit tests for each component</Detail>
+      <Detail>Integration tests for component interaction</Detail>
+      <Detail>End-to-end tests for CLI operations</Detail>
+      <Detail>Mock external dependencies</Detail>
+      <Detail>Test coverage requirements: 80% minimum</Detail>
+    </Principle>
+    <Principle>
+      <Name>Code Quality</Name>
+      <Detail>Type hints throughout</Detail>
+      <Detail>Comprehensive documentation</Detail>
+      <Detail>Error handling with proper logging</Detail>
+      <Detail>Clean code principles</Detail>
+      <Detail>KISS (Keep It Simple, Stupid) approach</Detail>
+    </Principle>
+    <Principle>
+      <Name>Configuration Management</Name>
+      <Detail>Centralized path management</Detail>
+      <Detail>Environment variable handling</Detail>
+      <Detail>No hardcoded values</Detail>
+      <Detail>Configuration validation</Detail>
+      <Detail>IDE environment detection</Detail>
+    </Principle>
+    <Principle>
+      <Name>Error Handling</Name>
+      <Detail>Graceful degradation</Detail>
+      <Detail>Detailed error logging</Detail>
+      <Detail>User-friendly error messages</Detail>
+      <Detail>Recovery mechanisms</Detail>
+    </Principle>
+    <Principle>
+      <Name>Data Modeling</Name>
+      <Detail>Use Pydantic models for serializable data structures</Detail>
+      <Detail>Use NamedTuple for simple, immutable data structures</Detail>
+      <Detail>Modern type hints (lowercase list, dict, | for union)</Detail>
+      <Detail>Type safety throughout the codebase</Detail>
+    </Principle>
+  </DevelopmentPrinciples>
+  <Requirements>
+    <Requirement>
+      <Name>nano (text editor)</Name>
+      <Description>The CLI uses 'nano' as the default editor for editing context files. Users may set a different editor by configuring the EDITOR environment variable.</Description>
+    </Requirement>
+  </Requirements>
+  <Dependencies>
+    <Dependency>Python 3.8+</Dependency>
+    <Dependency>loguru</Dependency>
+    <Dependency>modelcontextprotocol/python-sdk | mcp[cli]</Dependency>
+    <Dependency>pytest (testing)</Dependency>
+    <Dependency>typer (CLI)</Dependency>
+    <Dependency>watchdog (file monitoring)</Dependency>
+  </Dependencies>
+  <DirectoryStructure>
+    <Directory>
+      <Path>erasmus/</Path>
+      <SubDirectory>
+        <Path>.erasmus/</Path>
+        <Description>Library working files</Description>
+        <SubDirectory>
+          <Path>protocol/</Path>
+          <Description>Protocol definitions</Description>
+        </SubDirectory>
+        <SubDirectory>
+          <Path>context/</Path>
+          <Description>Context Folders</Description>
+          <SubDirectory>
+            <Path>{context_name}/</Path>
+            <Description>Labeled by name</Description>
+            <File>
+              <Name>ctx.architecture.md</Name>
+              <Description>Architecture doc</Description>
+            </File>
+            <File>
+              <Name>ctx.progress.md</Name>
+              <Description>Progress doc</Description>
+            </File>
+            <File>
+              <Name>ctx.tasks.md</Name>
+              <Description>Tasks doc</Description>
+            </File>
+          </SubDirectory>
+        </SubDirectory>
+      </SubDirectory>
+      <SubDirectory>
+        <Path>src/</Path>
+        <SubDirectory>
+          <Path>monitor/</Path>
+          <Description>File monitoring</Description>
+        </SubDirectory>
+        <SubDirectory>
+          <Path>context/</Path>
+          <Description>Context management</Description>
+        </SubDirectory>
+        <SubDirectory>
+          <Path>protocol/</Path>
+          <Description>Protocol handling</Description>
+        </SubDirectory>
+        <SubDirectory>
+          <Path>logging/</Path>
+          <Description>Logging system</Description>
+        </SubDirectory>
+        <SubDirectory>
+          <Path>mcp/</Path>
+          <Description>MCP integration</Description>
+        </SubDirectory>
+        <SubDirectory>
+          <Path>cli/</Path>
+          <Description>Command line interface</Description>
+        </SubDirectory>
+      </SubDirectory>
+      <SubDirectory>
+        <Path>tests/</Path>
+        <Description>Test suite</Description>
+      </SubDirectory>
+      <SubDirectory>
+        <Path>config/</Path>
+        <Description>Configuration files</Description>
+      </SubDirectory>
+      <File>
+        <Name>.cursorrules | .windsurfrules</Name>
+        <Description>Rules file and injected context</Description>
+      </File>
+      <File>
+        <Name>.ctx.architecture.xml</Name>
+        <Description>Monitored design doc</Description>
+      </File>
+      <File>
+        <Name>.ctx.progress.xml</Name>
+        <Description>Monitored development schedule</Description>
+      </File>
+      <File>
+        <Name>.ctx.tasks.xml</Name>
+        <Description>Monitored task list</Description>
+      </File>
+    </Directory>
+  </DirectoryStructure>
+  <DevelopmentWorkflow>
+    <Step>Component selection from PROGRESS.md</Step>
+    <Step>Task breakdown in TASKS.md</Step>
+    <Step>Test-driven development</Step>
+    <Step>Code review</Step>
+    <Step>Integration testing</Step>
+    <Step>Documentation update</Step> 
+  </DevelopmentWorkflow> 
+  <DesignConsiderations>
+    <Item>Use clear naming conventions for all path and content accessors:</Item>
+    <Item>Methods that return a path should use the <code>_path</code> suffix (e.g., <code>get_context_dir_path</code>), and methods that return content should use the <code>_content</code> suffix. This ensures clarity and maintainability throughout the codebase.</Item>
+  </DesignConsiderations>
+</Architecture>   
+  <Progress>
+  <Phase name="README Update Script Refactor &amp; Test">
+    <Status>In Progress</Status>
+    <Tasks>  
+      <Task name="Component Analysis"> 
+        <Status>Completed</Status>   
+        <Subtasks>
+          <Subtask name="Path Resolution (version.json, README.md)"><Status>Completed</Status></Subtask>
+          <Subtask name="Version Extraction from version.json"><Status>Completed</Status></Subtask>
+          <Subtask name="README Content Loading"><Status>Completed</Status></Subtask>
+          <Subtask name="Regex Pattern Construction for Install Block"><Status>Completed</Status></Subtask>
+          <Subtask name="Replacement String Construction"><Status>Completed</Status></Subtask>
+          <Subtask name="Block Replacement Logic"><Status>Completed</Status></Subtask>
+          <Subtask name="Write-back and Change Detection"><Status>Completed</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Comprehensive Testing">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Test: Correct version inserted in install block"><Status>Planned</Status></Subtask>
+          <Subtask name="Test: No change if already up-to-date"><Status>Planned</Status></Subtask>
+          <Subtask name="Test: Handles missing install block gracefully"><Status>Planned</Status></Subtask>
+          <Subtask name="Test: Handles malformed README gracefully"><Status>Planned</Status></Subtask>
+          <Subtask name="Test: Handles missing version.json gracefully"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+    </Tasks>
+  </Phase>
+  <Phase name="Packager Tests">
+    <Status>In Progress</Status>
+    <Tasks>
+      <Task name="Fix Hanging Test">
         <Status>In Progress</Status>
-    </Phase>
-</Progress>
-  <?xml version="1.0" encoding="UTF-8"?>
-<Tasks>
-    <CurrentTasks>
-        <Task name="Test Task">
-            <Status>Pending</Status>
-        </Task>
-    </CurrentTasks>
-</Tasks>
+        <Subtasks>
+          <Subtask name="Investigate test_package_scripts_invalid_path hanging"><Status>In Progress</Status></Subtask>
+          <Subtask name="Add timeout mechanism to test"><Status>In Progress</Status></Subtask>
+          <Subtask name="Fix collect_python_files implementation"><Status>Planned</Status></Subtask>
+          <Subtask name="Update test to use controlled environment"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+    </Tasks>
+  </Phase>
+  <Phase name="File Watcher Simplification">
+    <Status>Planned</Status>
+    <Tasks>
+      <Task name="Analyze Current Implementation">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Identify core functionality needed"><Status>Planned</Status></Subtask>
+          <Subtask name="Document unnecessary complexity"><Status>Planned</Status></Subtask>
+          <Subtask name="Evaluate future use cases"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Design Simplified Watcher">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Create focused watcher for .ctx files"><Status>Planned</Status></Subtask>
+          <Subtask name="Preserve comprehensive watcher for future use"><Status>Planned</Status></Subtask>
+          <Subtask name="Define clear separation of concerns"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Implementation">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Refactor file_monitor.py"><Status>Planned</Status></Subtask>
+          <Subtask name="Update tests"><Status>Planned</Status></Subtask>
+          <Subtask name="Document changes"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+    </Tasks>
+  </Phase>
+  <Phase name="GitHub MCP Client CLI">
+    <Status>In Progress</Status>
+    <Tasks>
+      <Task name="Design GitHub MCP Client">
+        <Status>Completed</Status>
+        <Subtasks>
+          <Subtask name="Define GitHub MCP client interface"><Status>Completed</Status></Subtask>
+          <Subtask name="Plan communication with MCP server"><Status>Completed</Status></Subtask>
+          <Subtask name="Define command structure"><Status>Completed</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Implementation">
+        <Status>In Progress</Status>
+        <Subtasks>
+          <Subtask name="Create GitHub MCP client module"><Status>Completed</Status></Subtask>
+          <Subtask name="Implement issue management commands"><Status>Completed</Status></Subtask>
+          <Subtask name="Implement pull request commands"><Status>Completed</Status></Subtask>
+          <Subtask name="Implement repository commands"><Status>Completed</Status></Subtask>
+          <Subtask name="Add search functionality"><Status>Completed</Status></Subtask>
+          <Subtask name="Implement remaining methods from config"><Status>In Progress</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Testing">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Test with GitHub MCP server"><Status>Planned</Status></Subtask>
+          <Subtask name="Verify all commands work correctly"><Status>Planned</Status></Subtask>
+          <Subtask name="Document usage examples"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+    </Tasks>
+  </Phase>
+  <Phase name="MCP Client CLI">
+    <Status>Planned</Status>
+    <Tasks>
+      <Task name="Design MCP Client">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Define MCP client interface"><Status>Planned</Status></Subtask>
+          <Subtask name="Design mcp.json schema"><Status>Planned</Status></Subtask>
+          <Subtask name="Plan polling mechanism"><Status>Planned</Status></Subtask>
+          <Subtask name="Define tool integration approach"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Implementation">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Create MCP client module"><Status>Planned</Status></Subtask>
+          <Subtask name="Implement server polling"><Status>Planned</Status></Subtask>
+          <Subtask name="Add tool discovery and registration"><Status>Planned</Status></Subtask>
+          <Subtask name="Create CLI interface"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Integration">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Connect to architecture context"><Status>Planned</Status></Subtask>
+          <Subtask name="Update rules file with tools"><Status>Planned</Status></Subtask>
+          <Subtask name="Test with sample MCP servers"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+    </Tasks>
+  </Phase>
+  <Phase name="Context Backup System">
+    <Status>Planned</Status>
+    <Tasks>
+      <Task name="Design Backup Structure">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Define .erasmus directory structure"><Status>Planned</Status></Subtask>
+          <Subtask name="Design context mirroring mechanism"><Status>Planned</Status></Subtask>
+          <Subtask name="Design protocol backup mechanism"><Status>Planned</Status></Subtask>
+          <Subtask name="Plan template storage approach"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Implementation">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Create .erasmus directory in $HOME"><Status>Planned</Status></Subtask>
+          <Subtask name="Implement context mirroring"><Status>Planned</Status></Subtask>
+          <Subtask name="Implement protocol backup"><Status>Planned</Status></Subtask>
+          <Subtask name="Add template copying during installation"><Status>Planned</Status></Subtask>
+          <Subtask name="Update context storage to include backup"><Status>Planned</Status></Subtask>
+          <Subtask name="Update protocol storage to include backup"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Testing and Recovery">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Test context backup on save"><Status>Planned</Status></Subtask>
+          <Subtask name="Test protocol backup on save"><Status>Planned</Status></Subtask>
+          <Subtask name="Test context recovery from backup"><Status>Planned</Status></Subtask>
+          <Subtask name="Test protocol recovery from backup"><Status>Planned</Status></Subtask>
+          <Subtask name="Add recovery commands to CLI"><Status>Planned</Status></Subtask>
+        </Subtasks>
+      </Task>
+      <Task name="Unified Context Files">
+        <Status>Planned</Status>
+        <Subtasks>
+          <Subtask name="Design unified context structure">
+            <Status>Planned</Status>
+            <Subtasks>
+              <Subtask name="Define centralized .ctx files in $HOME/.erasmus/"><Status>Planned</Status></Subtask>
+              <Subtask name="Plan symlink strategy for IDE detection"><Status>Planned</Status></Subtask>
+              <Subtask name="Design automatic IDE detection mechanism"><Status>Planned</Status></Subtask>
+            </Subtasks>
+          </Subtask>
+          <Subtask name="Implement Unified System">
+            <Status>Planned</Status>
+            <Subtasks>
+              <Subtask name="Create centralized .ctx files"><Status>Planned</Status></Subtask>
+              <Subtask name="Implement IDE detection"><Status>Planned</Status></Subtask>
+              <Subtask name="Add symlink creation for detected IDEs"><Status>Planned</Status></Subtask>
+              <Subtask name="Update setup command to handle IDE detection"><Status>Planned</Status></Subtask>
+              <Subtask name="Simplify path manager to use unified structure"><Status>Planned</Status></Subtask>
+            </Subtasks>
+          </Subtask>
+          <Subtask name="Testing">
+            <Status>Planned</Status>
+            <Subtasks>
+              <Subtask name="Test IDE detection"><Status>Planned</Status></Subtask>
+              <Subtask name="Test symlink creation"><Status>Planned</Status></Subtask>
+              <Subtask name="Test context file updates"><Status>Planned</Status></Subtask>
+              <Subtask name="Test setup command with multiple IDEs"><Status>Planned</Status></Subtask>
+            </Subtasks>
+          </Subtask>
+        </Subtasks>
+      </Task>
+    </Tasks>
+  </Phase>
+  <CurrentFocus>
+    <Phase>GitHub MCP Client CLI</Phase>
+    <Priority>Implementation</Priority>
+    <NextTask>Implement remaining methods from config</NextTask>
+  </CurrentFocus>
+  <Notes>
+    <Note>Refactor and test coverage for scripts/update_readme.py is tracked here.</Note>
+    <Note>Working on fixing the hanging test_package_scripts_invalid_path test in the packager.</Note>
+    <Note>Current approach: Adding a timeout mechanism to the test to identify where it's hanging.</Note>
+    <Note>Previous attempts: Modified test to use test_files fixture, tried using tmp_path directly, added error handling to collect_python_files.</Note>
+    <Note>New task: Simplify the file watcher to focus only on .ctx files while preserving the comprehensive watcher for future use.</Note>
+    <Note>New component: MCP Client CLI to bridge Cursor with MCP infrastructure, allowing tool discovery and integration.</Note>
+    <Note>New feature: Context Backup System to create mirrors of contexts and protocols in $HOME/.erasmus/ to prevent loss of data.</Note>
+    <Note>New feature: Unified context files system that centralizes .ctx files in $HOME/.erasmus/ and automatically detects and symlinks to IDE directories.</Note>
+    <Note>GitHub MCP Client CLI: Implemented issue management, pull request, and repository commands. Working on implementing remaining methods from the GitHub MCP server configuration.</Note>
+  </Notes>
+</Progress> 
+  <Tasks>
+  <CurrentTasks>
+    <Task name="Task Name">
+      <Description>Task description</Description>
+      <Subtasks>
+        <Subtask name="Subtask Name">
+          <Status>Status (e.g., Pending, In Progress, Completed)</Status>
+          <Subtasks>
+            <Subtask name="Nested Subtask Name">
+              <Status>Status</Status>
+            </Subtask>
+            <!-- Add more nested subtasks as needed -->
+          </Subtasks>
+        </Subtask>
+        <!-- Add more subtasks as needed -->
+      </Subtasks>
+      <Tests>
+        <Test name="Test Name">
+          <Code>
+            <![CDATA[
+            def test_function():
+                # Test code goes here
+            ]]>
+          </Code>
+        </Test>
+        <!-- Add more tests as needed -->
+      </Tests>
+    </Task>
+    <Task name="Fix Packager Hanging Test">
+      <Description>Fix the test_package_scripts_invalid_path test that is hanging during execution.</Description>
+      <Subtasks>
+        <Subtask name="Investigate collect_python_files implementation">
+          <Status>Completed</Status>
+          <Subtasks>
+            <Subtask name="Check base_path handling in __init__">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Review rglob implementation">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Add error handling and path validation">
+              <Status>Completed</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Add timeout mechanism">
+          <Status>In Progress</Status>
+          <Subtasks>
+            <Subtask name="Implement timeout decorator">
+              <Status>In Progress</Status>
+            </Subtask>
+            <Subtask name="Apply timeout to test">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Identify hanging point">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Implement fix">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Update test to use controlled environment">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Verify fix works">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+      </Subtasks>
+      <Tests>
+        <Test name="test_package_scripts_invalid_path">
+          <Code>
+            <![CDATA[
+import pytest
+import signal
+from functools import wraps
+import time
+from pathlib import Path
+
+def timeout(seconds=5):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            def handler(signum, frame):
+                raise TimeoutError(f"Test timed out after {seconds} seconds")
+            
+            # Set the timeout handler
+            original_handler = signal.signal(signal.SIGALRM, handler)
+            signal.alarm(seconds)
+            
+            try:
+                result = func(*args, **kwargs)
+                return result
+            finally:
+                # Restore the original handler
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, original_handler)
+        return wrapper
+    return decorator
+
+@timeout(5)
+def test_package_scripts_invalid_path(tmp_path):
+    """Test packaging with invalid output path."""
+    # Create a minimal test file
+    test_file = tmp_path / "test.py"
+    test_file.write_text("print('hello')") 
+    
+    packager = ScriptPackager(tmp_path)
+    # Use a path that will fail without requiring root permissions
+    invalid_path = Path("nonexistent/directory/script.py")
+
+    with pytest.raises(OSError, match="Failed to create output directory"):
+        packager.package_scripts(invalid_path)
+            ]]>
+          </Code>
+        </Test>
+      </Tests>
+    </Task>
+    <Task name="Simplify File Watcher">
+      <Description>Refactor the file watcher to focus only on .ctx files while preserving the comprehensive watcher for future use.</Description>
+      <Subtasks>
+        <Subtask name="Analyze Current Implementation">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Review file_monitor.py">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Identify core functionality">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Document unnecessary complexity">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Design Simplified Watcher">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Create ContextWatcher class">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Define ProjectWatcher interface">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Plan refactoring approach">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Implement Changes">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Create ContextWatcher implementation">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Refactor existing code">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Update tests">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+      </Subtasks>
+      <Tests>
+        <Test name="test_context_watcher">
+          <Code>
+            <![CDATA[
+def test_context_watcher(tmp_path):
+    """Test that the ContextWatcher correctly monitors .ctx files."""
+    # Create test .ctx files
+    architecture_file = tmp_path / ".ctx.architecture.xml"
+    progress_file = tmp_path / ".ctx.progress.xml"
+    tasks_file = tmp_path / ".ctx.tasks.xml"
+    
+    # Write initial content
+    architecture_file.write_text("<Architecture><Overview><Description>Test</Description></Overview></Architecture>")
+    progress_file.write_text("<Progress><Phase name='Test'><Status>In Progress</Status></Phase></Progress>")
+    tasks_file.write_text("<Tasks><CurrentTasks><Task name='Test'><Status>Planned</Status></Task></CurrentTasks></Tasks>")
+    
+    # Create a mock rules file
+    rules_file = tmp_path / ".rules"
+    rules_file.write_text("<!--ARCHITECTURE--><!--/ARCHITECTURE--><!--PROGRESS--><!--/PROGRESS--><!--TASKS--><!--/TASKS-->")
+    
+    # Initialize watcher
+    watcher = ContextWatcher(tmp_path, rules_file)
+    
+    # Start watching
+    watcher.start()
+    
+    # Modify a file
+    architecture_file.write_text("<Architecture><Overview><Description>Updated</Description></Overview></Architecture>")
+    
+    # Wait for event processing
+    import time
+    time.sleep(0.5)
+    
+    # Check that rules file was updated
+    rules_content = rules_file.read_text()
+    assert "Updated" in rules_content
+    
+    # Stop watching
+    watcher.stop()
+            ]]>
+          </Code>
+        </Test>
+      </Tests>
+    </Task>
+    <Task name="Implement GitHub MCP Client CLI">
+      <Description>Create a CLI interface for GitHub MCP client to interact with GitHub through the MCP server.</Description>
+      <Subtasks>
+        <Subtask name="Design GitHub MCP Client Interface">
+          <Status>Completed</Status>
+          <Subtasks>
+            <Subtask name="Define GitHub MCP client class structure">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Plan communication with MCP server">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Define command structure">
+              <Status>Completed</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Implement Core Functionality">
+          <Status>In Progress</Status>
+          <Subtasks>
+            <Subtask name="Create GitHub MCP client module">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Implement issue management commands">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Implement pull request commands">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Implement repository commands">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Add search functionality">
+              <Status>Completed</Status>
+            </Subtask>
+            <Subtask name="Implement remaining methods from config">
+              <Status>In Progress</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Testing and Documentation">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Test with GitHub MCP server">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Verify all commands work correctly">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Document usage examples">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+      </Subtasks>
+      <Tests>
+        <Test name="test_github_mcp_client">
+          <Code>
+            <![CDATA[
+def test_github_mcp_client():
+    """Test that the GitHub MCP client correctly communicates with the MCP server."""
+    # This test would mock the MCP server and verify that the client
+    # correctly formats and sends requests, and processes responses.
+    
+    # Example test structure:
+    # 1. Create a mock MCP server
+    # 2. Initialize the GitHub MCP client with the mock server
+    # 3. Call a method on the client
+    # 4. Verify that the correct request was sent to the mock server
+    # 5. Simulate a response from the mock server
+    # 6. Verify that the client correctly processes the response
+            ]]>
+          </Code>
+        </Test>
+      </Tests>
+    </Task>
+    <Task name="Implement MCP Client CLI">
+      <Description>Create a CLI interface for MCP client to bridge Cursor with MCP infrastructure, allowing tool discovery and integration.</Description>
+      <Subtasks>
+        <Subtask name="Design MCP Client Interface">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Define MCP client class structure">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Design mcp.json schema">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Plan server polling mechanism">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Implement Core Functionality">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Create MCP client module">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Implement server polling">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Add tool discovery and registration">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Create CLI Interface">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Define CLI commands">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Implement command handlers">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+      </Subtasks>
+    </Task>
+    <Task name="Implement Context Backup System">
+      <Description>Create a backup system for contexts and protocols that mirrors them in $HOME/.erasmus/ to prevent loss of data, with a unified context files system that centralizes .ctx files and automatically detects and symlinks to IDE directories.</Description>
+      <Subtasks>
+        <Subtask name="Design Backup Structure">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Define .erasmus directory structure">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Design context mirroring mechanism">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Design protocol backup mechanism">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Plan template storage approach">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Implement Backup Functionality">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Create .erasmus directory in $HOME">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Implement context mirroring">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Implement protocol backup">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Add template copying during installation">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Update context storage to include backup">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Update protocol storage to include backup">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Add Recovery Commands">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Implement context restore command">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Implement protocol restore command">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Add context list command">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Add protocol list command">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Create context diff command">
+              <Status>Planned</Status>
+            </Subtask>
+            <Subtask name="Create protocol diff command">
+              <Status>Planned</Status>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+        <Subtask name="Implement Unified Context Files">
+          <Status>Planned</Status>
+          <Subtasks>
+            <Subtask name="Design Unified Structure">
+              <Status>Planned</Status>
+              <Subtasks>
+                <Subtask name="Define centralized .ctx files in $HOME/.erasmus/">
+                  <Status>Planned</Status>
+                </Subtask>
+                <Subtask name="Plan symlink strategy for IDE detection">
+                  <Status>Planned</Status>
+                </Subtask>
+                <Subtask name="Design automatic IDE detection mechanism">
+                  <Status>Planned</Status>
+                </Subtask>
+              </Subtasks>
+            </Subtask>
+            <Subtask name="Implement Core Functionality">
+              <Status>Planned</Status>
+              <Subtasks>
+                <Subtask name="Create centralized .ctx files">
+                  <Status>Planned</Status>
+                </Subtask>
+                <Subtask name="Implement IDE detection">
+                  <Status>Planned</Status>
+                </Subtask>
+                <Subtask name="Add symlink creation for detected IDEs">
+                  <Status>Planned</Status>
+                </Subtask>
+                <Subtask name="Update setup command to handle IDE detection">
+                  <Status>Planned</Status>
+                </Subtask>
+                <Subtask name="Simplify path manager to use unified structure">
+                  <Status>Planned</Status>
+                </Subtask>
+              </Subtasks>
+            </Subtask>
+          </Subtasks>
+        </Subtask>
+      </Subtasks>
+      <Tests>
+        <Test name="test_context_backup">
+          <Code>
+            <![CDATA[
+def test_context_backup(tmp_path, monkeypatch):
+    """Test that contexts are properly backed up to $HOME/.erasmus/context/."""
+    # Create a mock home directory
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home_dir))
+    
+    # Create .erasmus directory
+    erasmus_dir = home_dir / ".erasmus"
+    erasmus_dir.mkdir()
+    context_dir = erasmus_dir / "context"
+    context_dir.mkdir()
+    
+    # Create a mock project directory
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    
+    # Create a context file
+    context_file = project_dir / ".ctx.architecture.xml"
+    context_file.write_text("<Architecture><Overview><Description>Test</Description></Overview></Architecture>")
+    
+    # Initialize context manager
+    from erasmus.context import ContextManager
+    context_manager = ContextManager(project_dir)
+    
+    # Store context
+    context_manager.store_context("test_context")
+    
+    # Check that context was backed up
+    backup_path = context_dir / "project" / ".ctx.architecture.xml"
+    assert backup_path.exists()
+    assert backup_path.read_text() == context_file.read_text()
+          ]]>
+        </Code>
+        </Test>
+        <Test name="test_protocol_backup">
+          <Code>
+            <![CDATA[
+def test_protocol_backup(tmp_path, monkeypatch):
+    """Test that protocols are properly backed up to $HOME/.erasmus/protocol/."""
+    # Create a mock home directory
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home_dir))
+    
+    # Create .erasmus directory
+    erasmus_dir = home_dir / ".erasmus"
+    erasmus_dir.mkdir()
+    protocol_dir = erasmus_dir / "protocol"
+    protocol_dir.mkdir()
+    
+    # Create a mock project directory
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    
+    # Create a protocol file
+    protocol_file = project_dir / "test_protocol.xml"
+    protocol_file.write_text("<Protocol><Name>Test Protocol</Name></Protocol>")
+    
+    # Initialize protocol manager
+    from erasmus.protocol import ProtocolManager
+    protocol_manager = ProtocolManager(project_dir)
+    
+    # Store protocol
+    protocol_manager.store_protocol("test_protocol")
+    
+    # Check that protocol was backed up
+    backup_path = protocol_dir / "test_protocol.xml"
+    assert backup_path.exists()
+    assert backup_path.read_text() == protocol_file.read_text()
+          ]]>
+        </Code>
+        </Test>
+        <Test name="test_protocol_restore">
+          <Code>
+            <![CDATA[
+def test_protocol_restore(tmp_path, monkeypatch):
+    """Test that protocols can be restored from backup."""
+    # Create a mock home directory
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home_dir))
+    
+    # Create .erasmus directory
+    erasmus_dir = home_dir / ".erasmus"
+    erasmus_dir.mkdir()
+    protocol_dir = erasmus_dir / "protocol"
+    protocol_dir.mkdir()
+    
+    # Create a mock project directory
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+    
+    # Create a backup protocol file
+    backup_file = protocol_dir / "test_protocol.xml"
+    backup_file.write_text("<Protocol><Name>Backup Protocol</Name></Protocol>")
+    
+    # Initialize protocol manager
+    from erasmus.protocol import ProtocolManager
+    protocol_manager = ProtocolManager(project_dir)
+    
+    # Restore protocol
+    protocol_manager.restore_protocol("test_protocol")
+    
+    # Check that protocol was restored
+    protocol_file = project_dir / "test_protocol.xml"
+    assert protocol_file.exists()
+    assert protocol_file.read_text() == backup_file.read_text()
+          ]]>
+        </Code>
+        </Test>
+        <Test name="test_unified_context_files">
+          <Code>
+            <![CDATA[
+def test_unified_context_files(tmp_path, monkeypatch):
+    """Test that unified context files are properly created and symlinked."""
+    # Create a mock home directory
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home_dir))
+    
+    # Create .erasmus directory
+    erasmus_dir = home_dir / ".erasmus"
+    erasmus_dir.mkdir()
+    
+    # Create centralized .ctx files
+    architecture_file = erasmus_dir / ".ctx.architecture.xml"
+    progress_file = erasmus_dir / ".ctx.progress.xml"
+    tasks_file = erasmus_dir / ".ctx.tasks.xml"
+    protocol_file = erasmus_dir / ".ctx.protocol.xml"
+    global_rules_file = erasmus_dir / ".ctx.global_rules.xml"
+    context_file = erasmus_dir / ".ctx.context.xml"
+    
+    # Write initial content
+    architecture_file.write_text("<Architecture><Overview><Description>Test</Description></Overview></Architecture>")
+    progress_file.write_text("<Progress><Phase name='Test'><Status>In Progress</Status></Phase></Progress>")
+    tasks_file.write_text("<Tasks><CurrentTasks><Task name='Test'><Status>Planned</Status></Task></CurrentTasks></Tasks>")
+    protocol_file.write_text("<Protocol><Name>Test Protocol</Name></Protocol>")
+    global_rules_file.write_text("<GlobalRules><Rule>Test Rule</Rule></GlobalRules>")
+    context_file.write_text("<Context><Name>Test Context</Name></Context>")
+    
+    # Create mock IDE directories
+    cursor_dir = home_dir / ".cursor"
+    cursor_dir.mkdir()
+    codeium_dir = home_dir / ".codeium" / "windsurf"
+    codeium_dir.mkdir(parents=True)
+    
+    # Initialize unified context manager
+    from erasmus.context import UnifiedContextManager
+    context_manager = UnifiedContextManager()
+    
+    # Run setup
+    context_manager.setup()
+    
+    # Check that symlinks were created for Cursor
+    cursor_architecture_link = cursor_dir / ".ctx.architecture.xml"
+    cursor_progress_link = cursor_dir / ".ctx.progress.xml"
+    cursor_tasks_link = cursor_dir / ".ctx.tasks.xml"
+    cursor_protocol_link = cursor_dir / ".ctx.protocol.xml"
+    cursor_global_rules_link = cursor_dir / ".ctx.global_rules.xml"
+    cursor_context_link = cursor_dir / ".ctx.context.xml"
+    
+    assert cursor_architecture_link.is_symlink()
+    assert cursor_progress_link.is_symlink()
+    assert cursor_tasks_link.is_symlink()
+    assert cursor_protocol_link.is_symlink()
+    assert cursor_global_rules_link.is_symlink()
+    assert cursor_context_link.is_symlink()
+    
+    # Check that symlinks were created for Codeium
+    codeium_architecture_link = codeium_dir / ".ctx.architecture.xml"
+    codeium_progress_link = codeium_dir / ".ctx.progress.xml"
+    codeium_tasks_link = codeium_dir / ".ctx.tasks.xml"
+    codeium_protocol_link = codeium_dir / ".ctx.protocol.xml"
+    codeium_global_rules_link = codeium_dir / ".ctx.global_rules.xml"
+    codeium_context_link = codeium_dir / ".ctx.context.xml"
+    
+    assert codeium_architecture_link.is_symlink()
+    assert codeium_progress_link.is_symlink()
+    assert codeium_tasks_link.is_symlink()
+    assert codeium_protocol_link.is_symlink()
+    assert codeium_global_rules_link.is_symlink()
+    assert codeium_context_link.is_symlink()
+    
+    # Check that symlinks point to the correct files
+    assert cursor_architecture_link.resolve() == architecture_file.resolve()
+    assert cursor_progress_link.resolve() == progress_file.resolve()
+    assert cursor_tasks_link.resolve() == tasks_file.resolve()
+    assert cursor_protocol_link.resolve() == protocol_file.resolve()
+    assert cursor_global_rules_link.resolve() == global_rules_file.resolve()
+    assert cursor_context_link.resolve() == context_file.resolve()
+    
+    assert codeium_architecture_link.resolve() == architecture_file.resolve()
+    assert codeium_progress_link.resolve() == progress_file.resolve()
+    assert codeium_tasks_link.resolve() == tasks_file.resolve()
+    assert codeium_protocol_link.resolve() == protocol_file.resolve()
+    assert codeium_global_rules_link.resolve() == global_rules_file.resolve()
+    assert codeium_context_link.resolve() == context_file.resolve()
+          ]]>
+        </Code>
+      </Test>
+      <Test name="test_unified_context_updates">
+        <Code>
+          <![CDATA[
+def test_unified_context_updates(tmp_path, monkeypatch):
+    """Test that updates to centralized .ctx files are reflected in symlinked files."""
+    # Create a mock home directory
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    monkeypatch.setenv("HOME", str(home_dir))
+    
+    # Create .erasmus directory
+    erasmus_dir = home_dir / ".erasmus"
+    erasmus_dir.mkdir()
+    
+    # Create centralized .ctx files
+    architecture_file = erasmus_dir / ".ctx.architecture.xml"
+    architecture_file.write_text("<Architecture><Overview><Description>Initial</Description></Overview></Architecture>")
+    
+    # Create mock IDE directory
+    cursor_dir = home_dir / ".cursor"
+    cursor_dir.mkdir()
+    
+    # Initialize unified context manager
+    from erasmus.context import UnifiedContextManager
+    context_manager = UnifiedContextManager()
+    
+    # Run setup
+    context_manager.setup()
+    
+    # Check that symlink was created
+    cursor_architecture_link = cursor_dir / ".ctx.architecture.xml"
+    assert cursor_architecture_link.is_symlink()
+    assert cursor_architecture_link.resolve() == architecture_file.resolve()
+    
+    # Update centralized file
+    architecture_file.write_text("<Architecture><Overview><Description>Updated</Description></Overview></Architecture>")
+    
+    # Check that symlinked file reflects the update
+    assert cursor_architecture_link.read_text() == "<Architecture><Overview><Description>Updated</Description></Overview></Architecture>"
+          ]]>
+        </Code>
+      </Test>
+      </Tests>
+    </Task>
+    <!-- Add more current tasks as needed -->
+  </CurrentTasks>
+  
+  <NextSteps>
+    <Step>Complete implementation of remaining GitHub MCP server methods</Step>
+    <Step>Test the GitHub MCP client with the actual server</Step>
+    <Step>Document usage examples for the GitHub MCP client</Step>
+    <Step>Fix the hanging test in the packager</Step>
+    <Step>Begin work on the file watcher simplification</Step>
+  </NextSteps>
+</Tasks> 
   <?xml version="1.0" encoding="UTF-8"?>
 <AgentProtocol>
   <Metadata>
-    <Id>00000002</Id>
-    <Role>code_implementation</Role>
-    <Triggers>architecture_complete, code_review_issues, test_failures, style_issues, security_issues, performance_issues</Triggers>
-    <Produces>implementation_code, .ctx.tasks.xml, documentation, tests, code_review_feedback</Produces>
-    <Consumes>.ctx.architecture.xml, .ctx.progress.xml, .ctx.tasks.xml, code_review_feedback, test_results, style_reports, dependency_reports</Consumes>
+    <Id>00000009</Id>
+    <Role>documentation_management</Role>
+    <Triggers>code_review_passed</Triggers>
+    <Produces>readme, api_docs, inline_comments</Produces>
+    <Consumes>code, architecture, test files, .ctx.progress.xml, .ctx.tasks.xml</Consumes>
   </Metadata>
   <Objective>
-    Implement robust, maintainable, and well-documented code based on project documentation. Interpret <File>.ctx.architecture.xml</File>, follow the sprint plan in <File>.ctx.progress.xml</File>, and generate, update, and complete tasks in <File>.ctx.tasks.xml</File>. Ensure code is ready for review, testing, and integration.
+    Create and maintain comprehensive documentation for the codebase. Track documentation tasks and progress in <File>.ctx.progress.xml</File> and <File>.ctx.tasks.xml</File>.
   </Objective>
   <Workflow>
-    <Step>Read and understand the system design and requirements from <File>.ctx.architecture.xml</File>.</Step>
-    <Step>Review the component roadmap and sprint planning in <File>.ctx.progress.xml</File>.</Step>
-    <Step>Break down the next component or milestone from <File>.ctx.progress.xml</File> into actionable development tasks, recording them in <File>.ctx.tasks.xml</File>.</Step>
-    <Step>For each task in <File>.ctx.tasks.xml</File>:
-      <Substep>Set up or update the development environment and dependencies as needed. Document any changes in <File>.ctx.tasks.xml</File> or a README.</Substep>
-      <Substep>Implement the code, ensuring strong typing, documentation, maintainability, and adherence to code style and linting standards.</Substep>
-      <Substep>Write or update tests to cover new or changed functionality. Ensure all tests pass before marking a task complete.</Substep>
-      <Substep>Update <File>.ctx.tasks.xml</File> to reflect progress, blockers, and completion. Communicate blockers or unclear requirements promptly.</Substep>
-      <Substep>Commit changes to version control with clear, descriptive messages. Use feature branches for significant changes.</Substep>
-      <Substep>Refactor code as needed for clarity, performance, and maintainability. Document significant refactoring in <File>.ctx.tasks.xml</File>.</Substep>
-      <Substep>Prepare code for review: ensure documentation is up to date, code style is consistent, and all tests pass.</Substep>
+    <Step>Monitor <File>.ctx.progress.xml</File> for new code changes requiring documentation.</Step>
+    <Step>For each code change:
+      <Substep>Review the code and identify areas needing documentation.</Substep>
+      <Substep>Document any gaps or improvements needed in <File>.ctx.tasks.xml</File>.</Substep>
+      <Substep>Update <File>.ctx.progress.xml</File> to reflect the status of documentation tasks.</Substep>
     </Step>
-    <Step>Respond to code review feedback, making necessary changes and documenting resolutions.</Step>
-    <Step>Collaborate with testing, style, and CI/CD agents to ensure integration and deployment readiness.</Step>
-    <Step>When all tasks for a component are complete, update <File>.ctx.progress.xml</File> to reflect milestone completion.</Step>
-    <Step>Proactively communicate with the Product Owner or stakeholders if requirements are unclear or blockers are encountered.</Step>
+    <Step>For recurring documentation issues, update <File>.ctx.progress.xml</File> with patterns and recommendations for future improvement.</Step>
   </Workflow>
   <Principles>
-    <Principle>Assume limited context; avoid destructive edits and preserve existing behavior unless change is intentional.</Principle>
-    <Principle>Favor incremental, test-driven improvement in structure, clarity, and performance.</Principle>
-    <Principle>Use modern patterns, strong typing, and clear, descriptive naming conventions.</Principle>
-    <Principle>Write or validate tests for each task; no component is complete without passing tests.</Principle>
-    <Principle>Ensure code style and linting compliance before review.</Principle>
-    <Principle>Document all significant changes and decisions.</Principle>
-    <Principle>Use version control best practices: frequent commits, clear messages, and feature branches.</Principle>
-    <Principle>Ask questions early to resolve uncertainty and communicate blockers promptly.</Principle>
-    <Principle>Collaborate with other agents and stakeholders for quality and integration.</Principle>
+    <Principle>Ensure code is well-documented with clear and concise comments.</Principle>
+    <Principle>Track all documentation tasks and improvements in .ctx.tasks.xml.</Principle>
+    <Principle>Update .ctx.progress.xml with documentation status and recommendations.</Principle>
+    <Principle>Communicate documentation gaps or failures in .ctx.tasks.xml for developer follow-up.</Principle>
   </Principles>
   <Tracking>
     <Uses>.ctx.progress.xml</Uses>
     <Uses>.ctx.tasks.xml</Uses>
-    <Uses>version_control (git)</Uses>
-    <Uses>test_results</Uses>
-    <Uses>code_review_feedback</Uses>
-    <Description>All development progress, task breakdowns, and code review feedback are tracked in these files and version control. Each task's status, notes, and related documentation are updated as work proceeds.</Description>
+    <Description>All documentation tasks, improvements, and recommendations are tracked in these files. Progress is updated as documentation tasks are completed.</Description>
   </Tracking>
 </AgentProtocol> 
 </MetaRules> 
