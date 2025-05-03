@@ -3,7 +3,7 @@ Main CLI entry point for Erasmus.
 """
 
 import typer
-from erasmus.cli.context_commands import context_app
+from erasmus.context import context_app
 from erasmus.cli.protocol_commands import protocol_app
 from erasmus.cli.setup_commands import setup_app
 from erasmus.cli.mcp_commands import mcp_app
@@ -13,13 +13,12 @@ app = typer.Typer(
     help="Erasmus - Development Context Management System\n\nA tool for managing development contexts, protocols, and Model Context Protocol (MCP) interactions.\n\nFor more information, visit: https://github.com/hydra-dynamics/erasmus"
 )
 
+
 # Add sub-commands
 app.add_typer(context_app, name="context", help="Manage development contexts")
 app.add_typer(protocol_app, name="protocol", help="Manage protocols")
 app.add_typer(setup_app, name="setup", help="Setup Erasmus")
-app.add_typer(
-    mcp_app, name="mcp", help="Manage MCP servers, clients, and integrations (including GitHub)"
-)
+app.add_typer(mcp_app, name="mcp", help="Manage MCP servers, clients, and integrations")
 
 
 # Custom error handler for unknown commands and argument errors
@@ -52,6 +51,7 @@ def print_main_help_and_exit():
     command_rows = [
         ["erasmus context", "Manage development contexts"],
         ["erasmus protocol", "Manage protocols"],
+        ["erasmus mcp", "Manage MCP servers, clients, and integrations"],
         ["erasmus setup", "Setup Erasmus"],
         ["erasmus watch", "Watch for .ctx file changes"],
         ["erasmus status", "Show current status"],
@@ -98,21 +98,35 @@ def watch():  # pragma: no cover
 
     Press Ctrl+C to stop watching.
     """
-    import time
     from erasmus.utils.paths import get_path_manager
-    from erasmus.file_monitor import FileMonitor
+    from erasmus.file_monitor import ContextFileMonitor
+    from loguru import logger
 
     pm = get_path_manager()
     root = pm.get_root_dir()
-    monitor = FileMonitor()
-    monitor.start()
-    typer.echo(f"Watching {root} for .ctx file changes (Ctrl+C to stop)...")
+
+    # Configure logger for file monitoring
+    logger.add(
+        pm.get_log_dir() / "file_monitor.log", rotation="1 day", retention="7 days", level="INFO"
+    )
+
+    monitor = ContextFileMonitor()
+
     try:
-        while True:
-            time.sleep(1)
+        with monitor:
+            typer.echo(f"Watching {root} for .ctx file changes (Ctrl+C to stop)...")
+            typer.echo("Log file: " + str(pm.get_log_dir() / "file_monitor.log"))
+
+            # Keep the main thread alive
+            import signal
+
+            signal.pause()
     except KeyboardInterrupt:
-        monitor.stop()
-        typer.echo("Stopped watching.")
+        typer.echo("\nStopped watching.")
+    except Exception as e:
+        logger.error(f"Error during file monitoring: {e}")
+        typer.echo(f"Error: {e}")
+        raise typer.Exit(1)
 
 
 @app.command()

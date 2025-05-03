@@ -4,6 +4,8 @@ from rich.syntax import Syntax
 from rich.panel import Panel
 from rich.text import Text
 from typing import Any, Optional
+from rich.logging import RichHandler
+import logging
 
 
 # Singleton Console instance
@@ -59,41 +61,47 @@ def print_syntax(code: str, language: str = "python", title: str | None = None):
         console.print(syntax)
 
 
-def print_success(message: str):
-    """Print a success message in green color.
+class RichConsoleLogger(logging.Logger):
+    def __init__(self, name: str):
+        super().__init__(name)
+        self.setLevel(logging.DEBUG)
+        self.addHandler(RichHandler(rich_tracebacks=True))
 
-    Args:
-        message (str): Success message to display.
-    """
-    console = get_console()
-    console.print(f"[bold green]✔ {message}")
+    def success(self, message: str):
+        """Print a success message in green color.
+
+        Args:
+            message (str): Success message to display.
+        """
+        self.info(f"[bold green]✔ {message}")
+
+    def error(self, message: str):
+        """Print an error message in red color.
+
+        Args:
+            message (str): Error message to display.
+        """
+        super().error(f"[bold red]✖ {message}")
+
+    def warning(self, message: str):
+        """Print a warning message in yellow color.
+
+        Args:
+            message (str): Warning message to display.
+        """
+        super().warning(f"[bold yellow]! {message}")
+
+    def info(self, message: str):
+        """Print an informational message in blue color.
+
+        Args:
+            message (str): Informational message to display.
+        """
+        super().info(f"[bold blue]ℹ {message}")
 
 
-def print_error(message: str):
-    """Print an error message in red color.
-
-    Args:
-        message (str): Error message to display.
-    """
-    console = get_console()
-    console.print(f"[bold red]✖ {message}")
+console_logger = RichConsoleLogger(__name__)
 
 
-def print_warning(message: str):
-    """Print a warning message in yellow color.
-
-    Args:
-        message (str): Warning message to display.
-    """
-    console = get_console()
-    console.print(f"[bold yellow]! {message}")
-
-
-def print_info(message: str):
-    """Print an informational message in blue color.
-
-    Args:
-        message (str): Informational message to display.
-    """
-    console = get_console()
-    console.print(f"[bold blue]ℹ {message}")
+def get_console_logger() -> RichConsoleLogger:
+    return console_logger

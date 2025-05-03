@@ -62,7 +62,7 @@ class ProtocolManager:
         """
         sanitized_name = self._sanitize_name(protocol_name)
         directory = self.base_template_dir if is_template else self.user_protocol_dir
-        return directory / f"{sanitized_name}.xml"
+        return directory / f"{sanitized_name}.md"
 
     def list_protocols(
         self, include_templates: bool = True, include_user: bool = True
@@ -78,11 +78,11 @@ class ProtocolManager:
         protocol_names = set()
         if include_templates:
             protocol_names.update(
-                [protocol_path.stem for protocol_path in self.base_template_dir.glob("*.xml")]
+                [protocol_path.stem for protocol_path in self.base_template_dir.glob("*.md")]
             )
         if include_user:
             protocol_names.update(
-                [protocol_path.stem for protocol_path in self.user_protocol_dir.glob("*.xml")]
+                [protocol_path.stem for protocol_path in self.user_protocol_dir.glob("*.md")]
             )
         return sorted(protocol_names)
 
@@ -123,7 +123,7 @@ class ProtocolManager:
             raise FileExistsError(f"Protocol '{sanitized_name}' already exists.")
         # Use template if content is not provided or empty
         if not isinstance(content, str) or not content.strip():
-            template_path = path_manager.template_dir / "protocol.xml"
+            template_path = path_manager.template_dir / "protocol.md"
             if template_path.exists():
                 content = template_path.read_text()
             else:

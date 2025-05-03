@@ -17,8 +17,10 @@ _last_rules_write_time = None
 
 
 def _merge_rules_file() -> None:
+    # Split this function into smaller functions in a future refactor
+    # Current complexity is necessary for handling various file states and formats
     """
-    Merge current .ctx files into the IDE rules file using the meta_rules.xml template.
+    Merge current .ctx files into the IDE rules file using the meta_rules.md template.
     Refreshes IDE detection to ensure correct rules file is used.
     Overwrites the rules file every time with a fresh merge of the template and current context/protocol content.
     Prompts the user to select a protocol if none is set or the file is missing.
@@ -29,7 +31,7 @@ def _merge_rules_file() -> None:
 
     detected_ide = detect_ide_from_env()
     path_manager = get_path_manager(detected_ide)
-    template_path = path_manager.template_dir / "meta_rules.xml"
+    template_path = path_manager.template_dir / "meta_rules.md"
     rules_file_path = path_manager.get_rules_file()
     if not template_path.exists():
         # No template available: fallback to raw merge of ctx files
@@ -51,32 +53,37 @@ def _merge_rules_file() -> None:
     try:
         # Always start from a fresh template
         template_content = template_path.read_text()
-        architecture = (
-            path_manager.get_architecture_file().read_text()
-            if path_manager.get_architecture_file().exists()
-            else ""
-        )
-        progress = (
-            path_manager.get_progress_file().read_text()
-            if path_manager.get_progress_file().exists()
-            else ""
-        )
-        tasks = (
-            path_manager.get_tasks_file().read_text()
-            if path_manager.get_tasks_file().exists()
-            else ""
-        )
+
+        # Read context files with proper error handling
+        def read_file_content(file_path: Path) -> str:
+            try:
+                if file_path.exists() and file_path.stat().st_size > 0:
+                    return file_path.read_text().strip()
+                return ""
+            except Exception as e:
+                logger.error(f"Error reading {file_path}: {e}")
+                return ""
+
+        architecture = read_file_content(path_manager.get_architecture_file())
+        progress = read_file_content(path_manager.get_progress_file())
+        tasks = read_file_content(path_manager.get_tasks_file())
+
+        # Update sections only if content exists
+        def update_section(content: str, section_name: str) -> str:
+            pattern = f"## {section_name}\\s*<!--.*?-->\\s*(?=## |$)"
+            replacement = (
+                f"## {section_name}\n{content}\n"
+                if content
+                else f"## {section_name}\n<!-- {section_name.lower()} content -->\n"
+            )
+            return re.sub(pattern, replacement, merged_content, flags=re.MULTILINE | re.DOTALL)
+
         merged_content = template_content
-        merged_content = re.sub(
-            r"<!--ARCHITECTURE-->[\s\S]*?<!--/ARCHITECTURE-->",
-            architecture,
-            merged_content,
-        )
-        merged_content = re.sub(
-            r"<!--PROGRESS-->[\s\S]*?<!--/PROGRESS-->", progress, merged_content
-        )
-        merged_content = re.sub(r"<!--TASKS-->[\s\S]*?<!--/TASKS-->", tasks, merged_content)
-        # Get protocol value from the current_protocol.txt file, or prompt if missing/invalid
+        merged_content = update_section(architecture, "Architecture")
+        merged_content = update_section(progress, "Progress")
+        merged_content = update_section(tasks, "Tasks")
+
+        # Handle protocol content
         protocol_value = ""
         current_protocol_path = Path(path_manager.erasmus_dir) / "current_protocol.txt"
         protocol_manager = ProtocolManager()
@@ -85,21 +92,22 @@ def _merge_rules_file() -> None:
             protocol_name = current_protocol_path.read_text().strip()
         protocol_file = None
         if protocol_name:
-            # Ensure protocol_name does not have .xml extension already
-            if protocol_name.endswith(".xml"):
-                protocol_file = path_manager.protocol_dir / protocol_name
-            else:
-                protocol_file = path_manager.protocol_dir / f"{protocol_name}.xml"
+            # Clean up protocol name and ensure .md extension
+            protocol_name = protocol_name.replace(".xml", "").replace(".md", "") + ".md"
+            protocol_file = path_manager.protocol_dir / protocol_name
             print(f"[DEBUG] Loaded protocol name: '{protocol_name}'")
             print(f"[DEBUG] Checking protocol file: {protocol_file}")
             # Fallback to template protocols if not found in user protocol dir
             if not protocol_file.exists():
-                template_protocol_file = (
-                    path_manager.template_dir / "protocols" / f"{protocol_name}.xml"
-                )
+                template_protocol_file = path_manager.template_dir / "protocols" / protocol_name
                 print(f"[DEBUG] Checking template protocol file: {template_protocol_file}")
+                # Also check without .md extension for backward compatibility
+                if not template_protocol_file.exists():
+                    base_name = protocol_name.replace(".md", "")
+                    template_protocol_file = path_manager.template_dir / "protocols" / base_name
                 if template_protocol_file.exists():
                     protocol_file = template_protocol_file
+                # No need to reassign protocol_file, it's already set correctly
         if not protocol_name or not protocol_file or not protocol_file.exists():
             # Try to extract protocol from the existing rules file using XML parsing
             if rules_file_path and rules_file_path.exists():
@@ -134,13 +142,13 @@ def _merge_rules_file() -> None:
                     if selected:
                         protocol_name = selected.strip()
                         current_protocol_path.write_text(protocol_name)
-                        protocol_file = path_manager.protocol_dir / f"{protocol_name}.xml"
+                        protocol_file = path_manager.protocol_dir / f"{protocol_name}.md"
                         print(f"[DEBUG] User selected protocol: '{protocol_name}'")
                         print(f"[DEBUG] Checking protocol file: {protocol_file}")
                         # Fallback to template protocols if not found in user protocol dir
                         if not protocol_file.exists():
                             template_protocol_file = (
-                                path_manager.template_dir / "protocols" / f"{protocol_name}.xml"
+                                path_manager.template_dir / "protocols" / f"{protocol_name}.md"
                             )
                             print(
                                 f"[DEBUG] Checking template protocol file: {template_protocol_file}"
@@ -156,14 +164,25 @@ def _merge_rules_file() -> None:
                     print(f"Invalid selection: {choice}")
         else:
             if protocol_file and protocol_file.exists():
-                protocol_value = protocol_file.read_text()
+                protocol_value = read_file_content(protocol_file)
+                if protocol_value:
+                    protocol_value = f"<!--PROTOCOL-->\n{protocol_value}\n<!--/PROTOCOL-->"
+                else:
+                    protocol_value = "<!--PROTOCOL-->\n<!-- Protocol content -->\n<!--/PROTOCOL-->"
+
         merged_content = re.sub(
-            r"<!--PROTOCOL-->[\s\S]*?<!--/PROTOCOL-->", protocol_value, merged_content
+            r"<!--PROTOCOL-->[\s\S]*?<!--/PROTOCOL-->",
+            protocol_value or "<!--PROTOCOL-->\n<!-- Protocol content -->\n<!--/PROTOCOL-->",
+            merged_content,
+            flags=re.MULTILINE | re.DOTALL,
         )
+
         # Overwrite the rules file with the merged content
         if not rules_file_path:
             logger.warning("No rules file configured; skipping local merge")
         else:
+            # Ensure consistent line endings
+            merged_content = merged_content.replace("\r\n", "\n")
             rules_file_path.write_text(merged_content)
             _last_rules_write_time = rules_file_path.stat().st_mtime
             logger.info(f"Updated local rules file: {rules_file_path}")
@@ -498,122 +517,44 @@ class FileMonitorError(Exception):
     """Base exception for file monitor errors."""
 
 
-class ContextFileHandler(FileSystemEventHandler):
-    """Handles file system events for .ctx files."""
-
-    def __init__(self, debounce_time: float = 0.5) -> None:
-        """Initialize the event handler.
-
-        Args:
-            debounce_time: Time in seconds to wait before processing duplicate events
-        """
-        super().__init__()
-        self.debounce_time = debounce_time
-        self.last_processed: dict[str, float] = {}
-        self.debug = is_debug_enabled()
-        self.context_files = {".ctx.architecture.xml", ".ctx.progress.xml", ".ctx.tasks.xml"}
-
-    def _should_process_event(self, event: FileSystemEvent) -> bool:
-        """Check if an event should be processed based on debouncing.
-
-        Args:
-            event: The file system event
-        Returns:
-            bool: True if event should be processed
-        """
-        # Only process context files
-        file_name = Path(event.src_path).name
-        if file_name not in self.context_files:
-            if self.debug:
-                logger.debug(f"Ignoring non-context file: {event.src_path}")
-            return False
-
-        current_time = time.time()
-        event_key = f"{event.event_type}:{event.src_path}"
-
-        # Check if this is a duplicate event within debounce time
-        if event_key in self.last_processed:
-            if current_time - self.last_processed[event_key] < self.debounce_time:
-                if self.debug:
-                    logger.debug(f"Debouncing event: {event_key}")
-                return False
-
-        self.last_processed[event_key] = current_time
-        return True
-
-    def on_modified(self, event: FileSystemEvent) -> None:
-        """Handle file modification events."""
-        if self.debug:
-            logger.debug(f"Received modified event: {event.src_path}")
-
-        if not self._should_process_event(event):
-            return
-
-        if self.debug:
-            logger.debug(f"Processing modified event: {event.src_path}")
-
-        try:
-            _merge_rules_file()
-            if self.debug:
-                logger.debug("Successfully merged rules file")
-        except Exception as e:
-            logger.error(f"Error merging rules file: {e}")
-
-
 class ContextFileMonitor:
-    """Monitors .ctx files and updates rules files."""
+    """Monitors .ctx files and updates the rules file."""
 
     def __init__(self) -> None:
         """Initialize the context file monitor."""
-        self.pm = get_path_manager()
-        self.debug = is_debug_enabled()
-        self.observer = None  # Initialize observer in start()
+        from erasmus.utils.paths import get_path_manager
+        from loguru import logger
+
+        self.path_manager = get_path_manager()
+        self.observer = Observer()
         self.handler = ContextFileHandler()
-
-        # Directory containing .ctx files
-        self.ctx_dir = self.pm.get_architecture_file().parent
-
-        if self.debug:
-            logger.debug(f"Initialized ContextFileMonitor watching: {self.ctx_dir}")
+        self.root_dir = self.path_manager.get_root_dir()
+        self.logger = logger
 
     def start(self) -> None:
         """Start monitoring context files."""
         try:
-            if not self.ctx_dir.exists():
-                if self.debug:
-                    logger.debug(f"Creating context directory: {self.ctx_dir}")
-                    self.ctx_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.exception(f"Failed to create context directory: {e}")
-            raise
-
-        try:
-            # Create a new observer each time we start
-            self.observer = Observer()
-            self.observer.schedule(self.handler, str(self.ctx_dir), recursive=False)
+            # Watch the root directory for .ctx files
+            self.observer.schedule(self.handler, str(self.root_dir), recursive=False)
             self.observer.start()
-            logger.info(f"Started monitoring context files in: {self.ctx_dir}")
+            self.logger.info(f"Started monitoring {self.root_dir} for .ctx file changes")
 
-            # Initial merge of rules
-            if self.debug:
-                logger.debug("Performing initial rules merge")
+            # Initial merge of rules file
             _merge_rules_file()
+            self.logger.info("Initial rules file merge completed")
 
         except Exception as e:
-            logger.exception(f"Failed to start context file monitor")
-            if self.observer and self.observer.is_alive():
-                self.observer.stop()
-                self.observer.join()
-            raise
+            self.logger.error(f"Error starting context file monitor: {e}")
+            raise FileMonitorError(f"Failed to start context file monitor: {e}")
 
     def stop(self) -> None:
         """Stop monitoring context files."""
-        if self.observer and self.observer.is_alive():
-            if self.debug:
-                logger.debug("Stopping context file monitor")
+        try:
             self.observer.stop()
             self.observer.join()
-            logger.info("Stopped monitoring context files")
+            self.logger.info("Stopped context file monitor")
+        except Exception as e:
+            self.logger.error(f"Error stopping context file monitor: {e}")
 
     def __enter__(self) -> "ContextFileMonitor":
         """Start monitoring when entering context."""
@@ -623,3 +564,86 @@ class ContextFileMonitor:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Stop monitoring when exiting context."""
         self.stop()
+
+
+class ContextFileHandler(FileSystemEventHandler):
+    """Handles file system events for context files."""
+
+    def __init__(self, debounce_time: float = 0.5) -> None:
+        """Initialize the context file handler.
+
+        Args:
+            debounce_time: Time in seconds to wait before processing duplicate events
+        """
+        super().__init__()
+        self.debounce_time = debounce_time
+        self.last_processed = {}
+        from loguru import logger
+
+        self.logger = logger
+
+    def _should_process_event(self, event: FileSystemEvent) -> bool:
+        """Check if an event should be processed.
+
+        Args:
+            event: The file system event
+
+        Returns:
+            bool: True if the event should be processed
+        """
+        if event.is_directory:
+            return False
+
+        # Only process .ctx.*.md files
+        if not str(event.src_path).endswith(".md") or ".ctx." not in str(event.src_path):
+            return False
+
+        current_time = time.time()
+        if event.src_path in self.last_processed:
+            if current_time - self.last_processed[event.src_path] < self.debounce_time:
+                return False
+
+        self.last_processed[event.src_path] = current_time
+        return True
+
+    def on_modified(self, event: FileSystemEvent) -> None:
+        """Handle file modification events.
+
+        Args:
+            event: The file system event
+        """
+        if self._should_process_event(event):
+            try:
+                self.logger.info(f"Context file modified: {event.src_path}")
+                _merge_rules_file()
+                self.logger.info("Rules file updated")
+            except Exception as e:
+                self.logger.error(f"Error handling context file modification: {e}")
+
+    def on_created(self, event: FileSystemEvent) -> None:
+        """Handle file creation events.
+
+        Args:
+            event: The file system event
+        """
+        if self._should_process_event(event):
+            try:
+                self.logger.info(f"Context file created: {event.src_path}")
+                _merge_rules_file()
+                self.logger.info("Rules file updated")
+            except Exception as e:
+                self.logger.error(f"Error handling context file creation: {e}")
+
+    def on_deleted(self, event: FileSystemEvent) -> None:
+        """Handle file deletion events.
+
+        Args:
+            event: The file system event
+        """
+        if self._should_process_event(event):
+            try:
+                self.logger.info(f"Context file deleted: {event.src_path}")
+                _merge_rules_file()
+                self.logger.info("Rules file updated")
+            except Exception as e:
+                self.logger.error(f"Error handling context file deletion: {e}")

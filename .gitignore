@@ -4,9 +4,9 @@
 .erasmus/protocol/*
 !.erasmus/protocol/.gitkeep
 .erasmus/current_protocol.txt
-.ctx.architecture.xml
-.ctx.progress.xml
-.ctx.tasks.xml
+.ctx.architecture.md
+.ctx.progress.md
+.ctx.tasks.md
 uv.lock
 erasmus/mcp/servers/*
 !erasmus/mcp/servers/.gitkeep
@@ -74,8 +74,8 @@ htmlcov/
 .coverage
 .coverage.*
 .cache
-nosetests.xml
-coverage.xml
+nosetests.md
+coverage.md
 *.cover
 .hypothesis/
 .pytest_cache/

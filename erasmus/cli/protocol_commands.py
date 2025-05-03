@@ -305,11 +305,11 @@ def select_protocol():
         current_protocol_path = Path(path_manager.erasmus_dir) / "current_protocol.txt"
         current_protocol_path.write_text(selected)
         # Also update the rules file as in load
-        template_path = path_manager.template_dir / "meta_rules.xml"
+        template_path = path_manager.template_dir / "meta_rules.md"
         if not template_path.exists():
             print_table(
                 ["Error"],
-                [["meta_rules.xml template not found."]],
+                [["meta_rules.md template not found."]],
                 title="Protocol Select Failed",
             )
             raise typer.Exit(1)
@@ -405,12 +405,12 @@ def load_protocol(
         path_manager = get_path_manager()
         current_protocol_path = Path(path_manager.erasmus_dir) / "current_protocol.txt"
         current_protocol_path.write_text(name)
-        # Load meta_rules.xml template
-        template_path = path_manager.template_dir / "meta_rules.xml"
+        # Load meta_rules.md template
+        template_path = path_manager.template_dir / "meta_rules.md"
         if not template_path.exists():
             print_table(
                 ["Error"],
-                [["meta_rules.xml template not found."]],
+                [["meta_rules.md template not found."]],
                 title="Protocol Load Failed",
             )
             raise typer.Exit(1)
@@ -516,7 +516,7 @@ def edit(
 
 @protocol_app.command("watch")
 def watch_protocol():
-    """Monitor .ctx.*.xml files for changes and update the rules file with the current protocol. Does NOT monitor the rules file itself."""
+    """Monitor .ctx.*.md files for changes and update the rules file with the current protocol. Does NOT monitor the rules file itself."""
     import time
     from erasmus.utils.paths import get_path_manager
     from erasmus.protocol import ProtocolManager
@@ -529,7 +529,7 @@ def watch_protocol():
         path_manager.get_progress_file(),
         path_manager.get_tasks_file(),
     ]
-    template_path = path_manager.template_dir / "meta_rules.xml"
+    template_path = path_manager.template_dir / "meta_rules.md"
     rules_file = path_manager.get_rules_file()
     current_protocol_path = Path(path_manager.erasmus_dir) / "current_protocol.txt"
 
@@ -564,7 +564,7 @@ def watch_protocol():
         if not template_path.exists():
             print_table(
                 ["Error"],
-                [["meta_rules.xml template not found."]],
+                [["meta_rules.md template not found."]],
                 title="Protocol Watch Failed",
             )
             return
@@ -609,9 +609,9 @@ def watch_protocol():
             title="Rules File Updated",
         )
 
-    # Track last modification times for only the .ctx.*.xml files
+    # Track last modification times for only the .ctx.*.md files
     last_mtimes = [f.stat().st_mtime if f.exists() else 0 for f in ctx_files]
-    print_table(["Info"], [["Watching .ctx.*.xml files for changes..."]], title="Protocol Watch")
+    print_table(["Info"], [["Watching .ctx.*.md files for changes..."]], title="Protocol Watch")
     try:
         while True:
             changed = False
