@@ -69,10 +69,10 @@ class VariableDefinition(BaseModel):
     name: str
     type: type
     required: bool = True
-    default: any = None
-    validator: Callable[[any], bool] | None = None
-    min_value: any = None
-    max_value: any = None
+    default: Any = None
+    validator: Callable[[Any], bool] | None = None
+    min_value: Any = None
+    max_value: Any = None
     pattern: str | None = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -85,8 +85,8 @@ class VariableDefinition(BaseModel):
 class EnvironmentConfig(BaseModel):
     """Manages environment configuration with validation."""
 
-    definitions: dict[str, VariableDefinition] = {}
-    _variables: dict[str, any] = {}
+    definitions: Dict[str, VariableDefinition] = {}
+    _variables: Dict[str, Any] = {}
     GITHUB_TOKEN: Optional[str] = Field(None, description="GitHub personal access token")
     ERASMUS_DEBUG: bool = Field(False, description="Enable debug logging")
     ERASMUS_LOG_LEVEL: str = Field(
@@ -146,7 +146,7 @@ class EnvironmentConfig(BaseModel):
         except (ValueError, TypeError) as e:
             raise EnvironmentError(f"Invalid value for {name}: {str(e)}")
 
-    def get(self, name: str, default: any = None) -> any:
+    def get(self, name: str, default: Any = None) -> Any:
         """
         Get an environment variable value.
 

@@ -5,7 +5,7 @@ GitHub MCP server CLI commands for interacting with GitHub through the MCP serve
 import json
 import subprocess
 import typer
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 from loguru import logger
 from erasmus.utils.rich_console import print_table
 
@@ -67,249 +67,165 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         raise typer.Exit(1)
 
 
+# Issue commands
 @github_app.command()
 def create_issue(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    title: str = typer.Argument(..., help="Issue title"),
-    body: Optional[str] = typer.Option(None, help="Issue body content"),
-    assignees: Optional[List[str]] = typer.Option(None, help="Usernames to assign to this issue"),
-    labels: Optional[List[str]] = typer.Option(None, help="Labels to apply to this issue"),
+    title: str = typer.Option(..., help="Issue title"),
+    body: str = typer.Option(None, help="Issue body"),
+    labels: List[str] = typer.Option(None, help="Issue labels"),
+    assignees: List[str] = typer.Option(None, help="Issue assignees"),
 ):
     """Create a new issue in a GitHub repository."""
     params = {
         "owner": owner,
         "repo": repo,
         "title": title,
-    }
-    if body:
-        params["body"] = body
-    if assignees:
-        params["assignees"] = assignees
-    if labels:
-        params["labels"] = labels
-
-    result = _send_mcp_request("create_issue", params)
-    typer.echo(json.dumps(result, indent=2))
-
-
-@github_app.command()
-def add_comment(
-    owner: str = typer.Argument(..., help="Repository owner"),
-    repo: str = typer.Argument(..., help="Repository name"),
-    issue_number: int = typer.Argument(..., help="Issue number"),
-    body: str = typer.Argument(..., help="Comment text"),
-):
-    """Add a comment to an existing issue."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "issue_number": issue_number,
         "body": body,
+        "labels": labels,
+        "assignees": assignees,
     }
-
-    result = _send_mcp_request("add_issue_comment", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("create_issue", params)
+    logger.info(f"Created issue #{result['number']}: {result['html_url']}")
 
 
 @github_app.command()
 def get_issue(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    issue_number: int = typer.Argument(..., help="Issue number"),
+    number: int = typer.Argument(..., help="Issue number"),
 ):
     """Get details of a specific issue in a GitHub repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "issue_number": issue_number,
-    }
-
+    params = {"owner": owner, "repo": repo, "number": number}
     result = _send_mcp_request("get_issue", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Number", result["number"]],
+            ["Title", result["title"]],
+            ["State", result["state"]],
+            ["Created", result["created_at"]],
+            ["Updated", result["updated_at"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"Issue #{number}",
+    )
 
 
 @github_app.command()
 def list_issues(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    state: Optional[str] = typer.Option("open", help="Filter by state ('open', 'closed', 'all')"),
-    labels: Optional[List[str]] = typer.Option(None, help="Labels to filter by"),
-    sort: Optional[str] = typer.Option(None, help="Sort by ('created', 'updated', 'comments')"),
-    direction: Optional[str] = typer.Option(None, help="Sort direction ('asc', 'desc')"),
-    since: Optional[str] = typer.Option(None, help="Filter by date (ISO 8601 timestamp)"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
+    state: str = typer.Option("open", help="Issue state (open, closed, all)"),
+    labels: List[str] = typer.Option(None, help="Filter by labels"),
+    assignee: str = typer.Option(None, help="Filter by assignee"),
+    creator: str = typer.Option(None, help="Filter by creator"),
+    mentioned: str = typer.Option(None, help="Filter by mentioned user"),
+    since: str = typer.Option(None, help="Filter by updated date (YYYY-MM-DD)"),
 ):
     """List issues in a GitHub repository with filtering options."""
     params = {
         "owner": owner,
         "repo": repo,
         "state": state,
+        "labels": labels,
+        "assignee": assignee,
+        "creator": creator,
+        "mentioned": mentioned,
+        "since": since,
     }
-    if labels:
-        params["labels"] = labels
-    if sort:
-        params["sort"] = sort
-    if direction:
-        params["direction"] = direction
-    if since:
-        params["since"] = since
-    if page:
-        params["page"] = page
-    if per_page:
-        params["perPage"] = per_page
-
     result = _send_mcp_request("list_issues", params)
-    typer.echo(json.dumps(result, indent=2))
+    if not result:
+        logger.info("No issues found")
+        return
+    rows = [
+        [issue["number"], issue["title"], issue["state"], issue["created_at"]] for issue in result
+    ]
+    print_table(
+        ["Number", "Title", "State", "Created"],
+        rows,
+        title=f"Issues in {owner}/{repo}",
+    )
 
 
 @github_app.command()
 def update_issue(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    issue_number: int = typer.Argument(..., help="Issue number to update"),
-    title: Optional[str] = typer.Option(None, help="New title"),
-    body: Optional[str] = typer.Option(None, help="New description"),
-    state: Optional[str] = typer.Option(None, help="New state ('open' or 'closed')"),
-    labels: Optional[List[str]] = typer.Option(None, help="New labels"),
-    assignees: Optional[List[str]] = typer.Option(None, help="New assignees"),
-    milestone: Optional[int] = typer.Option(None, help="New milestone number"),
+    number: int = typer.Argument(..., help="Issue number"),
+    title: str = typer.Option(None, help="New issue title"),
+    body: str = typer.Option(None, help="New issue body"),
+    state: str = typer.Option(None, help="New issue state (open, closed)"),
+    labels: List[str] = typer.Option(None, help="New issue labels"),
+    assignees: List[str] = typer.Option(None, help="New issue assignees"),
 ):
     """Update an existing issue in a GitHub repository."""
     params = {
         "owner": owner,
         "repo": repo,
-        "issue_number": issue_number,
+        "number": number,
+        "title": title,
+        "body": body,
+        "state": state,
+        "labels": labels,
+        "assignees": assignees,
     }
-    if title:
-        params["title"] = title
-    if body:
-        params["body"] = body
-    if state:
-        params["state"] = state
-    if labels:
-        params["labels"] = labels
-    if assignees:
-        params["assignees"] = assignees
-    if milestone:
-        params["milestone"] = milestone
-
     result = _send_mcp_request("update_issue", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Updated issue #{number}: {result['html_url']}")
 
 
 @github_app.command()
-def search_issues(
-    query: str = typer.Argument(..., help="Search query"),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    order: Optional[str] = typer.Option(None, help="Sort order"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-):
-    """Search for issues and pull requests across GitHub repositories."""
-    params = {
-        "query": query,
-    }
-    if sort:
-        params["sort"] = sort
-    if order:
-        params["order"] = order
-    if page:
-        params["page"] = page
-    if per_page:
-        params["perPage"] = per_page
-
-    result = _send_mcp_request("search_issues", params)
-    typer.echo(json.dumps(result, indent=2))
-
-
-@github_app.command()
-def get_pr(
+def add_issue_comment(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    pull_number: int = typer.Argument(..., help="Pull request number"),
+    number: int = typer.Argument(..., help="Issue number"),
+    body: str = typer.Option(..., help="Comment body"),
 ):
-    """Get details of a specific pull request."""
+    """Add a comment to an existing issue."""
     params = {
         "owner": owner,
         "repo": repo,
-        "pullNumber": pull_number,
+        "number": number,
+        "body": body,
     }
-
-    result = _send_mcp_request("get_pull_request", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("add_issue_comment", params)
+    logger.info(f"Added comment to issue #{number}: {result['html_url']}")
 
 
 @github_app.command()
-def list_prs(
+def get_issue_comments(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    state: Optional[str] = typer.Option(None, help="PR state"),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    direction: Optional[str] = typer.Option(None, help="Sort direction"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
+    number: int = typer.Argument(..., help="Issue number"),
 ):
-    """List and filter repository pull requests."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if state:
-        params["state"] = state
-    if sort:
-        params["sort"] = sort
-    if direction:
-        params["direction"] = direction
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_pull_requests", params)
-    typer.echo(json.dumps(result, indent=2))
+    """Get comments for a GitHub issue."""
+    params = {"owner": owner, "repo": repo, "number": number}
+    result = _send_mcp_request("get_issue_comments", params)
+    if not result:
+        logger.info("No comments found")
+        return
+    rows = [
+        [comment["user"]["login"], comment["created_at"], comment["body"][:50] + "..."]
+        for comment in result
+    ]
+    print_table(
+        ["Author", "Created", "Comment"],
+        rows,
+        title=f"Comments on Issue #{number}",
+    )
 
 
-@github_app.command()
-def merge_pr(
-    owner: str = typer.Argument(..., help="Repository owner"),
-    repo: str = typer.Argument(..., help="Repository name"),
-    pull_number: int = typer.Argument(..., help="Pull request number"),
-    commit_title: Optional[str] = typer.Option(None, help="Title for the merge commit"),
-    commit_message: Optional[str] = typer.Option(None, help="Message for the merge commit"),
-    merge_method: Optional[str] = typer.Option(None, help="Merge method"),
-):
-    """Merge a pull request."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "pullNumber": pull_number,
-    }
-    if commit_title:
-        params["commit_title"] = commit_title
-    if commit_message:
-        params["commit_message"] = commit_message
-    if merge_method:
-        params["merge_method"] = merge_method
-
-    result = _send_mcp_request("merge_pull_request", params)
-    typer.echo(json.dumps(result, indent=2))
-
-
+# Pull Request commands
 @github_app.command()
 def create_pr(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    title: str = typer.Argument(..., help="Pull request title"),
-    head: str = typer.Argument(
-        ..., help="The name of the branch where your changes are implemented"
-    ),
-    base: str = typer.Argument(
-        ..., help="The name of the branch you want your changes pulled into"
-    ),
-    body: Optional[str] = typer.Option(None, help="Pull request description"),
-    draft: Optional[bool] = typer.Option(False, help="Create pull request as draft"),
+    title: str = typer.Option(..., help="Pull request title"),
+    head: str = typer.Option(..., help="The branch with changes"),
+    base: str = typer.Option("main", help="The branch to merge into"),
+    body: str = typer.Option(None, help="Pull request description"),
+    draft: bool = typer.Option(False, help="Create as draft pull request"),
 ):
     """Create a new pull request in a GitHub repository."""
     params = {
@@ -318,198 +234,434 @@ def create_pr(
         "title": title,
         "head": head,
         "base": base,
+        "body": body,
+        "draft": draft,
     }
-    if body:
-        params["body"] = body
-    if draft:
-        params["draft"] = draft
-
     result = _send_mcp_request("create_pull_request", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Created pull request #{result['number']}: {result['html_url']}")
+
+
+@github_app.command()
+def get_pr(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+):
+    """Get details of a specific pull request."""
+    params = {"owner": owner, "repo": repo, "number": number}
+    result = _send_mcp_request("get_pull_request", params)
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Number", result["number"]],
+            ["Title", result["title"]],
+            ["State", result["state"]],
+            ["Created", result["created_at"]],
+            ["Updated", result["updated_at"]],
+            ["Head", result["head"]["ref"]],
+            ["Base", result["base"]["ref"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"Pull Request #{number}",
+    )
+
+
+@github_app.command()
+def list_prs(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    state: str = typer.Option("open", help="PR state (open, closed, all)"),
+    head: str = typer.Option(None, help="Filter by head branch"),
+    base: str = typer.Option(None, help="Filter by base branch"),
+    sort: str = typer.Option("created", help="Sort by (created, updated, popularity)"),
+    direction: str = typer.Option("desc", help="Sort direction (asc, desc)"),
+):
+    """List and filter repository pull requests."""
+    params = {
+        "owner": owner,
+        "repo": repo,
+        "state": state,
+        "head": head,
+        "base": base,
+        "sort": sort,
+        "direction": direction,
+    }
+    result = _send_mcp_request("list_pull_requests", params)
+    if not result:
+        logger.info("No pull requests found")
+        return
+    rows = [[pr["number"], pr["title"], pr["state"], pr["created_at"]] for pr in result]
+    print_table(
+        ["Number", "Title", "State", "Created"],
+        rows,
+        title=f"Pull Requests in {owner}/{repo}",
+    )
 
 
 @github_app.command()
 def update_pr(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    pull_number: int = typer.Argument(..., help="Pull request number"),
-    title: Optional[str] = typer.Option(None, help="New title"),
-    body: Optional[str] = typer.Option(None, help="New description"),
-    state: Optional[str] = typer.Option(None, help="New state ('open' or 'closed')"),
-    base: Optional[str] = typer.Option(None, help="Name of the branch to merge into"),
+    number: int = typer.Argument(..., help="Pull request number"),
+    title: str = typer.Option(None, help="New PR title"),
+    body: str = typer.Option(None, help="New PR body"),
+    state: str = typer.Option(None, help="New PR state (open, closed)"),
+    base: str = typer.Option(None, help="New base branch"),
 ):
     """Update an existing pull request in a GitHub repository."""
     params = {
         "owner": owner,
         "repo": repo,
-        "pullNumber": pull_number,
+        "number": number,
+        "title": title,
+        "body": body,
+        "state": state,
+        "base": base,
     }
-    if title:
-        params["title"] = title
-    if body:
-        params["body"] = body
-    if state:
-        params["state"] = state
-    if base:
-        params["base"] = base
-
     result = _send_mcp_request("update_pull_request", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Updated pull request #{number}: {result['html_url']}")
+
+
+@github_app.command()
+def merge_pr(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+    merge_method: str = typer.Option("merge", help="Merge method (merge, squash, rebase)"),
+    commit_title: str = typer.Option(None, help="Title for the merge commit"),
+    commit_message: str = typer.Option(None, help="Message for the merge commit"),
+):
+    """Merge a pull request."""
+    params = {
+        "owner": owner,
+        "repo": repo,
+        "number": number,
+        "merge_method": merge_method,
+        "commit_title": commit_title,
+        "commit_message": commit_message,
+    }
+    result = _send_mcp_request("merge_pull_request", params)
+    logger.info(f"Merged pull request #{number}")
+
+
+@github_app.command()
+def add_pr_comment(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+    body: str = typer.Option(..., help="Comment body"),
+):
+    """Add a review comment to a pull request."""
+    params = {
+        "owner": owner,
+        "repo": repo,
+        "number": number,
+        "body": body,
+    }
+    result = _send_mcp_request("add_pull_request_comment", params)
+    logger.info(f"Added comment to pull request #{number}: {result['html_url']}")
+
+
+@github_app.command()
+def get_pr_comments(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+):
+    """Get the review comments on a pull request."""
+    params = {"owner": owner, "repo": repo, "number": number}
+    result = _send_mcp_request("get_pull_request_comments", params)
+    if not result:
+        logger.info("No comments found")
+        return
+    rows = [
+        [comment["user"]["login"], comment["created_at"], comment["body"][:50] + "..."]
+        for comment in result
+    ]
+    print_table(
+        ["Author", "Created", "Comment"],
+        rows,
+        title=f"Comments on Pull Request #{number}",
+    )
 
 
 @github_app.command()
 def get_pr_files(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    pull_number: int = typer.Argument(..., help="Pull request number"),
+    number: int = typer.Argument(..., help="Pull request number"),
 ):
     """Get the list of files changed in a pull request."""
+    params = {"owner": owner, "repo": repo, "number": number}
+    result = _send_mcp_request("get_pull_request_files", params)
+    if not result:
+        logger.info("No files changed")
+        return
+    rows = [
+        [file["filename"], file["status"], file["additions"], file["deletions"]] for file in result
+    ]
+    print_table(
+        ["Filename", "Status", "Additions", "Deletions"],
+        rows,
+        title=f"Files Changed in Pull Request #{number}",
+    )
+
+
+@github_app.command()
+def get_pr_reviews(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+):
+    """Get the reviews on a pull request."""
+    params = {"owner": owner, "repo": repo, "number": number}
+    result = _send_mcp_request("get_pull_request_reviews", params)
+    if not result:
+        logger.info("No reviews found")
+        return
+    rows = [[review["user"]["login"], review["state"], review["submitted_at"]] for review in result]
+    print_table(
+        ["Reviewer", "State", "Submitted"],
+        rows,
+        title=f"Reviews on Pull Request #{number}",
+    )
+
+
+@github_app.command()
+def create_pr_review(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+    event: str = typer.Option(..., help="Review event (APPROVE, REQUEST_CHANGES, COMMENT)"),
+    body: str = typer.Option(None, help="Review body"),
+):
+    """Create a review on a pull request."""
     params = {
         "owner": owner,
         "repo": repo,
-        "pullNumber": pull_number,
+        "number": number,
+        "event": event,
+        "body": body,
     }
-
-    result = _send_mcp_request("get_pull_request_files", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("create_pull_request_review", params)
+    logger.info(f"Created review on pull request #{number}: {result['html_url']}")
 
 
 @github_app.command()
 def get_pr_status(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    pull_number: int = typer.Argument(..., help="Pull request number"),
+    number: int = typer.Argument(..., help="Pull request number"),
 ):
     """Get the combined status of all status checks for a pull request."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "pullNumber": pull_number,
-    }
-
+    params = {"owner": owner, "repo": repo, "number": number}
     result = _send_mcp_request("get_pull_request_status", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["State", result["state"]],
+            ["Total", result["total_count"]],
+            ["Successful", result["statuses"].count(lambda s: s["state"] == "success")],
+            ["Failed", result["statuses"].count(lambda s: s["state"] == "failure")],
+            ["Pending", result["statuses"].count(lambda s: s["state"] == "pending")],
+        ],
+        title=f"Status Checks for Pull Request #{number}",
+    )
+
+
+@github_app.command()
+def update_pr_branch(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    number: int = typer.Argument(..., help="Pull request number"),
+):
+    """Update a pull request branch with the latest changes from the base branch."""
+    params = {"owner": owner, "repo": repo, "number": number}
+    result = _send_mcp_request("update_pull_request_branch", params)
+    logger.info(f"Updated pull request #{number} branch")
 
 
 # Repository commands
 @github_app.command()
 def create_repo(
     name: str = typer.Argument(..., help="Repository name"),
-    description: Optional[str] = typer.Option(None, help="Repository description"),
-    private: Optional[bool] = typer.Option(False, help="Create a private repository"),
-    auto_init: Optional[bool] = typer.Option(False, help="Initialize with README"),
-    gitignore_template: Optional[str] = typer.Option(None, help="Add .gitignore template"),
-    license_template: Optional[str] = typer.Option(None, help="Add license template"),
+    private: bool = typer.Option(False, help="Create a private repository"),
+    description: str = typer.Option(None, help="Repository description"),
+    homepage: str = typer.Option(None, help="Repository homepage URL"),
+    has_issues: bool = typer.Option(True, help="Enable issues"),
+    has_projects: bool = typer.Option(True, help="Enable projects"),
+    has_wiki: bool = typer.Option(True, help="Enable wiki"),
+    auto_init: bool = typer.Option(False, help="Initialize with README"),
+    gitignore_template: str = typer.Option(None, help="Add .gitignore template"),
+    license_template: str = typer.Option(None, help="Add license template"),
+    org: str = typer.Option(None, help="Create in organization"),
 ):
-    """Create a new GitHub repository in your account."""
+    """Create a new GitHub repository."""
     params = {
         "name": name,
+        "private": private,
+        "description": description,
+        "homepage": homepage,
+        "has_issues": has_issues,
+        "has_projects": has_projects,
+        "has_wiki": has_wiki,
+        "auto_init": auto_init,
+        "gitignore_template": gitignore_template,
+        "license_template": license_template,
+        "org": org,
     }
-    if description:
-        params["description"] = description
-    if private:
-        params["private"] = private
-    if auto_init:
-        params["auto_init"] = auto_init
-    if gitignore_template:
-        params["gitignore_template"] = gitignore_template
-    if license_template:
-        params["license_template"] = license_template
-
     result = _send_mcp_request("create_repository", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Created repository: {result['html_url']}")
 
 
 @github_app.command()
-def fork_repo(
+def get_repo(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    organization: Optional[str] = typer.Option(None, help="Organization to fork to"),
 ):
-    """Fork a GitHub repository to your account or specified organization."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if organization:
-        params["organization"] = organization
-
-    result = _send_mcp_request("fork_repository", params)
-    typer.echo(json.dumps(result, indent=2))
+    """Get details about a GitHub repository."""
+    params = {"owner": owner, "repo": repo}
+    result = _send_mcp_request("get_repository", params)
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Name", result["name"]],
+            ["Description", result["description"]],
+            ["Private", result["private"]],
+            ["Fork", result["fork"]],
+            ["Created", result["created_at"]],
+            ["Updated", result["updated_at"]],
+            ["Stars", result["stargazers_count"]],
+            ["Forks", result["forks_count"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"Repository {owner}/{repo}",
+    )
 
 
 @github_app.command()
-def get_file(
-    owner: str = typer.Argument(..., help="Repository owner"),
-    repo: str = typer.Argument(..., help="Repository name"),
-    path: str = typer.Argument(..., help="Path to file or directory"),
-    ref: Optional[str] = typer.Option(None, help="The name of the commit/branch/tag"),
+def list_repos(
+    owner: str = typer.Argument(..., help="User or organization name"),
+    type: str = typer.Option("all", help="Type of repos (all, owner, member)"),
+    sort: str = typer.Option("full_name", help="Sort by (created, updated, pushed, full_name)"),
+    direction: str = typer.Option("asc", help="Sort direction (asc, desc)"),
 ):
-    """Get the contents of a file or directory from a GitHub repository."""
+    """List repositories for a user or organization."""
     params = {
         "owner": owner,
-        "repo": repo,
-        "path": path,
+        "type": type,
+        "sort": sort,
+        "direction": direction,
     }
-    if ref:
-        params["ref"] = ref
-
-    result = _send_mcp_request("get_file_contents", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("list_repositories", params)
+    if not result:
+        logger.info("No repositories found")
+        return
+    rows = [
+        [repo["name"], repo["private"], repo["stargazers_count"], repo["forks_count"]]
+        for repo in result
+    ]
+    print_table(
+        ["Name", "Private", "Stars", "Forks"],
+        rows,
+        title=f"Repositories for {owner}",
+    )
 
 
 @github_app.command()
-def create_or_update_file(
+def update_repo(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    path: str = typer.Argument(..., help="Path in the repository"),
-    content: str = typer.Argument(..., help="File content"),
-    message: str = typer.Argument(..., help="Commit message"),
-    branch: Optional[str] = typer.Option(None, help="Branch to commit to"),
-    sha: Optional[str] = typer.Option(None, help="SHA of file being updated"),
+    name: str = typer.Option(None, help="New repository name"),
+    description: str = typer.Option(None, help="New description"),
+    homepage: str = typer.Option(None, help="New homepage URL"),
+    private: bool = typer.Option(None, help="Make private"),
+    has_issues: bool = typer.Option(None, help="Enable issues"),
+    has_projects: bool = typer.Option(None, help="Enable projects"),
+    has_wiki: bool = typer.Option(None, help="Enable wiki"),
+    default_branch: str = typer.Option(None, help="Set default branch"),
+    allow_squash_merge: bool = typer.Option(None, help="Allow squash merging"),
+    allow_merge_commit: bool = typer.Option(None, help="Allow merge commits"),
+    allow_rebase_merge: bool = typer.Option(None, help="Allow rebase merging"),
 ):
-    """Create or update a single file in a GitHub repository."""
+    """Update a GitHub repository's settings."""
     params = {
         "owner": owner,
         "repo": repo,
-        "path": path,
-        "content": content,
-        "message": message,
+        "name": name,
+        "description": description,
+        "homepage": homepage,
+        "private": private,
+        "has_issues": has_issues,
+        "has_projects": has_projects,
+        "has_wiki": has_wiki,
+        "default_branch": default_branch,
+        "allow_squash_merge": allow_squash_merge,
+        "allow_merge_commit": allow_merge_commit,
+        "allow_rebase_merge": allow_rebase_merge,
     }
-    if branch:
-        params["branch"] = branch
-    if sha:
-        params["sha"] = sha
-
-    result = _send_mcp_request("create_or_update_file", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("update_repository", params)
+    logger.info(f"Updated repository: {result['html_url']}")
 
 
 @github_app.command()
-def push_files(
+def delete_repo(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    branch: str = typer.Argument(..., help="Branch to commit to"),
-    message: str = typer.Argument(..., help="Commit message"),
-    files: List[str] = typer.Argument(..., help="Files to push (in path:content format)"),
+    confirm: bool = typer.Option(
+        ...,
+        prompt="Are you sure you want to delete this repository? This action cannot be undone.",
+        help="Confirm deletion",
+    ),
 ):
-    """Push multiple files to a GitHub repository in a single commit."""
-    # Convert files list from path:content format to dictionary
-    files_dict = {}
-    for file_spec in files:
-        path, content = file_spec.split(":", 1)
-        files_dict[path] = content
+    """Delete a GitHub repository."""
+    if not confirm:
+        logger.info("Operation cancelled")
+        return
+    params = {"owner": owner, "repo": repo}
+    _send_mcp_request("delete_repository", params)
+    logger.info(f"Deleted repository {owner}/{repo}")
 
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "branch": branch,
-        "message": message,
-        "files": files_dict,
-    }
 
-    result = _send_mcp_request("push_files", params)
-    typer.echo(json.dumps(result, indent=2))
+@github_app.command()
+def list_branches(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    protected: bool = typer.Option(None, help="Filter by protection status"),
+):
+    """List branches in a repository."""
+    params = {"owner": owner, "repo": repo, "protected": protected}
+    result = _send_mcp_request("list_branches", params)
+    if not result:
+        logger.info("No branches found")
+        return
+    rows = [[branch["name"], branch["protected"], branch["commit"]["sha"][:7]] for branch in result]
+    print_table(
+        ["Name", "Protected", "Latest Commit"],
+        rows,
+        title=f"Branches in {owner}/{repo}",
+    )
+
+
+@github_app.command()
+def get_branch(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    branch: str = typer.Argument(..., help="Branch name"),
+):
+    """Get details about a specific branch."""
+    params = {"owner": owner, "repo": repo, "branch": branch}
+    result = _send_mcp_request("get_branch", params)
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Name", result["name"]],
+            ["Protected", result["protected"]],
+            ["Latest Commit", result["commit"]["sha"]],
+            ["Latest Commit Message", result["commit"]["commit"]["message"]],
+        ],
+        title=f"Branch {branch} in {owner}/{repo}",
+    )
 
 
 @github_app.command()
@@ -517,193 +669,106 @@ def create_branch(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
     branch: str = typer.Argument(..., help="New branch name"),
-    sha: str = typer.Argument(..., help="SHA of commit to branch from"),
+    source: str = typer.Option("main", help="Source branch or commit SHA"),
 ):
-    """Create a new branch in a GitHub repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "branch": branch,
-        "sha": sha,
-    }
-
+    """Create a new branch in a repository."""
+    params = {"owner": owner, "repo": repo, "branch": branch, "source": source}
     result = _send_mcp_request("create_branch", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Created branch {branch} from {source}")
 
 
 @github_app.command()
-def list_branches(
+def delete_branch(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    protected: Optional[bool] = typer.Option(None, help="Filter by protected status"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
-):
-    """List branches in a GitHub repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if protected is not None:
-        params["protected"] = protected
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_branches", params)
-    typer.echo(json.dumps(result, indent=2))
-
-
-@github_app.command()
-def list_commits(
-    owner: str = typer.Argument(..., help="Repository owner"),
-    repo: str = typer.Argument(..., help="Repository name"),
-    sha: Optional[str] = typer.Option(None, help="SHA or branch to start listing commits from"),
-    path: Optional[str] = typer.Option(None, help="Only commits containing this file path"),
-    author: Optional[str] = typer.Option(
-        None, help="GitHub username or email address to filter by"
+    branch: str = typer.Argument(..., help="Branch name"),
+    confirm: bool = typer.Option(
+        ...,
+        prompt="Are you sure you want to delete this branch?",
+        help="Confirm deletion",
     ),
-    since: Optional[str] = typer.Option(None, help="Only commits after this timestamp"),
-    until: Optional[str] = typer.Option(None, help="Only commits before this timestamp"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
 ):
-    """Get list of commits of a branch in a GitHub repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if sha:
-        params["sha"] = sha
-    if path:
-        params["path"] = path
-    if author:
-        params["author"] = author
-    if since:
-        params["since"] = since
-    if until:
-        params["until"] = until
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_commits", params)
-    typer.echo(json.dumps(result, indent=2))
-
-
-@github_app.command()
-def search_repos(
-    query: str = typer.Argument(..., help="Search query"),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    order: Optional[str] = typer.Option(None, help="Sort order"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
-):
-    """Search for GitHub repositories."""
-    params = {
-        "query": query,
-    }
-    if sort:
-        params["sort"] = sort
-    if order:
-        params["order"] = order
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("search_repositories", params)
-    typer.echo(json.dumps(result, indent=2))
-
-
-@github_app.command()
-def search_code(
-    query: str = typer.Argument(..., help="Search query"),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    order: Optional[str] = typer.Option(None, help="Sort order"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
-):
-    """Search for code across GitHub repositories."""
-    params = {
-        "query": query,
-    }
-    if sort:
-        params["sort"] = sort
-    if order:
-        params["order"] = order
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("search_code", params)
-    typer.echo(json.dumps(result, indent=2))
+    """Delete a branch from a repository."""
+    if not confirm:
+        logger.info("Operation cancelled")
+        return
+    params = {"owner": owner, "repo": repo, "branch": branch}
+    _send_mcp_request("delete_branch", params)
+    logger.info(f"Deleted branch {branch}")
 
 
 # User commands
 @github_app.command()
 def get_user(
-    username: Optional[str] = typer.Argument(None, help="GitHub username"),
+    username: str = typer.Argument(..., help="GitHub username"),
 ):
     """Get information about a GitHub user."""
-    params = {}
-    if username:
-        params["username"] = username
-
+    params = {"username": username}
     result = _send_mcp_request("get_user", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Login", result["login"]],
+            ["Name", result["name"]],
+            ["Company", result["company"]],
+            ["Location", result["location"]],
+            ["Email", result["email"]],
+            ["Bio", result["bio"]],
+            ["Public Repos", result["public_repos"]],
+            ["Followers", result["followers"]],
+            ["Following", result["following"]],
+            ["Created", result["created_at"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"User {username}",
+    )
 
 
 @github_app.command()
 def list_user_repos(
     username: str = typer.Argument(..., help="GitHub username"),
-    type: Optional[str] = typer.Option(
-        None, help="Filter by repository type (all, owner, public, private, member)"
-    ),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    direction: Optional[str] = typer.Option(None, help="Sort direction"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
+    type: str = typer.Option("owner", help="Type of repos (all, owner, member)"),
+    sort: str = typer.Option("full_name", help="Sort by (created, updated, pushed, full_name)"),
+    direction: str = typer.Option("asc", help="Sort direction (asc, desc)"),
 ):
-    """List repositories for a GitHub user."""
+    """List repositories owned by a user."""
     params = {
         "username": username,
+        "type": type,
+        "sort": sort,
+        "direction": direction,
     }
-    if type:
-        params["type"] = type
-    if sort:
-        params["sort"] = sort
-    if direction:
-        params["direction"] = direction
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_user_repositories", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("list_user_repos", params)
+    if not result:
+        logger.info("No repositories found")
+        return
+    rows = [
+        [repo["name"], repo["private"], repo["stargazers_count"], repo["forks_count"]]
+        for repo in result
+    ]
+    print_table(
+        ["Name", "Private", "Stars", "Forks"],
+        rows,
+        title=f"Repositories for {username}",
+    )
 
 
 @github_app.command()
 def list_user_orgs(
     username: str = typer.Argument(..., help="GitHub username"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
 ):
-    """List organizations for a GitHub user."""
-    params = {
-        "username": username,
-    }
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_user_organizations", params)
-    typer.echo(json.dumps(result, indent=2))
+    """List organizations a user belongs to."""
+    params = {"username": username}
+    result = _send_mcp_request("list_user_orgs", params)
+    if not result:
+        logger.info("No organizations found")
+        return
+    rows = [[org["login"], org["description"], org["public_repos"]] for org in result]
+    print_table(
+        ["Name", "Description", "Public Repos"],
+        rows,
+        title=f"Organizations for {username}",
+    )
 
 
 # Organization commands
@@ -712,64 +777,73 @@ def get_org(
     org: str = typer.Argument(..., help="Organization name"),
 ):
     """Get information about a GitHub organization."""
-    params = {
-        "org": org,
-    }
-
-    result = _send_mcp_request("get_organization", params)
-    typer.echo(json.dumps(result, indent=2))
+    params = {"org": org}
+    result = _send_mcp_request("get_org", params)
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Login", result["login"]],
+            ["Name", result["name"]],
+            ["Description", result["description"]],
+            ["Location", result["location"]],
+            ["Email", result["email"]],
+            ["Public Repos", result["public_repos"]],
+            ["Public Members", result["public_members"]],
+            ["Created", result["created_at"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"Organization {org}",
+    )
 
 
 @github_app.command()
 def list_org_repos(
     org: str = typer.Argument(..., help="Organization name"),
-    type: Optional[str] = typer.Option(
-        None, help="Filter by repository type (all, public, private, forks, sources, member)"
+    type: str = typer.Option(
+        "all", help="Type of repos (all, public, private, forks, sources, member)"
     ),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    direction: Optional[str] = typer.Option(None, help="Sort direction"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
+    sort: str = typer.Option("full_name", help="Sort by (created, updated, pushed, full_name)"),
+    direction: str = typer.Option("asc", help="Sort direction (asc, desc)"),
 ):
-    """List repositories for a GitHub organization."""
+    """List repositories in an organization."""
     params = {
         "org": org,
+        "type": type,
+        "sort": sort,
+        "direction": direction,
     }
-    if type:
-        params["type"] = type
-    if sort:
-        params["sort"] = sort
-    if direction:
-        params["direction"] = direction
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_organization_repositories", params)
-    typer.echo(json.dumps(result, indent=2))
+    result = _send_mcp_request("list_org_repos", params)
+    if not result:
+        logger.info("No repositories found")
+        return
+    rows = [
+        [repo["name"], repo["private"], repo["stargazers_count"], repo["forks_count"]]
+        for repo in result
+    ]
+    print_table(
+        ["Name", "Private", "Stars", "Forks"],
+        rows,
+        title=f"Repositories for {org}",
+    )
 
 
 @github_app.command()
 def list_org_members(
     org: str = typer.Argument(..., help="Organization name"),
-    role: Optional[str] = typer.Option(None, help="Filter by role (all, admin, member)"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
+    role: str = typer.Option("all", help="Filter by role (all, admin, member)"),
 ):
-    """List members of a GitHub organization."""
-    params = {
-        "org": org,
-    }
-    if role:
-        params["role"] = role
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
-    result = _send_mcp_request("list_organization_members", params)
-    typer.echo(json.dumps(result, indent=2))
+    """List members of an organization."""
+    params = {"org": org, "role": role}
+    result = _send_mcp_request("list_org_members", params)
+    if not result:
+        logger.info("No members found")
+        return
+    rows = [[member["login"], member["type"], member["site_admin"]] for member in result]
+    print_table(
+        ["Login", "Type", "Site Admin"],
+        rows,
+        title=f"Members of {org}",
+    )
 
 
 # Workflow commands
@@ -777,73 +851,76 @@ def list_org_members(
 def list_workflows(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
 ):
-    """List GitHub Actions workflows for a repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
+    """List GitHub Actions workflows in a repository."""
+    params = {"owner": owner, "repo": repo}
     result = _send_mcp_request("list_workflows", params)
-    typer.echo(json.dumps(result, indent=2))
+    if not result:
+        logger.info("No workflows found")
+        return
+    rows = [
+        [workflow["name"], workflow["state"], workflow["path"]] for workflow in result["workflows"]
+    ]
+    print_table(
+        ["Name", "State", "Path"],
+        rows,
+        title=f"Workflows in {owner}/{repo}",
+    )
 
 
 @github_app.command()
 def get_workflow(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    workflow_id: str = typer.Argument(..., help="Workflow ID or file name"),
+    workflow_id: str = typer.Argument(..., help="Workflow ID or filename"),
 ):
-    """Get details of a specific GitHub Actions workflow."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "workflow_id": workflow_id,
-    }
-
+    """Get a specific GitHub Actions workflow."""
+    params = {"owner": owner, "repo": repo, "workflow_id": workflow_id}
     result = _send_mcp_request("get_workflow", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Name", result["name"]],
+            ["State", result["state"]],
+            ["Path", result["path"]],
+            ["Created", result["created_at"]],
+            ["Updated", result["updated_at"]],
+        ],
+        title=f"Workflow {workflow_id}",
+    )
 
 
 @github_app.command()
 def list_workflow_runs(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    workflow_id: Optional[str] = typer.Option(None, help="Workflow ID or file name"),
-    status: Optional[str] = typer.Option(
-        None, help="Filter by status (queued, in_progress, completed)"
-    ),
-    conclusion: Optional[str] = typer.Option(
-        None,
-        help="Filter by conclusion (success, failure, neutral, cancelled, skipped, timed_out, action_required)",
-    ),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
+    workflow_id: str = typer.Argument(..., help="Workflow ID or filename"),
+    branch: str = typer.Option(None, help="Filter by branch"),
+    event: str = typer.Option(None, help="Filter by event type"),
+    status: str = typer.Option(None, help="Filter by status"),
 ):
-    """List runs of a GitHub Actions workflow."""
+    """List runs for a specific workflow."""
     params = {
         "owner": owner,
         "repo": repo,
+        "workflow_id": workflow_id,
+        "branch": branch,
+        "event": event,
+        "status": status,
     }
-    if workflow_id:
-        params["workflow_id"] = workflow_id
-    if status:
-        params["status"] = status
-    if conclusion:
-        params["conclusion"] = conclusion
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
     result = _send_mcp_request("list_workflow_runs", params)
-    typer.echo(json.dumps(result, indent=2))
+    if not result:
+        logger.info("No workflow runs found")
+        return
+    rows = [
+        [run["id"], run["head_branch"], run["event"], run["status"], run["conclusion"]]
+        for run in result["workflow_runs"]
+    ]
+    print_table(
+        ["ID", "Branch", "Event", "Status", "Conclusion"],
+        rows,
+        title=f"Runs for workflow {workflow_id}",
+    )
 
 
 @github_app.command()
@@ -852,15 +929,24 @@ def get_workflow_run(
     repo: str = typer.Argument(..., help="Repository name"),
     run_id: int = typer.Argument(..., help="Run ID"),
 ):
-    """Get details of a specific GitHub Actions workflow run."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "run_id": run_id,
-    }
-
+    """Get a specific workflow run."""
+    params = {"owner": owner, "repo": repo, "run_id": run_id}
     result = _send_mcp_request("get_workflow_run", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["ID", result["id"]],
+            ["Name", result["name"]],
+            ["Branch", result["head_branch"]],
+            ["Event", result["event"]],
+            ["Status", result["status"]],
+            ["Conclusion", result["conclusion"]],
+            ["Created", result["created_at"]],
+            ["Updated", result["updated_at"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"Workflow Run {run_id}",
+    )
 
 
 @github_app.command()
@@ -868,19 +954,11 @@ def rerun_workflow(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
     run_id: int = typer.Argument(..., help="Run ID"),
-    enable_debug_logging: Optional[bool] = typer.Option(None, help="Enable debug logging"),
 ):
-    """Re-run a GitHub Actions workflow run."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "run_id": run_id,
-    }
-    if enable_debug_logging is not None:
-        params["enable_debug_logging"] = enable_debug_logging
-
-    result = _send_mcp_request("rerun_workflow", params)
-    typer.echo(json.dumps(result, indent=2))
+    """Rerun a workflow run."""
+    params = {"owner": owner, "repo": repo, "run_id": run_id}
+    _send_mcp_request("rerun_workflow", params)
+    logger.info(f"Triggered rerun of workflow run {run_id}")
 
 
 # Release commands
@@ -888,70 +966,72 @@ def rerun_workflow(
 def list_releases(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
 ):
-    """List releases for a GitHub repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
+    """List releases in a repository."""
+    params = {"owner": owner, "repo": repo}
     result = _send_mcp_request("list_releases", params)
-    typer.echo(json.dumps(result, indent=2))
+    if not result:
+        logger.info("No releases found")
+        return
+    rows = [
+        [release["tag_name"], release["name"], release["created_at"], release["draft"]]
+        for release in result
+    ]
+    print_table(
+        ["Tag", "Name", "Created", "Draft"],
+        rows,
+        title=f"Releases in {owner}/{repo}",
+    )
 
 
 @github_app.command()
 def get_release(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    release_id: int = typer.Argument(..., help="Release ID"),
+    release_id: str = typer.Argument(..., help="Release ID or tag name"),
 ):
-    """Get details of a specific GitHub release."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "release_id": release_id,
-    }
-
+    """Get a specific release."""
+    params = {"owner": owner, "repo": repo, "release_id": release_id}
     result = _send_mcp_request("get_release", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Tag", result["tag_name"]],
+            ["Name", result["name"]],
+            ["Draft", result["draft"]],
+            ["Prerelease", result["prerelease"]],
+            ["Created", result["created_at"]],
+            ["Published", result["published_at"]],
+            ["URL", result["html_url"]],
+        ],
+        title=f"Release {release_id}",
+    )
 
 
 @github_app.command()
 def create_release(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    tag_name: str = typer.Argument(..., help="Tag name for the release"),
-    name: Optional[str] = typer.Option(None, help="Release name"),
-    body: Optional[str] = typer.Option(None, help="Release description"),
-    draft: Optional[bool] = typer.Option(None, help="Create as draft"),
-    prerelease: Optional[bool] = typer.Option(None, help="Create as prerelease"),
-    target_commitish: Optional[str] = typer.Option(None, help="Target commitish (branch or SHA)"),
+    tag: str = typer.Argument(..., help="Tag name"),
+    name: str = typer.Option(None, help="Release name"),
+    body: str = typer.Option(None, help="Release description"),
+    draft: bool = typer.Option(False, help="Create as draft"),
+    prerelease: bool = typer.Option(False, help="Mark as prerelease"),
+    target: str = typer.Option(None, help="Target branch or commit SHA"),
 ):
-    """Create a new GitHub release."""
+    """Create a new release."""
     params = {
         "owner": owner,
         "repo": repo,
-        "tag_name": tag_name,
+        "tag": tag,
+        "name": name,
+        "body": body,
+        "draft": draft,
+        "prerelease": prerelease,
+        "target": target,
     }
-    if name:
-        params["name"] = name
-    if body:
-        params["body"] = body
-    if draft is not None:
-        params["draft"] = draft
-    if prerelease is not None:
-        params["prerelease"] = prerelease
-    if target_commitish:
-        params["target_commitish"] = target_commitish
-
     result = _send_mcp_request("create_release", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Created release {tag}: {result['html_url']}")
 
 
 # Label commands
@@ -959,21 +1039,19 @@ def create_release(
 def list_labels(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
 ):
-    """List labels for a GitHub repository."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-    }
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
+    """List labels in a repository."""
+    params = {"owner": owner, "repo": repo}
     result = _send_mcp_request("list_labels", params)
-    typer.echo(json.dumps(result, indent=2))
+    if not result:
+        logger.info("No labels found")
+        return
+    rows = [[label["name"], label["description"], f"#{label['color']}"] for label in result]
+    print_table(
+        ["Name", "Description", "Color"],
+        rows,
+        title=f"Labels in {owner}/{repo}",
+    )
 
 
 @github_app.command()
@@ -982,15 +1060,18 @@ def get_label(
     repo: str = typer.Argument(..., help="Repository name"),
     name: str = typer.Argument(..., help="Label name"),
 ):
-    """Get details of a specific GitHub label."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "name": name,
-    }
-
+    """Get a specific label."""
+    params = {"owner": owner, "repo": repo, "name": name}
     result = _send_mcp_request("get_label", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Name", result["name"]],
+            ["Description", result["description"]],
+            ["Color", f"#{result['color']}"],
+        ],
+        title=f"Label {name}",
+    )
 
 
 @github_app.command()
@@ -998,47 +1079,41 @@ def create_label(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
     name: str = typer.Argument(..., help="Label name"),
-    color: str = typer.Argument(..., help="Label color (hex code without #)"),
-    description: Optional[str] = typer.Option(None, help="Label description"),
+    color: str = typer.Option(..., help="Color (hex without #)"),
+    description: str = typer.Option(None, help="Label description"),
 ):
-    """Create a new GitHub label."""
+    """Create a new label."""
     params = {
         "owner": owner,
         "repo": repo,
         "name": name,
         "color": color,
+        "description": description,
     }
-    if description:
-        params["description"] = description
-
     result = _send_mcp_request("create_label", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Created label {name}")
 
 
 @github_app.command()
 def update_label(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    name: str = typer.Argument(..., help="Label name"),
-    new_name: Optional[str] = typer.Option(None, help="New label name"),
-    color: Optional[str] = typer.Option(None, help="New label color (hex code without #)"),
-    description: Optional[str] = typer.Option(None, help="New label description"),
+    name: str = typer.Argument(..., help="Current label name"),
+    new_name: str = typer.Option(None, help="New label name"),
+    color: str = typer.Option(None, help="New color (hex without #)"),
+    description: str = typer.Option(None, help="New description"),
 ):
-    """Update an existing GitHub label."""
+    """Update a label."""
     params = {
         "owner": owner,
         "repo": repo,
         "name": name,
+        "new_name": new_name,
+        "color": color,
+        "description": description,
     }
-    if new_name:
-        params["new_name"] = new_name
-    if color:
-        params["color"] = color
-    if description:
-        params["description"] = description
-
     result = _send_mcp_request("update_label", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Updated label {name}")
 
 
 @github_app.command()
@@ -1046,16 +1121,19 @@ def delete_label(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
     name: str = typer.Argument(..., help="Label name"),
+    confirm: bool = typer.Option(
+        ...,
+        prompt="Are you sure you want to delete this label?",
+        help="Confirm deletion",
+    ),
 ):
-    """Delete a GitHub label."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "name": name,
-    }
-
-    result = _send_mcp_request("delete_label", params)
-    typer.echo(json.dumps(result, indent=2))
+    """Delete a label."""
+    if not confirm:
+        logger.info("Operation cancelled")
+        return
+    params = {"owner": owner, "repo": repo, "name": name}
+    _send_mcp_request("delete_label", params)
+    logger.info(f"Deleted label {name}")
 
 
 # Milestone commands
@@ -1063,47 +1141,63 @@ def delete_label(
 def list_milestones(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    state: Optional[str] = typer.Option(None, help="Filter by state (open, closed, all)"),
-    sort: Optional[str] = typer.Option(None, help="Sort field"),
-    direction: Optional[str] = typer.Option(None, help="Sort direction"),
-    per_page: Optional[int] = typer.Option(None, help="Results per page"),
-    page: Optional[int] = typer.Option(None, help="Page number"),
+    state: str = typer.Option("open", help="State (open, closed, all)"),
+    sort: str = typer.Option("due_on", help="Sort by (due_on, completeness)"),
+    direction: str = typer.Option("asc", help="Sort direction (asc, desc)"),
 ):
-    """List milestones for a GitHub repository."""
+    """List milestones in a repository."""
     params = {
         "owner": owner,
         "repo": repo,
+        "state": state,
+        "sort": sort,
+        "direction": direction,
     }
-    if state:
-        params["state"] = state
-    if sort:
-        params["sort"] = sort
-    if direction:
-        params["direction"] = direction
-    if per_page:
-        params["perPage"] = per_page
-    if page:
-        params["page"] = page
-
     result = _send_mcp_request("list_milestones", params)
-    typer.echo(json.dumps(result, indent=2))
+    if not result:
+        logger.info("No milestones found")
+        return
+    rows = [
+        [
+            milestone["number"],
+            milestone["title"],
+            milestone["state"],
+            milestone["due_on"],
+            f"{milestone['closed_issues']}/{milestone['open_issues'] + milestone['closed_issues']}",
+        ]
+        for milestone in result
+    ]
+    print_table(
+        ["Number", "Title", "State", "Due Date", "Progress"],
+        rows,
+        title=f"Milestones in {owner}/{repo}",
+    )
 
 
 @github_app.command()
 def get_milestone(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    milestone_number: int = typer.Argument(..., help="Milestone number"),
+    number: int = typer.Argument(..., help="Milestone number"),
 ):
-    """Get details of a specific GitHub milestone."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "milestone_number": milestone_number,
-    }
-
+    """Get a specific milestone."""
+    params = {"owner": owner, "repo": repo, "number": number}
     result = _send_mcp_request("get_milestone", params)
-    typer.echo(json.dumps(result, indent=2))
+    print_table(
+        ["Field", "Value"],
+        [
+            ["Number", result["number"]],
+            ["Title", result["title"]],
+            ["Description", result["description"]],
+            ["State", result["state"]],
+            ["Due Date", result["due_on"]],
+            ["Created", result["created_at"]],
+            ["Updated", result["updated_at"]],
+            ["Open Issues", result["open_issues"]],
+            ["Closed Issues", result["closed_issues"]],
+        ],
+        title=f"Milestone {number}",
+    )
 
 
 @github_app.command()
@@ -1111,68 +1205,60 @@ def create_milestone(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
     title: str = typer.Argument(..., help="Milestone title"),
-    state: Optional[str] = typer.Option(None, help="Milestone state (open, closed)"),
-    description: Optional[str] = typer.Option(None, help="Milestone description"),
-    due_on: Optional[str] = typer.Option(None, help="Due date (ISO 8601 format)"),
+    description: str = typer.Option(None, help="Milestone description"),
+    due_on: str = typer.Option(None, help="Due date (YYYY-MM-DD)"),
 ):
-    """Create a new GitHub milestone."""
+    """Create a new milestone."""
     params = {
         "owner": owner,
         "repo": repo,
         "title": title,
+        "description": description,
+        "due_on": due_on,
     }
-    if state:
-        params["state"] = state
-    if description:
-        params["description"] = description
-    if due_on:
-        params["due_on"] = due_on
-
     result = _send_mcp_request("create_milestone", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Created milestone {title} (#{result['number']})")
 
 
 @github_app.command()
 def update_milestone(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    milestone_number: int = typer.Argument(..., help="Milestone number"),
-    title: Optional[str] = typer.Option(None, help="New milestone title"),
-    state: Optional[str] = typer.Option(None, help="New milestone state (open, closed)"),
-    description: Optional[str] = typer.Option(None, help="New milestone description"),
-    due_on: Optional[str] = typer.Option(None, help="New due date (ISO 8601 format)"),
+    number: int = typer.Argument(..., help="Milestone number"),
+    title: str = typer.Option(None, help="New title"),
+    description: str = typer.Option(None, help="New description"),
+    due_on: str = typer.Option(None, help="New due date (YYYY-MM-DD)"),
+    state: str = typer.Option(None, help="New state (open, closed)"),
 ):
-    """Update an existing GitHub milestone."""
+    """Update a milestone."""
     params = {
         "owner": owner,
         "repo": repo,
-        "milestone_number": milestone_number,
+        "number": number,
+        "title": title,
+        "description": description,
+        "due_on": due_on,
+        "state": state,
     }
-    if title:
-        params["title"] = title
-    if state:
-        params["state"] = state
-    if description:
-        params["description"] = description
-    if due_on:
-        params["due_on"] = due_on
-
     result = _send_mcp_request("update_milestone", params)
-    typer.echo(json.dumps(result, indent=2))
+    logger.info(f"Updated milestone #{number}")
 
 
 @github_app.command()
 def delete_milestone(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),
-    milestone_number: int = typer.Argument(..., help="Milestone number"),
+    number: int = typer.Argument(..., help="Milestone number"),
+    confirm: bool = typer.Option(
+        ...,
+        prompt="Are you sure you want to delete this milestone?",
+        help="Confirm deletion",
+    ),
 ):
-    """Delete a GitHub milestone."""
-    params = {
-        "owner": owner,
-        "repo": repo,
-        "milestone_number": milestone_number,
-    }
-
-    result = _send_mcp_request("delete_milestone", params)
-    typer.echo(json.dumps(result, indent=2))
+    """Delete a milestone."""
+    if not confirm:
+        logger.info("Operation cancelled")
+        return
+    params = {"owner": owner, "repo": repo, "number": number}
+    _send_mcp_request("delete_milestone", params)
+    logger.info(f"Deleted milestone #{number}")

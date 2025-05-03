@@ -11,7 +11,6 @@ from erasmus.cli.github_mcp_commands import github_app
 
 mcp_registry = MCPRegistry()
 mcp_app = typer.Typer(help="Manage MCP servers and clients.")
-mcp_app.add_typer(github_app, name="github", help="Interact with GitHub through the MCP server.")
 
 
 def show_mcp_help_and_exit():
@@ -41,16 +40,8 @@ def mcp_callback(ctx: typer.Context):
     """
     if ctx.invoked_subcommand is None:
         command_rows = [
-            ["erasmus mcp server start", "Start an MCP server"],
-            ["erasmus mcp server stop", "Stop an MCP server"],
-            ["erasmus mcp server register", "Register a new MCP server"],
-            ["erasmus mcp server unregister", "Unregister an MCP server"],
-            ["erasmus mcp server list", "List all registered servers"],
-            ["erasmus mcp client connect", "Connect to an MCP server"],
-            ["erasmus mcp client disconnect", "Disconnect from an MCP server"],
-            ["erasmus mcp client register", "Register a new MCP client"],
-            ["erasmus mcp client unregister", "Unregister an MCP client"],
-            ["erasmus mcp client list", "List all registered clients"],
+            ["erasmus mcp server", "Manage MCP servers"],
+            ["erasmus mcp client", "Manage MCP clients"],
         ]
         print_table(["Command", "Description"], command_rows, title="Available MCP Commands")
         typer.echo("\nFor more information about a command, run:")
@@ -60,6 +51,7 @@ def mcp_callback(ctx: typer.Context):
 
 # Server commands
 server_app = typer.Typer(help="Manage MCP servers.")
+server_app.add_typer(github_app, name="github", help="Manage GitHub through the MCP server.")
 mcp_app.add_typer(server_app, name="server")
 
 

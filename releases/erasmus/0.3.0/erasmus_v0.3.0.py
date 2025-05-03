@@ -1811,7 +1811,6 @@ import typer
 from typing import Optional, List, Dict
 
 
-
 context_app = typer.Typer(
     help='Context management CLI for Erasmus',
     no_args_is_help=True,
@@ -2090,7 +2089,6 @@ from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel
 from loguru import logger
-
 
 
 path_manager = get_path_manager()
@@ -4253,6 +4251,7 @@ from pathlib import Path
 from loguru import logger
 
 
+
 mcp_registry = MCPRegistry()
 mcp_app = typer.Typer(help="Manage MCP servers and clients.")
 
@@ -5807,7 +5806,6 @@ def watch_protocol():
 
 
 
-
     path_manager = get_path_manager()
     protocol_manager = ProtocolManager()
     ctx_files = [
@@ -5931,7 +5929,6 @@ watch_protocol = watch_protocol
 import typer
 import re
 from pathlib import Path
-
 
 
 
@@ -6258,7 +6255,6 @@ def watch():  # pragma: no cover
 @app.command()
 def status():
     """Show the current Erasmus context and protocol status."""
-
 
 
     import os

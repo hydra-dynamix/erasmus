@@ -53,16 +53,16 @@ Erasmus is an advanced context management library that revolutionizes software d
 ### Quick Install
 
 ```bash
-curl -sSL hydra-dynamix/erasmus/refs/heads/develop/main/erasmus/0.2.0/erasmus_v0.2.0.sh | bash
+curl -sSL https://raw.githubusercontent.com/hydra-dynamix/erasmus/refs/heads/main/releases/install.sh | bash -s -- 0.3.0
 ```
 
 ### Workflow Overview
 
 1. **Context Definition**
 
-   - Define project architecture in `.ctx.architecture.xml`
-   - Track progress in `.ctx.progress.xml`
-   - Break down tasks in `.ctx.tasks.xml`
+   - Define project architecture in `.ctx.architecture.md`
+   - Track progress in `.ctx.progress.md`
+   - Break down tasks in `.ctx.tasks.md`
 
 2. **Continuous Synchronization**
 
@@ -76,20 +76,20 @@ curl -sSL hydra-dynamix/erasmus/refs/heads/develop/main/erasmus/0.2.0/erasmus_v0
 
 ### Context File Structure
 
-- **`.ctx.architecture.xml`**: Project blueprint
+- **`.ctx.architecture.md`**: Project blueprint
 
   - High-level design
   - Technology stack
   - User stories
   - Completion criteria
 
-- **`.ctx.progress.xml`**: Development tracking
+- **`.ctx.progress.md`**: Development tracking
 
   - Component progress
   - Blockers
   - Dependencies
 
-- **`.ctx.tasks.xml`**: Granular task management
+- **`.ctx.tasks.md`**: Granular task management
   - Detailed task breakdown
   - Status tracking
   - Assignment

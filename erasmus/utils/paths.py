@@ -3,14 +3,15 @@ from pydantic import BaseModel, Field, ConfigDict
 from dotenv import load_dotenv
 from enum import Enum
 import os
-from typing import NamedTuple
+from typing import NamedTuple, List, Optional, Tuple
+from loguru import logger
+from erasmus.utils.warp_integration import WarpIntegration, WarpRule
 
 load_dotenv()
 
 
 class IDEMetadata(NamedTuple):
     """Metadata for an IDE environment."""
-
     name: str
     rules_file: str
     global_rules_path: Path
@@ -33,7 +34,6 @@ class IDE(Enum):
 
     codex = IDEMetadata(
         name="codex",
-        # Local rules file for Codex IDE (prefixed with a dot)
         rules_file=".codex.md",
         global_rules_path=Path.home() / ".codex" / "instructions.md",
     )
@@ -43,6 +43,13 @@ class IDE(Enum):
         rules_file="CLAUDE.md",
         global_rules_path=Path.home() / ".claude" / "CLAUDE.md",
     )
+
+    warp = IDEMetadata(
+        name="warp",
+        rules_file="warp.sqlite",
+        global_rules_path=Path(os.environ["LOCALAPPDATA"]) / "Warp/Warp/data/warp.sqlite" if os.name == "nt"
+        else Path("/mnt/c/Users/richa/AppData/Local/Warp/Warp/data/warp.sqlite"
+    ))
 
     @property
     def metadata(self) -> IDEMetadata:
@@ -61,17 +68,19 @@ class IDE(Enum):
 
 
 def detect_ide_from_env() -> IDE | None:
-    """
-    Detect IDE from environment variables.
-    Returns None if no IDE is detected.
-    """
+    """Detect IDE from environment variables."""
+    if "VSCODE_REMOTE" in os.environ or "REMOTE_CONTAINERS" in os.environ:
+        return IDE.cursor
+
     ide_env = os.environ.get("IDE_ENV", "").lower()
 
     if not ide_env:
-        return None
+        return IDE.cursor
 
-    # Check for IDE based on prefix
-    if ide_env.startswith("w"):
+    # Updated to include Warp
+    if ide_env.startswith("wa"):
+        return IDE.warp
+    elif ide_env.startswith("w"):
         return IDE.windsurf
     elif ide_env.startswith("cu"):
         return IDE.cursor
@@ -80,23 +89,21 @@ def detect_ide_from_env() -> IDE | None:
     elif ide_env.startswith("cl"):
         return IDE.claude
 
-    return None
+    return IDE.cursor
 
 
 def prompt_for_ide() -> IDE:
-    """
-    Prompt the user to select an IDE.
-    Returns the selected IDE.
-    """
+    """Prompt the user to select an IDE."""
     print("No IDE environment detected. Please select an IDE:")
     print("1. Windsurf")
     print("2. Cursor")
     print("3. Codex")
     print("4. Claude")
+    print("5. Warp")
 
     while True:
         try:
-            choice = input("Enter your choice (1-4): ")
+            choice = input("Enter your choice (1-5): ")
             if choice == "1":
                 return IDE.windsurf
             elif choice == "2":
@@ -105,18 +112,17 @@ def prompt_for_ide() -> IDE:
                 return IDE.codex
             elif choice == "4":
                 return IDE.claude
+            elif choice == "5":
+                return IDE.warp
             else:
-                print("Invalid choice. Please enter a number between 1 and 4.")
-        except KeyboardInterrupt:
-            print("\nOperation cancelled. Using default IDE (Cursor).")
+                print("Invalid choice. Please enter a number between 1 and 5.")
+        except (KeyboardInterrupt, EOFError):
+            print("\nOperation cancelled or input closed. Using default IDE (Cursor).")
             return IDE.cursor
 
 
 def get_ide() -> IDE:
-    """
-    Get the IDE from environment variables or prompt the user.
-    Returns the selected IDE.
-    """
+    """Get the IDE from environment variables or prompt the user."""
     ide = detect_ide_from_env()
     if ide is None:
         ide = prompt_for_ide()
@@ -133,76 +139,95 @@ def get_ide() -> IDE:
 class PathMngrModel(BaseModel):
     """Manages paths for different IDE environments."""
 
-    # Allow extra attributes for mocking and patching
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
     ide: IDE | None = None
-    # Directories
-    root_dir: Path = Path.cwd()
+    warp_integration: WarpIntegration | None = None
+    
+    # [Previous attributes remain unchanged]
+    root_dir: Path = Field(default_factory=lambda: Path.cwd())
+    context_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx")
     erasmus_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus")
     context_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "context")
     protocol_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "protocol")
     template_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "templates")
+    log_dir: Path = Field(default_factory=lambda: Path.cwd() / ".erasmus" / "logs")
 
     # Files
-    architecture_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.architecture.xml")
-    progress_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.progress.xml")
-    tasks_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.tasks.xml")
+    architecture_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.architecture.md")
+    progress_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.progress.md")
+    tasks_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.tasks.md")
     rules_file: Path | None = None
     global_rules_file: Path | None = None
 
     # Templates
     architecture_template: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "architecture.xml"
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "architecture.md"
     )
     progress_template: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "progress.xml"
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "progress.md"
     )
     tasks_template: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "tasks.xml"
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "tasks.md"
     )
     protocol_template: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "protocol.xml"
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "protocol.md"
     )
     meta_agent_template: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_agent.xml"
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_agent.md"
     )
     meta_rules_template: Path = Field(
-        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_rules.xml"
+        default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_rules.md"
     )
 
     def __init__(self, **data):
-        """Initialize the PathMngrModel with optional configuration data.
-
-        Args:
-            **data: Keyword arguments for configuring path management.
-                    Supports IDE-specific and custom path configurations.
-        """
+        """Initialize the PathMngrModel with optional configuration data."""
         super().__init__(**data)
-        # Initialize and time path setup
+        if self.ide == IDE.warp:
+            self.warp_integration = WarpIntegration()
         self._setup_paths()
 
     def _setup_paths(self):
-        """Set up and configure paths for the current development environment.
-
-        This method handles:
-        - Detecting the current IDE
-        - Creating necessary directories
-        - Setting up symlinks
-        - Ensuring cross-platform path compatibility
-        """
         """Set up paths based on the selected IDE."""
         if self.ide:
-            # Set rules file based on IDE
             self.rules_file = self.root_dir / self.ide.rules_file
             self.global_rules_file = self.ide.global_rules_path
 
-            # Create symlink for cursor if needed (special case for windsurf)
             if self.ide == IDE.windsurf:
                 cursor_rules = self.root_dir / ".cursorrules"
                 if self.rules_file.exists() and not cursor_rules.exists():
                     cursor_rules.symlink_to(self.rules_file)
 
+    def update_warp_rules(self, document_type: str, document_id: str, rule: str) -> bool:
+        """Update rules in Warp's database if IDE is set to Warp."""
+        if self.ide != IDE.warp or not self.warp_integration:
+            return False
+
+        try:
+            rule_obj = WarpRule(
+                document_type=document_type,
+                document_id=document_id,
+                rule=rule
+            )
+            self.warp_integration.update_rule(rule_obj)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to update Warp rules: {e}")
+            return False
+
+    def get_warp_rules(self) -> List[Tuple[str, str, str]] | None:
+        """Retrieve rules from Warp's database if IDE is set to Warp."""
+        if self.ide != IDE.warp or not self.warp_integration:
+            return None
+
+        try:
+            rules = self.warp_integration.get_rules()
+            return [(rule.document_type, rule.document_id, rule.rule) for rule in rules]
+        except Exception as e:
+            logger.error(f"Failed to retrieve Warp rules: {e}")
+            return None
+
+    # [Previous methods remain unchanged]
     def get_ide_env(self) -> str | None:
         """Get the IDE environment name."""
         return self.ide.name if self.ide else None
@@ -252,6 +277,14 @@ class PathMngrModel(BaseModel):
         else:
             raise ValueError(f"Path {name} not found")
 
+    def get_context_file(self) -> Path:
+        """Get the context file path."""
+        return self.context_file
+
+    def link_rules_file(self) -> None:
+        """Detect IDE and link .ctx to rules file"""
+        self.rules_file.symlink_to(self.context_file)
+
     def ensure_dirs(self) -> None:
         """Ensure all directories exist."""
         self.context_dir.mkdir(parents=True, exist_ok=True)
@@ -276,10 +309,15 @@ class PathMngrModel(BaseModel):
         self.ensure_dirs()
         self.ensure_files()
 
+    def get_log_dir(self) -> Path:
+        """Get the log directory path."""
+        if not self.log_dir.exists():
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+        return self.log_dir
+
 
 # Singleton instance
 _path_manager = None
-
 
 def get_path_manager(ide: IDE | None = None) -> PathMngrModel:
     """Get the singleton path manager instance."""

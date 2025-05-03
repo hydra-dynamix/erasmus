@@ -1,8 +1,8 @@
 import typer
+import re
 from pathlib import Path
 from erasmus.utils.paths import get_path_manager
 from erasmus.protocol import ProtocolManager
-from erasmus.context import ContextManager
 from erasmus.utils.rich_console import print_table, get_console
 
 setup_app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
@@ -78,38 +78,80 @@ def setup_callback(ctx: typer.Context):
     path_manager = get_path_manager()
     print_table(["Info"], [[f"IDE detected: {path_manager.ide.name}"]], title="Setup")
 
-    # Step 2: Prompt for project name
-    project_name = typer.prompt("Enter the project name")
-    if not project_name:
-        print_table(["Error"], [["Project name is required."]], title="Setup Failed")
-        raise typer.Exit(1)
+    # Step 2: Ensure Erasmus directories exist
+    path_manager.ensure_dirs()
+    print_table(["Info"], [[f"Erasmus folders created in: {path_manager.erasmus_dir}"]], title="Setup")
 
-    # Step 3: Create project directory and context using path manager
-    project_dir = Path.cwd() / project_name
-    project_dir.mkdir(parents=True, exist_ok=True)
-    print_table(["Info"], [[f"Project directory created: {project_dir}"]], title="Setup")
-
-    # Step 4: Use path manager for all Erasmus folders inside project
-    erasmus_dir = path_manager.erasmus_dir
-    context_dir = path_manager.context_dir
-    protocol_dir = path_manager.protocol_dir
-    template_dir = path_manager.template_dir
-    for d in [erasmus_dir, context_dir, protocol_dir, template_dir]:
-        d.mkdir(parents=True, exist_ok=True)
-    print_table(["Info"], [[f"Erasmus folders created in: {erasmus_dir}"]], title="Setup")
-
-    # Step 5: Create a template context in the context folder and update root .ctx.*.xml files
-    context_manager = ContextManager(base_path=str(context_dir))
-    context_manager.create_context(project_name)
-    print_table(["Info"], [[f"Template context created: {project_name}"]], title="Setup")
-    # Load the new context to root .ctx.*.xml files
-    context_manager.load_context(project_name)
+    # Step 3: Set up shell integration
     set_erasmus_path()
-    print_table(
-        ["Info"],
-        [[f"Root .ctx.*.xml files updated for: {project_name}"]],
-        title="Setup",
-    )
+
+    # Step 4: List available contexts and allow creating new
+    contexts = [d.name for d in sorted(path_manager.get_context_dir().iterdir()) if d.is_dir()]
+    context_rows = [["0", "Create New Context"]] + [
+        [str(i + 1), name] for i, name in enumerate(contexts)
+    ]
+    print_table(["#", "Context Name"], context_rows, title="Available Contexts")
+    
+    choice = typer.prompt("Select a context by number or name (0 to create new)")
+    
+    # Handle context selection
+    if choice == "0":
+        context_name = typer.prompt("Enter name for new context")
+        if not context_name:
+            print_table(["Error"], [["Context name is required"]], title="Setup Failed")
+            raise typer.Exit(1)
+    else:
+        # Find existing context
+        selected = None
+        if choice.isdigit():
+            idx = int(choice)
+            if 1 <= idx <= len(contexts):
+                selected = contexts[idx - 1]
+        else:
+            if choice in contexts:
+                selected = choice
+        if not selected:
+            print_table(["Error"], [[f"Invalid selection: {choice}"]], title="Setup Failed")
+            raise typer.Exit(1)
+        context_name = selected
+
+    # Create or load context files
+    ctx_dir = path_manager.get_context_dir() / context_name
+    ctx_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Set up context files
+    ctx_files = [
+        (ctx_dir / '.ctx.architecture.md', path_manager.architecture_template),
+        (ctx_dir / '.ctx.tasks.md', path_manager.tasks_template),
+        (ctx_dir / '.ctx.progress.md', path_manager.progress_template)
+    ]
+    
+    for target_file, template_file in ctx_files:
+        if not target_file.exists():
+            if template_file.exists():
+                content = template_file.read_text()
+                # Replace title in template
+                content = re.sub(r'<Title>.*?</Title>', f'<Title>{context_name}</Title>', content)
+                content = re.sub(r'^# [^\n]*', f'# {context_name}', content)
+            else:
+                # Default content with title
+                file_type = target_file.stem.split('.')[-1]
+                content = f'# {context_name} {file_type.capitalize()}\n\n'
+                if file_type == 'tasks':
+                    content += '- [ ] Initial project setup\n'
+                elif file_type == 'progress':
+                    content += '## Current Sprint\n\n- Project initialized\n'
+                elif file_type == 'architecture':
+                    content += 'Define your system architecture here.\n'
+            target_file.write_text(content)
+    
+    # Copy context files to root
+    for ctx_file in ctx_files:
+        target = Path(ctx_file[0].name)
+        if ctx_file[0].exists():
+            target.write_text(ctx_file[0].read_text())
+    
+    print_table(["Info"], [[f"Context {context_name} set up and loaded"]], title="Setup")
 
     # Step 6: Prompt for protocol selection
     protocol_manager = ProtocolManager()
