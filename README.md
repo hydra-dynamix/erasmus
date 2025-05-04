@@ -54,7 +54,7 @@ Erasmus is an advanced context management library that revolutionizes software d
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/bakobiibizo/erasmus/refs/heads/main/releases/erasmus/0.3.1/erasmus_v0.3.1.sh -o erasmus.sh && bash erasmus.sh
-
+```
 ### Workflow Overview
 
 1. **Context Definition**
