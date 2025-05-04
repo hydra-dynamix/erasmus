@@ -68,7 +68,7 @@ erasmus/
 ### Quick Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/bakobiibizo/erasmus/refs/heads/main/releases/erasmus/0.3.1/erasmus_v0.3.1.sh -o erasmus.sh && bash erasmus.sh
+curl -sSL https://raw.githubusercontent.com/bakobiibizo/erasmus/refs/heads/main/releases/erasmus/0.3.2/erasmus_v0.3.2.sh -o erasmus.sh && bash erasmus.sh
 ```
 
 ## Command Line Usage
