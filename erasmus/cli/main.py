@@ -2,11 +2,25 @@
 Main CLI entry point for Erasmus.
 """
 
+# Standard library imports
+import os
+import signal
+import importlib.metadata
+
+# Third-party imports
 import typer
+from click import UsageError
+from loguru import logger
+from rich.console import Console
+
+# Local imports
 from erasmus.context import context_app
 from erasmus.cli.protocol_commands import protocol_app
 from erasmus.cli.setup_commands import setup_app
 from erasmus.cli.mcp_commands import mcp_app
+from erasmus.protocol import ProtocolManager
+from erasmus.file_monitor import ContextFileMonitor
+from erasmus.utils.paths import get_path_manager
 from erasmus.utils.rich_console import print_table
 
 app = typer.Typer(
@@ -98,16 +112,12 @@ def watch():  # pragma: no cover
 
     Press Ctrl+C to stop watching.
     """
-    from erasmus.utils.paths import get_path_manager
-    from erasmus.file_monitor import ContextFileMonitor
-    from loguru import logger
-
-    pm = get_path_manager()
-    root = pm.get_root_dir()
+    path_manager = get_path_manager()
+    root = path_manager.get_root_dir()
 
     # Configure logger for file monitoring
     logger.add(
-        pm.get_log_dir() / "file_monitor.log", rotation="1 day", retention="7 days", level="INFO"
+        path_manager.get_log_dir() / "file_monitor.log", rotation="1 day", retention="7 days", level="INFO"
     )
 
     monitor = ContextFileMonitor()
@@ -115,7 +125,7 @@ def watch():  # pragma: no cover
     try:
         with monitor:
             typer.echo(f"Watching {root} for .ctx file changes (Ctrl+C to stop)...")
-            typer.echo("Log file: " + str(pm.get_log_dir() / "file_monitor.log"))
+            typer.echo("Log file: " + str(path_manager.get_log_dir() / "file_monitor.log"))
 
             # Keep the main thread alive
             import signal
@@ -132,11 +142,6 @@ def watch():  # pragma: no cover
 @app.command()
 def status():
     """Show the current Erasmus context and protocol status."""
-    from erasmus.context import ContextManager
-    from erasmus.protocol import ProtocolManager
-    from erasmus.utils.rich_console import print_table
-    import os
-
     context_manager = ContextManager()
     protocol_manager = ProtocolManager()
 
@@ -173,9 +178,7 @@ def status():
 @app.command()
 def version():
     """Show the Erasmus version."""
-    import erasmus
-
-    typer.echo(f"Erasmus version: {erasmus.__version__}")
+    typer.echo(f"Erasmus version: {importlib.metadata.version('erasmus-workspace')}")
 
 
 if __name__ == "__main__":

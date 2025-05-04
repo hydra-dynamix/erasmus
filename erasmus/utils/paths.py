@@ -15,6 +15,7 @@ class IDEMetadata(NamedTuple):
     name: str
     rules_file: str
     global_rules_path: Path
+    mcp_config_path: Path
 
 
 class IDE(Enum):
@@ -24,32 +25,37 @@ class IDE(Enum):
         name="windsurf",
         rules_file=".windsurfrules",
         global_rules_path=Path.home() / ".codeium" / "windsurf" / "memories" / "global_rules.md",
+        mcp_config_path= Path.home() / '.codeium' / 'windsurf' / 'mcp_config.json',
     )
 
     cursor = IDEMetadata(
         name="cursor",
         rules_file=".cursorrules",
         global_rules_path=Path.cwd() / ".cursor" / "global_rules.md",
+        mcp_config_path= Path.home() / '.cursor' / 'mcp.json',
     )
 
     codex = IDEMetadata(
         name="codex",
         rules_file=".codex.md",
         global_rules_path=Path.home() / ".codex" / "instructions.md",
+        mcp_config_path= Path.home() / '.codex' / 'mcp.json',
     )
 
     claude = IDEMetadata(
         name="claude",
         rules_file="CLAUDE.md",
         global_rules_path=Path.home() / ".claude" / "CLAUDE.md",
+        mcp_config_path= Path.home() / '.claude' / 'mcp.json',
     )
 
     warp = IDEMetadata(
         name="warp",
         rules_file="warp.sqlite",
         global_rules_path=Path(os.environ["LOCALAPPDATA"]) / "Warp/Warp/data/warp.sqlite" if os.name == "nt"
-        else Path("/mnt/c/Users/richa/AppData/Local/Warp/Warp/data/warp.sqlite"
-    ))
+        else Path("/mnt/c/Users/richa/AppData/Local/Warp/Warp/data/warp.sqlite"),
+        mcp_config_path= Path.home() / '.warp' / 'mcp.json',
+    )
 
     @property
     def metadata(self) -> IDEMetadata:
@@ -66,16 +72,22 @@ class IDE(Enum):
         """Get the global rules path for this IDE."""
         return self.metadata.global_rules_path
 
+    @property
+    def mcp_config_path(self) -> Path:
+        """Get the MCP configuration path for this IDE."""
+        return self.metadata.mcp_config_path
+
 
 def detect_ide_from_env() -> IDE | None:
     """Detect IDE from environment variables."""
     if "VSCODE_REMOTE" in os.environ or "REMOTE_CONTAINERS" in os.environ:
-        return IDE.cursor
+        return prompt_for_ide()
 
-    ide_env = os.environ.get("IDE_ENV", "").lower()
+    load_dotenv()
+    ide_env = os.environ.get("IDE_ENV")
 
     if not ide_env:
-        return IDE.cursor
+        ide_env = prompt_for_ide().name
 
     # Updated to include Warp
     if ide_env.startswith("wa"):
@@ -89,11 +101,14 @@ def detect_ide_from_env() -> IDE | None:
     elif ide_env.startswith("cl"):
         return IDE.claude
 
-    return IDE.cursor
+    return prompt_for_ide()
 
 
 def prompt_for_ide() -> IDE:
     """Prompt the user to select an IDE."""
+    load_dotenv()
+    if os.getenv("IDE_ENV"):
+        return IDE[os.getenv("IDE_ENV")]
     print("No IDE environment detected. Please select an IDE:")
     print("1. Windsurf")
     print("2. Cursor")
@@ -105,20 +120,25 @@ def prompt_for_ide() -> IDE:
         try:
             choice = input("Enter your choice (1-5): ")
             if choice == "1":
-                return IDE.windsurf
+                ide_env = IDE.windsurf
             elif choice == "2":
-                return IDE.cursor
+                ide_env = IDE.cursor
             elif choice == "3":
-                return IDE.codex
+                ide_env = IDE.codex
             elif choice == "4":
-                return IDE.claude
+                ide_env = IDE.claude
             elif choice == "5":
-                return IDE.warp
+                ide_env = IDE.warp
             else:
                 print("Invalid choice. Please enter a number between 1 and 5.")
+            if ide_env:
+                ide_path = Path.cwd() / ".env"
+                ide_path.write_text(f"IDE_ENV={ide_env.name}")
+                return ide_env
+                
         except (KeyboardInterrupt, EOFError):
             print("\nOperation cancelled or input closed. Using default IDE (Cursor).")
-            return IDE.cursor
+            return prompt_for_ide()
 
 
 def get_ide() -> IDE:
@@ -178,6 +198,9 @@ class PathMngrModel(BaseModel):
     )
     meta_rules_template: Path = Field(
         default_factory=lambda: Path.cwd() / ".erasmus" / "templates" / "meta_rules.md"
+    )
+    check_binary_script: Path = Field(
+        default_factory=lambda: Path.cwd() / '.erasmus' / 'servers' / 'github' / 'check_binary.sh'
     )
 
     def __init__(self, **data):

@@ -30,6 +30,7 @@ dependencies = [
     "mcp[cli]>=1.6.0",
     "loguru>=0.7.3",
     "requests>=2.32.3",
+    "toml>=0.10.2",
 ]
 
 [project.scripts]

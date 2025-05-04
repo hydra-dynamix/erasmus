@@ -24,6 +24,8 @@ logger = get_console_logger()
 # central path manager
 path_manager = get_path_manager()
 
+ide_env = path_manager.ide
+
 
 def ensure_dir(path: Path) -> None:
     """Ensure directory exists."""
@@ -43,21 +45,42 @@ def display_available_contexts(contexts: List[str], title: str = 'Available Cont
 def select_context_interactive(contexts: List[str]) -> Optional[str]:
     """Interactively select a context from a list."""
     if not contexts:
-        console.error('No contexts available for selection')
+        logger.warning('No contexts available. Would you like to create a new context?')
+        create_new = typer.confirm('Create a new context?', default=True)
+        if create_new:
+            new_context_name = typer.prompt('Enter a name for the new context')
+            # TODO: Implement actual context creation logic
+            logger.info(f'New context "{new_context_name}" created')
+            return new_context_name
         return None
 
     display_available_contexts(contexts)
-    choice = typer.prompt('Select a context by number or name')
+    while True:
+        choice = typer.prompt('Select a context by number or name')
+        
+        # Try to match by number
+        try:
+            index = int(choice) - 1
+            if 0 <= index < len(contexts):
+                return contexts[index]
+        except ValueError:
+            pass
+        
+        # Try to match by name
+        if choice in contexts:
+            return choice
+        
+        logger.warning(f'Invalid selection: {choice}. Please try again.')
     
-    if choice.isdigit():
-        index = int(choice)
-        if 1 <= index <= len(contexts):
-            return contexts[index - 1]
-    elif choice in contexts:
-        return choice
-    
-    console.error(f'Invalid selection: {choice}')
-    return None
+        if choice.isdigit():
+            index = int(choice)
+            if 1 <= index <= len(contexts):
+                return contexts[index - 1]
+        elif choice in contexts:
+            return choice
+        
+        logger.error(f'Invalid selection: {choice}')
+        return None
 
 
 @context_app.command('list')
@@ -65,7 +88,7 @@ def list_contexts() -> None:
     """List all contexts for this project."""
     root = path_manager.get_context_dir()
     if not root.exists():
-        console.error('No contexts found.')
+        logger.error('No contexts found.')
         raise typer.Exit(1)
     
     contexts = [d.name for d in sorted(root.iterdir()) if d.is_dir()]
@@ -88,7 +111,7 @@ def create_context(name: Optional[str] = None) -> None:
         name = typer.prompt('Context name')
     
     if not name:
-        console.error('Context name is required')
+        logger.error('Context name is required')
         raise typer.Exit(1)
 
     try:
@@ -130,7 +153,7 @@ def create_context(name: Optional[str] = None) -> None:
             logger.success(f'Created context \'{name}\' at {ctx_dir}')
     
     except Exception as e:
-        console.error(f'Failed to create context: {str(e)}')
+        logger.error(f'Failed to create context: {str(e)}')
         raise typer.Exit(1)
 
 
@@ -145,7 +168,7 @@ def edit_context(name: Optional[str] = None) -> None:
 
     file_path = path_manager.get_context_dir() / name / '.ctx.architecture.md'
     if not file_path.exists():
-        console.error(f'Context \'{name}\' not found.')
+        logger.error(f'Context \'{name}\' not found.')
         raise typer.Exit(1)
     
     editor = subprocess.getoutput('which nano')  # Fallback to nano
@@ -173,14 +196,14 @@ def store_context(name: Optional[str] = None) -> None:
     arch = path_manager.get_architecture_file()
     if not name and arch.exists():
         text = arch.read_text()
-        m = re.search(r'^#\s*Title:\s*(.+)$', text, re.MULTILINE)
-        name = m.group(1).strip() if m else None
+        markdown = re.search(r'^#\s*Title:\s*(.+)$', text, re.MULTILINE)
+        name = markdown.group(1).strip() if markdown else None
 
     if not name:
         name = typer.prompt('Context name')
 
     if not name:
-        console.error('Context name is required')
+        logger.error('Context name is required')
         raise typer.Exit(1)
 
     try:
@@ -212,7 +235,7 @@ def store_context(name: Optional[str] = None) -> None:
             logger.success(f'Stored context \'{name}\'')
     
     except Exception as e:
-        console.error(f'Failed to store context: {str(e)}')
+        logger.error(f'Failed to store context: {str(e)}')
         raise typer.Exit(1)
 
 
@@ -237,7 +260,7 @@ def select_context() -> None:
         load_context(name)
         logger.success(f'Selected and loaded context: {name}')
     except Exception as e:
-        console.error(f'Failed to select context: {str(e)}')
+        logger.error(f'Failed to select context: {str(e)}')
         raise typer.Exit(1)
 
 
@@ -251,8 +274,7 @@ def load_context(name: str) -> None:
             for f in ctx_dir.glob('*.md'):
                 dest = Path.cwd() / f.name
                 shutil.copy2(f, dest)
-            logger.success(f'Loaded context \'{name}\' from filesystem')
-            return
+            logger.success(f'Loaded context "{name}" from filesystem')
         elif path_manager.ide == IDE.warp:
             # Try loading from Warp database
             warp_rules = path_manager.get_warp_rules()
@@ -264,14 +286,17 @@ def load_context(name: str) -> None:
                 if context_rule:
                     dest = Path.cwd() / '.ctx.architecture.md'
                     dest.write_text(context_rule[2])
-                    logger.success(f'Loaded context \'{name}\' from Warp database')
-                    return
+                    logger.success(f'Loaded context "{name}" from Warp database')
+                else:
+                    logger.error(f'Context "{name}" not found.')
+                    raise typer.Exit(1)
         
-        console.error(f'Context \'{name}\' not found.')
-        raise typer.Exit(1)
+        # Call update method to synchronize context
+        from erasmus.file_monitor import _merge_rules_file
+        _merge_rules_file()
         
     except Exception as e:
-        console.error(f'Failed to load context: {str(e)}')
+        logger.error(f'Failed to load context: {str(e)}')
         raise typer.Exit(1)
 
 

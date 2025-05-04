@@ -7,10 +7,55 @@ import subprocess
 import typer
 from typing import List, Dict, Any
 from loguru import logger
-from erasmus.utils.rich_console import print_table
+from erasmus.utils.rich_console import print_table, get_console
 
-github_app = typer.Typer(help="Interact with GitHub through the MCP server.")
+console = get_console()
 
+github_app = typer.Typer(help="Interact with GitHub through the MCP server.", no_args_is_help=True)
+
+# Global error handler to show commands on incorrect usage
+@github_app.callback()
+def github_mcp_callback(ctx: typer.Context):
+    if ctx.invoked_subcommand is None:
+        console.print("[bold red]Error:[/] No command specified.")
+        show_github_commands_help()
+        raise typer.Exit(1)
+
+
+def show_github_commands_help():
+    """Display available GitHub MCP commands in a table."""
+    commands = [
+        ["Issues", ""],
+        ["create-issue", "Create a new issue"],
+        ["get-issue", "Get details of a specific issue"],
+        ["list-issues", "List issues in a repository"],
+        ["update-issue", "Update an existing issue"],
+        ["add-issue-comment", "Add a comment to an issue"],
+        ["get-issue-comments", "Get comments for an issue"],
+        
+        ["Pull Requests", ""],
+        ["create-pr", "Create a new pull request"],
+        ["get-pr", "Get details of a specific pull request"],
+        ["list-prs", "List pull requests in a repository"],
+        ["update-pr", "Update an existing pull request"],
+        ["merge-pr", "Merge a pull request"],
+        ["add-pr-comment", "Add a review comment to a pull request"],
+        ["get-pr-comments", "Get review comments on a pull request"],
+        ["get-pr-files", "Get files changed in a pull request"],
+        ["get-pr-reviews", "Get reviews on a pull request"],
+        ["create-pr-review", "Create a review on a pull request"],
+        ["get-pr-status", "Get status checks for a pull request"],
+        ["update-pr-branch", "Update a pull request branch"],
+        
+        ["Repositories", ""],
+        ["create-repo", "Create a new repository"],
+        ["get-repo", "Get repository details"],
+        ["list-repos", "List repositories"],
+        ["update-repo", "Update repository settings"],
+        ["delete-repo", "Delete a repository"],
+    ]
+    
+    print_table(["Command", "Description"], commands, title="GitHub MCP Commands")
 
 def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """Send a request to the GitHub MCP server.
@@ -64,6 +109,8 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
 
     except Exception as e:
         logger.error(f"Failed to send MCP request: {e}")
+        console.print("\n[bold red]Error:[/] Unable to complete the request.")
+        show_github_commands_help()
         raise typer.Exit(1)
 
 

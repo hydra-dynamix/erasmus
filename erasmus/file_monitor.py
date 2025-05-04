@@ -5,16 +5,18 @@ from watchdog.observers import ObserverType, Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 from loguru import logger
 from pathlib import Path
+from erasmus.protocol import get_protocol_manager
 from erasmus.utils.paths import get_path_manager
 from erasmus.environment import is_debug_enabled
 import re
-from erasmus.protocol import ProtocolManager
-import xml.etree.ElementTree as ET
+from erasmus.utils.paths import get_path_manager
 import fnmatch
 
 # Add a global to track last rules file write time
 _last_rules_write_time = None
 
+path_manager = get_path_manager()
+protocol_manager = get_protocol_manager()
 
 def _merge_rules_file() -> None:
     # Split this function into smaller functions in a future refactor
@@ -25,167 +27,24 @@ def _merge_rules_file() -> None:
     Overwrites the rules file every time with a fresh merge of the template and current context/protocol content.
     Prompts the user to select a protocol if none is set or the file is missing.
     """
-    from erasmus.utils.paths import detect_ide_from_env
-
-    global _last_rules_write_time
-
-    detected_ide = detect_ide_from_env()
-    path_manager = get_path_manager(detected_ide)
-    template_path = path_manager.template_dir / "meta_rules.md"
-    rules_file_path = path_manager.get_rules_file()
-    if not template_path.exists():
-        # No template available: fallback to raw merge of ctx files
-        logger.warning(f"Template file not found: {template_path}; falling back to raw merge")
-        try:
-            architecture_text = path_manager.get_architecture_file().read_text()
-            progress_text = path_manager.get_progress_file().read_text()
-            tasks_text = path_manager.get_tasks_file().read_text()
-            merged_content = "\n".join([architecture_text, progress_text, tasks_text])
-            if not rules_file_path:
-                logger.warning("No rules file configured; skipping local merge")
-            else:
-                rules_file_path.write_text(merged_content)
-                _last_rules_write_time = rules_file_path.stat().st_mtime
-                logger.info(f"Updated local rules file (fallback): {rules_file_path}")
-        except Exception as exception:
-            logger.error(f"Error during fallback merge: {exception}")
-        return
     try:
-        # Always start from a fresh template
-        template_content = template_path.read_text()
-
-        # Read context files with proper error handling
-        def read_file_content(file_path: Path) -> str:
-            try:
-                if file_path.exists() and file_path.stat().st_size > 0:
-                    return file_path.read_text().strip()
-                return ""
-            except Exception as e:
-                logger.error(f"Error reading {file_path}: {e}")
-                return ""
-
-        architecture = read_file_content(path_manager.get_architecture_file())
-        progress = read_file_content(path_manager.get_progress_file())
-        tasks = read_file_content(path_manager.get_tasks_file())
-
-        # Update sections only if content exists
-        def update_section(content: str, section_name: str) -> str:
-            pattern = f"## {section_name}\\s*<!--.*?-->\\s*(?=## |$)"
-            replacement = (
-                f"## {section_name}\n{content}\n"
-                if content
-                else f"## {section_name}\n<!-- {section_name.lower()} content -->\n"
+        architecture = path_manager.architecture_file.read_text()
+        progress = path_manager.progress_file.read_text()
+        tasks = path_manager.tasks_file.read_text()
+        if not protocol_manager.protocol:
+            protocol_manager.select_protocol_interactively(
+                prompt_title="Select a protocol for the rules file",
+                error_title="Protocol not selected"
             )
-            return re.sub(pattern, replacement, merged_content, flags=re.MULTILINE | re.DOTALL)
-
-        merged_content = template_content
-        merged_content = update_section(architecture, "Architecture")
-        merged_content = update_section(progress, "Progress")
-        merged_content = update_section(tasks, "Tasks")
-
-        # Handle protocol content
-        protocol_value = ""
-        current_protocol_path = Path(path_manager.erasmus_dir) / "current_protocol.txt"
-        protocol_manager = ProtocolManager()
-        protocol_name = None
-        if current_protocol_path.exists():
-            protocol_name = current_protocol_path.read_text().strip()
-        protocol_file = None
-        if protocol_name:
-            # Clean up protocol name and ensure .md extension
-            protocol_name = protocol_name.replace(".xml", "").replace(".md", "") + ".md"
-            protocol_file = path_manager.protocol_dir / protocol_name
-            print(f"[DEBUG] Loaded protocol name: '{protocol_name}'")
-            print(f"[DEBUG] Checking protocol file: {protocol_file}")
-            # Fallback to template protocols if not found in user protocol dir
-            if not protocol_file.exists():
-                template_protocol_file = path_manager.template_dir / "protocols" / protocol_name
-                print(f"[DEBUG] Checking template protocol file: {template_protocol_file}")
-                # Also check without .md extension for backward compatibility
-                if not template_protocol_file.exists():
-                    base_name = protocol_name.replace(".md", "")
-                    template_protocol_file = path_manager.template_dir / "protocols" / base_name
-                if template_protocol_file.exists():
-                    protocol_file = template_protocol_file
-                # No need to reassign protocol_file, it's already set correctly
-        if not protocol_name or not protocol_file or not protocol_file.exists():
-            # Try to extract protocol from the existing rules file using XML parsing
-            if rules_file_path and rules_file_path.exists():
-                try:
-                    tree = ET.parse(rules_file_path)
-                    root = tree.getroot()
-                    # Try to find <Protocol> block
-                    protocol_elem = root.find(".//Protocol")
-                    if protocol_elem is not None:
-                        protocol_value = ET.tostring(protocol_elem, encoding="unicode")
-                        print("[DEBUG] Extracted protocol from existing rules file.")
-                except Exception as e:
-                    print(f"[DEBUG] Failed to extract protocol from rules file: {e}")
-            if not protocol_value:
-                # Prompt user to select a protocol
-                protocols = protocol_manager.list_protocols()
-                if not protocols:
-                    logger.error("No protocols found. Cannot update rules file.")
-                    return
-                print("Available protocols:")
-                for idx, pname in enumerate(protocols):
-                    print(f"  {idx + 1}. {pname}")
-                while True:
-                    choice = input("Select a protocol by number or name: ").strip()
-                    selected = None
-                    if choice.isdigit():
-                        idx = int(choice)
-                        if 1 <= idx <= len(protocols):
-                            selected = protocols[idx - 1]
-                    elif choice in protocols:
-                        selected = choice
-                    if selected:
-                        protocol_name = selected.strip()
-                        current_protocol_path.write_text(protocol_name)
-                        protocol_file = path_manager.protocol_dir / f"{protocol_name}.md"
-                        print(f"[DEBUG] User selected protocol: '{protocol_name}'")
-                        print(f"[DEBUG] Checking protocol file: {protocol_file}")
-                        # Fallback to template protocols if not found in user protocol dir
-                        if not protocol_file.exists():
-                            template_protocol_file = (
-                                path_manager.template_dir / "protocols" / f"{protocol_name}.md"
-                            )
-                            print(
-                                f"[DEBUG] Checking template protocol file: {template_protocol_file}"
-                            )
-                            if template_protocol_file.exists():
-                                protocol_file = template_protocol_file
-                        if protocol_file.exists():
-                            protocol_value = protocol_file.read_text()
-                        else:
-                            print(f"Protocol file not found: {protocol_file}")
-                            continue
-                        break
-                    print(f"Invalid selection: {choice}")
-        else:
-            if protocol_file and protocol_file.exists():
-                protocol_value = read_file_content(protocol_file)
-                if protocol_value:
-                    protocol_value = f"<!--PROTOCOL-->\n{protocol_value}\n<!--/PROTOCOL-->"
-                else:
-                    protocol_value = "<!--PROTOCOL-->\n<!-- Protocol content -->\n<!--/PROTOCOL-->"
-
-        merged_content = re.sub(
-            r"<!--PROTOCOL-->[\s\S]*?<!--/PROTOCOL-->",
-            protocol_value or "<!--PROTOCOL-->\n<!-- Protocol content -->\n<!--/PROTOCOL-->",
-            merged_content,
-            flags=re.MULTILINE | re.DOTALL,
-        )
-
-        # Overwrite the rules file with the merged content
-        if not rules_file_path:
-            logger.warning("No rules file configured; skipping local merge")
-        else:
-            # Ensure consistent line endings
-            merged_content = merged_content.replace("\r\n", "\n")
-            rules_file_path.write_text(merged_content)
-            _last_rules_write_time = rules_file_path.stat().st_mtime
-            logger.info(f"Updated local rules file: {rules_file_path}")
+        protocol = protocol_manager.protocol.content
+        template_path = path_manager.template_dir / "meta_rules.md"
+        template = template_path.read_text()
+        template = template.replace("<!-- Architecture content -->", architecture)
+        template = template.replace("<!-- Progress content -->", progress)
+        template = template.replace("<!-- Tasks content -->", tasks)
+        template = template.replace("<!-- Protocol content -->", protocol)
+        path_manager.rules_file.write_text(template)
+        logger.info("Rules file merged successfully")
     except Exception as exception:
         logger.error(f"Error merging rules file: {exception}")
 
