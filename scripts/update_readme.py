@@ -31,20 +31,16 @@ def update_readme_curl_command():
 
     with open(README_FILE, "r") as f:
         readme_lines = f.readlines()
-
     # Find and update the curl command line
-    curl_pattern = "curl -sSL https://raw.githubusercontent.com/hydra-dynamix/erasmus/refs/heads/main/releases/install.sh | bash -s --"
+    curl_pattern = f"curl -sSL https://raw.githubusercontent.com/bakobiibizo/erasmus/refs/heads/main/releases/erasmus/{version}/erasmus_v{version}.sh -o erasmus.sh && bash erasmus.sh\n"
     updated = False
 
     for i, line in enumerate(readme_lines):
-        if curl_pattern in line:
-            # Extract the old version and replace it with the new one
-            old_version = re.search(r"\d+\.\d+\.\d+", line)
-            if old_version:
-                readme_lines[i] = line.replace(old_version.group(), version)
-                updated = True
-                break
-
+        if "curl -sSL https://raw.githubusercontent.com/" in line:
+            readme_lines[i] = curl_pattern
+            updated = True
+            break
+            
     if updated:
         with open(README_FILE, "w") as f:
             f.writelines(readme_lines)
