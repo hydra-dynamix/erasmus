@@ -1,14 +1,45 @@
 import typer
 import re
+import os
+import subprocess
 from pathlib import Path
 from erasmus.utils.paths import get_path_manager
 from erasmus.protocol import ProtocolManager
-from erasmus.utils.rich_console import print_table, get_console
+from erasmus.utils.rich_console import print_table, get_console, get_console_logger
 
-setup_app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
+logger = get_console_logger()
+
+path_manager = get_path_manager()
+ide_env = path_manager.ide
 
 console = get_console()
 
+setup_app = typer.Typer(help="Setup Erasmus: initialize project, environment, and context.")
+
+@setup_app.command()
+def check_mcp_server(
+    server_type: str = typer.Option('github', help='Type of MCP server to check'),
+    ide_env: str = ide_env.name
+):
+    """Check MCP server configuration and binary compatibility."""
+
+    check_script_path = path_manager.check_binary_script
+    if not check_script_path.exists():
+        logger.warning(f'No MCP configuration found for {ide_env} at {path_manager.mcp_config_path}')
+    else:
+        logger.info(f'MCP configuration found at {path_manager.mcp_config_path}')
+    
+    # Run binary check script
+    try:
+        result = subprocess.run(
+            [str(check_script_path)], 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+        logger.info(result.stdout)
+    except subprocess.CalledProcessError as e:
+        logger.error(f'Binary check failed:\n{e.stderr}')
 
 def set_erasmus_path():
     import os
@@ -75,8 +106,7 @@ def setup_callback(ctx: typer.Context):
         return
     """Interactive setup for Erasmus: configure IDE, project, context, and protocol."""
     # Step 1: Use path manager for IDE detection and prompting
-    path_manager = get_path_manager()
-    print_table(["Info"], [[f"IDE detected: {path_manager.ide.name}"]], title="Setup")
+    print_table(["Info"], [[f"IDE detected: {ide_env}"]], title="Setup")
 
     # Step 2: Ensure Erasmus directories exist
     path_manager.ensure_dirs()
@@ -86,7 +116,7 @@ def setup_callback(ctx: typer.Context):
     set_erasmus_path()
 
     # Step 4: List available contexts and allow creating new
-    contexts = [d.name for d in sorted(path_manager.get_context_dir().iterdir()) if d.is_dir()]
+    contexts = [directory.name for directory in sorted(path_manager.get_context_dir().iterdir()) if directory.is_dir()]
     context_rows = [["0", "Create New Context"]] + [
         [str(i + 1), name] for i, name in enumerate(contexts)
     ]

@@ -14,6 +14,4 @@
 
 ## Protocol
 
-<!--PROTOCOL-->
 <!-- Protocol content -->
-<!--/PROTOCOL-->

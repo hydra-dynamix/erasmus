@@ -3,10 +3,17 @@ import xml.etree.ElementTree as ET
 from typing import Any
 
 
-def _sanitize_string(name: str) -> str:
+def _sanitize_string(name: str | None) -> str:
     """Sanitize a string by removing emoji and non-ASCII characters while preserving valid markdown characters.
     Returns an ASCII-safe string suitable for filenames.
     """
+    # Handle None or empty input
+    if not name:
+        return "p_empty"
+    
+    # Convert to string to handle any input type
+    name = str(name)
+
     # First remove emoji using regex pattern
     no_emoji = re.sub(r"[\U0001F300-\U0001F9FF]", "", name)
 
@@ -23,7 +30,8 @@ def _sanitize_string(name: str) -> str:
     # Strip trailing underscores
     sanitized = sanitized.rstrip("_")
 
-    return sanitized
+    # Ensure non-empty result
+    return sanitized or "p_empty"
 
 
 def _sanitize_xml_content(xml_content: str) -> str:

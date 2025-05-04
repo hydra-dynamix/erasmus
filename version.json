@@ -1,6 +1,6 @@
 {
-  "version": "0.3.0",
-  "last_updated": "2025-05-02T23:54:29.314382",
+  "version": "0.3.1",
+  "last_updated": "2025-05-04T15:21:06.360629",
   "changes": [
     {
       "description": "initial release",
@@ -31,6 +31,11 @@
       "description": "reverted back to markdown for ctx files ",
       "type": "minor",
       "timestamp": "2025-05-02T23:54:29.314382"
+    },
+    {
+      "description": "refactored protocol handling",
+      "type": "patch",
+      "timestamp": "2025-05-04T15:21:06.360629"
     }
   ]
 }
