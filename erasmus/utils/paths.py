@@ -2,10 +2,14 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from dotenv import load_dotenv
 from enum import Enum
+import json
 import os
+import re
+from re import Pattern
 from typing import NamedTuple, List, Optional, Tuple
 from loguru import logger
 from erasmus.utils.warp_integration import WarpIntegration, WarpRule
+from erasmus.mcp.servers import McpServers
 
 load_dotenv()
 
@@ -77,7 +81,6 @@ class IDE(Enum):
         """Get the MCP configuration path for this IDE."""
         return self.metadata.mcp_config_path
 
-
 def detect_ide_from_env() -> IDE | None:
     """Detect IDE from environment variables."""
     if "VSCODE_REMOTE" in os.environ or "REMOTE_CONTAINERS" in os.environ:
@@ -135,11 +138,10 @@ def prompt_for_ide() -> IDE:
                 ide_path = Path.cwd() / ".env"
                 ide_path.write_text(f"IDE_ENV={ide_env.name}")
                 return ide_env
-                
+
         except (KeyboardInterrupt, EOFError):
             print("\nOperation cancelled or input closed. Using default IDE (Cursor).")
             return prompt_for_ide()
-
 
 def get_ide() -> IDE:
     """Get the IDE from environment variables or prompt the user."""
@@ -202,6 +204,7 @@ class PathMngrModel(BaseModel):
     check_binary_script: Path = Field(
         default_factory=lambda: Path.cwd() / '.erasmus' / 'servers' / 'github' / 'check_binary.sh'
     )
+    mcp_servers: McpServers = Field(default_factory=lambda: McpServers())
 
     def __init__(self, **data):
         """Initialize the PathMngrModel with optional configuration data."""
@@ -356,6 +359,3 @@ def get_path_manager(ide: IDE | None = None) -> PathMngrModel:
         _path_manager._setup_paths()
     return _path_manager
 
-
-# Legacy alias for backwards compatibility
-PathManager = PathMngrModel

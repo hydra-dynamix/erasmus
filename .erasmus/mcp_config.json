@@ -1,0 +1,23 @@
+{
+    "mcpServers": {
+        "github": {
+            "command": "/home/bakobi/repos/mcp/github-mcp-server/github-mcp-server",
+            "args": [
+                "stdio"
+            ],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
+            }
+        },
+        "trader": {
+            "command": "uv",
+            "args": [
+                "--directory",
+                "/home/bakobi/repos/mcp/trader",
+                "run",
+                "trader/server/mcp_server.py",
+                "stdio"
+            ]
+        }
+    }
+}

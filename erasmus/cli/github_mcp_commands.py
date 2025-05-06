@@ -8,6 +8,9 @@ import typer
 from typing import List, Dict, Any
 from loguru import logger
 from erasmus.utils.rich_console import print_table, get_console
+from erasmus.utils.paths import get_path_manager
+
+path_manager = get_path_manager()
 
 console = get_console()
 
