@@ -1,7 +1,7 @@
 {
     "mcpServers": {
         "github": {
-            "command": "/home/bakobi/repos/mcp/github-mcp-server/github-mcp-server",
+            "command": ".erasmus/mcp/servers/github/server",
             "args": [
                 "stdio"
             ],

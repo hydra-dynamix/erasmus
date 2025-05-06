@@ -5,12 +5,18 @@ GitHub MCP server CLI commands for interacting with GitHub through the MCP serve
 import json
 import subprocess
 import typer
+import os
 from typing import List, Dict, Any
 from loguru import logger
 from erasmus.utils.rich_console import print_table, get_console
 from erasmus.utils.paths import get_path_manager
+from erasmus.mcp.servers import McpServers
+from dotenv import load_dotenv
 
 path_manager = get_path_manager()
+
+mcp_servers = McpServers()
+github_server = mcp_servers.get_server("github")
 
 console = get_console()
 
@@ -60,6 +66,16 @@ def show_github_commands_help():
     
     print_table(["Command", "Description"], commands, title="GitHub MCP Commands")
 
+def _get_env_variables(env: dict[str, str]):
+    load_dotenv()
+    variables = {}
+    if isinstance(env, dict) and len(env.items()) > 0:
+        for key in env.keys():
+            value = os.getenv(key)
+            if value:
+                variables[key] = value
+    return variables
+
 def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
     """Send a request to the GitHub MCP server.
 
@@ -74,11 +90,24 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         typer.Exit: If the request fails
     """
     request = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+    env = _get_env_variables(github_server.env)
+    command_list = []
 
+    if isinstance(env, dict) and len(env.items()) > 0:
+        for key in env.keys():
+            os.environ[key] = env[key]
+    if github_server.command:
+        logger.debug(f"Command: {github_server.command}")
+        command_list.append(github_server.command)
+    if github_server.args:
+        logger.debug(f"Args: {github_server.args}")
+        command_list.extend(github_server.args)
+
+    logger.debug(f"Command list: {command_list}")
     try:
         # Start the MCP server process
         process = subprocess.Popen(
-            ["./erasmus/mcp/servers/github/server", "stdio"],
+            command_list,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

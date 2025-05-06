@@ -359,3 +359,7 @@ def get_path_manager(ide: IDE | None = None) -> PathMngrModel:
         _path_manager._setup_paths()
     return _path_manager
 
+
+if __name__ == "__main__":
+    manager = get_path_manager()
+    print(manager.mcp_servers.get_server_paths()["github"])

@@ -82,7 +82,7 @@ class RichConsoleLogger(logging.Logger):
             message (str): Success message to display.
         """
         console = get_console()
-        console.print(f"✔ {message}", style="bold green")
+        console.print(f"\n✔ {message}", style="bold green")
 
     def error(self, message: str):
         """Print an error message in red color.
@@ -91,7 +91,7 @@ class RichConsoleLogger(logging.Logger):
             message (str): Error message to display.
         """
         console = get_console()
-        console.print(f"✖ {message}", style="bold red")
+        console.print(f"\n✖ {message}", style="bold red")
 
     def warning(self, message: str):
         """Print a warning message in yellow color.
@@ -100,7 +100,7 @@ class RichConsoleLogger(logging.Logger):
             message (str): Warning message to display.
         """
         console = get_console()
-        console.print(f"! {message}", style="bold yellow")
+        console.print(f"\n! {message}", style="bold yellow")
 
     def info(self, message: str):
         """Print an informational message in blue color.
@@ -109,7 +109,7 @@ class RichConsoleLogger(logging.Logger):
             message (str): Informational message to display.
         """
         console = get_console()
-        console.print(f"ℹ {message}", style="bold blue")
+        console.print(f"\nℹ {message}", style="bold blue")
 
 
 console_logger = RichConsoleLogger(__name__)

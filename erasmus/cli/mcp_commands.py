@@ -5,7 +5,8 @@ MCP CLI commands for managing MCP servers and clients.
 import typer
 from pathlib import Path
 from loguru import logger
-from erasmus.mcp.mcp import MCPClient, MCPServer, MCPRegistry, MCPError
+from erasmus.mcp.mcp import MCPServer, MCPRegistry, MCPError
+from erasmus.mcp.client import MCPClient
 from erasmus.utils.rich_console import print_table
 from erasmus.cli.github_mcp_commands import github_app
 

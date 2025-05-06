@@ -21,11 +21,11 @@ class McpServers(BaseModel):
     path_string_pattern: re.Pattern 
     __pydantic_fields_set__ = set()
 
-    def __init__(self, config_path: Path = Path.cwd() / ".erasmus" / "mcp_config.json"):
+    def __init__(self, config_path: Path = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"):
         self.servers = {}
         self.config_path = config_path
         self.load_from_json()
-        self.path_string_pattern = re.compile(r'(?:[a-zA-Z]:\\|\/|\\)?(?:[\w\s.-]+[\\\/]?)+')
+        self.path_string_pattern = re.compile(r'(?:[a-zA-Z]:[\\/]|~[\\/]?|\.\.?[\\/]|[\/\\])[\w\s.+=~^-]*|(?:[\w\s.+=~^-]+[\\/])+[\w\s.+=~^-]*')
 
 
     def add_server(self, name: str, command: str, args: list[str], env: dict[str, str]):

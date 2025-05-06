@@ -7,73 +7,11 @@ import json
 from typing import Optional, Any
 from loguru import logger
 
-
 class MCPError(Exception):
     """Base exception for MCP-related errors."""
 
     pass
 
-
-class MCPClient:
-    """Client for interacting with MCP servers."""
-
-    def __init__(self, server_url: str):
-        """Initialize the MCP client.
-
-        Args:
-            server_url: URL of the MCP server to connect to
-        """
-        self.server_url = server_url
-        self.connected = False
-
-    def connect(self) -> None:
-        """Connect to the MCP server.
-
-        Raises:
-            MCPError: If connection fails
-        """
-        try:
-            # TODO: Implement actual connection logic
-            logger.info(f"Connecting to MCP server at {self.server_url}")
-            self.connected = True
-        except Exception as e:
-            raise MCPError(f"Failed to connect to MCP server: {e}")
-
-    def disconnect(self) -> None:
-        """Disconnect from the MCP server.
-
-        Raises:
-            MCPError: If disconnection fails
-        """
-        try:
-            # TODO: Implement actual disconnection logic
-            logger.info(f"Disconnecting from MCP server at {self.server_url}")
-            self.connected = False
-        except Exception as e:
-            raise MCPError(f"Failed to disconnect from MCP server: {e}")
-
-    def send_request(self, request_type: str, data: dict[str, Any]) -> dict[str, Any]:
-        """Send a request to the MCP server.
-
-        Args:
-            request_type: Type of request to send
-            data: Request data
-
-        Returns:
-            Response from the server
-
-        Raises:
-            MCPError: If request fails
-        """
-        if not self.connected:
-            raise MCPError("Not connected to MCP server")
-
-        try:
-            # TODO: Implement actual request logic
-            logger.info(f"Sending {request_type} request to MCP server")
-            return {"status": "success", "data": {}}
-        except Exception as e:
-            raise MCPError(f"Failed to send request to MCP server: {e}")
 
 
 class MCPServer:
