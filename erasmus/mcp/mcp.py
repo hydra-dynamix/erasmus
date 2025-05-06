@@ -13,7 +13,7 @@ class MCPError(Exception):
     pass
 
 
-
+# This has been depreciated
 class MCPServer:
     """Server for handling MCP requests."""
 
@@ -24,6 +24,7 @@ class MCPServer:
             host: Host to bind the server to
             port: Port to bind the server to
         """
+        logger.warning("MCPServer is depreciated. Use erasmus.mcp.servers.McpServers instead.")
         self.host = host
         self.port = port
         self.running = False
@@ -78,6 +79,7 @@ class MCPServer:
             raise MCPError(f"Failed to process request: {e}")
 
 
+# This has been depreciated. Use erasmus.mcp.registry.MCPRegistry instead.
 class MCPRegistry:
     """
     Registry for MCP servers and clients.
@@ -88,6 +90,7 @@ class MCPRegistry:
     """
 
     def __init__(self, registry_file: str = None):
+        logger.warning("The MCPRegistry class in erasmus.mcp.mcp is deprecated. Use erasmus.mcp.registry.MCPRegistry instead.")
         """
         Initialize the MCP registry.
 

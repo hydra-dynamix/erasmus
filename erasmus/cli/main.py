@@ -63,17 +63,17 @@ def print_main_help_and_exit():
 """)
     typer.echo("\n Development Context Management System\n")
     command_rows = [
-        ["erasmus context", "Manage development contexts"],
-        ["erasmus protocol", "Manage protocols"],
-        ["erasmus mcp", "Manage MCP servers, clients, and integrations"],
-        ["erasmus setup", "Setup Erasmus"],
-        ["erasmus watch", "Watch for .ctx file changes"],
-        ["erasmus status", "Show current status"],
-        ["erasmus version", "Show Erasmus version"],
+        ["context", "Manage development contexts"],
+        ["protocol", "Manage protocols"],
+        ["mcp", "Manage MCP servers, clients, and integrations"],
+        ["setup", "Setup Erasmus"],
+        ["watch", "Watch for .ctx file changes"],
+        ["status", "Show current status"],
+        ["version", "Show Erasmus version"],
     ]
-    print_table(["Command", "Description"], command_rows, title="Available Erasmus Commands")
-    typer.echo("\nFor more information about a command, run:")
-    typer.echo("  erasmus <command> --help")
+    print_table(["Subcommand", "Description"], command_rows, title="Available Erasmus Subcommands")
+    typer.echo("\nFor more information about a subcommand, run:")
+    typer.echo("  erasmus <subcommand> --help")
     raise typer.Exit(1)
 
 

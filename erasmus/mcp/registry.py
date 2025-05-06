@@ -71,9 +71,9 @@ class McpRegistry(BaseModel):
             dynamic_model = self._create_tool_model(key['name'], key['inputSchema'])
             # Store the serializable tool definition (key) instead of the dynamic_model type
             self.registry["mcp_servers"][server_name]["tools"][key["name"]] = key 
-            logger.info(f"Processed tool '{key['name']}'. Dynamic model created: {dynamic_model}")
-            if dynamic_model.model_fields:
-                logger.info(f"Fields for {key['name']}: {dynamic_model.model_fields}")
+            # logger.info(f"Processed tool '{key['name']}'. Dynamic model created: {dynamic_model}")
+            # if dynamic_model.model_fields:
+                # logger.info(f"Fields for {key['name']}: {dynamic_model.model_fields}")
 
     def _parse_tool(self, tool: dict[str, Any]):
         tool_name = tool["name"]

@@ -249,8 +249,8 @@ class StdioClient:
                 stderr=PIPE
             )
             stdout, stderr = process.communicate(input=request_json_str)
-            logger.debug(f"Received stdout via communicate: {stdout.strip()}")
-            logger.debug(f"Received stderr via communicate: {stderr.strip()}")
+            logger.debug(f"Received stdout: {stdout[:100]}")
+            logger.debug(f"Received stderr: {stderr[:100]}")
             return stdout, stderr
         except Exception as e:
             logger.error(f"Error during communicate with server '{server_name}': {e}", exc_info=True)
