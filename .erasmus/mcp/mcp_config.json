@@ -5,7 +5,7 @@
             "args": [
                 "stdio",
                 "--log-file",
-                "/tmp/github_mcp_server.log",
+                ".erasamus/logs/github_mcp_server.log",
                 "--enable-command-logging"
             ],
             "env": {

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Path to the GitHub MCP server binary
-BINARY_PATH="$PWD/.erasmus/servers/github/github-mcp-server"
+BINARY_PATH="$PWD/.erasmus/mcp/servers/github/server"
 
 # Color codes
 RED='\033[0;31m'

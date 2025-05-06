@@ -8,8 +8,10 @@ allowing dynamic interaction via the CLI.
 import json
 import os
 from pathlib import Path
-from typing import Dict, Any, Optional
-from pydantic import BaseModel, ConfigDict, create_model, Field
+from typing import Any, Union # Keep Any if used, or remove if not needed
+import typing # Added for get_origin, get_args
+from pydantic import BaseModel, ConfigDict, create_model, Field # Restored Pydantic imports
+import subprocess 
 
 from erasmus.utils.rich_console import get_console_logger
 from erasmus.mcp.servers import McpServers
@@ -17,7 +19,8 @@ from erasmus.mcp.client import StdioClient
 from erasmus.mcp.models import RegistryTool
 from erasmus.utils.paths import get_path_manager
 from erasmus.utils.type_conversions import js_type_string_to_py_type, UnionType
-import typing
+
+NoneType = type(None)
 
 
 logger = get_console_logger()
@@ -29,6 +32,8 @@ class McpRegistry(BaseModel):
     client: StdioClient
     registry: dict[str, Any]
     registry_path: Path
+    binary_path: Path
+    check_binary_script: Path
     model_config = ConfigDict(arbitrary_types_allowed=True)
     __pydantic_fields_set__ = set()
 
@@ -40,9 +45,17 @@ class McpRegistry(BaseModel):
         self.servers = McpServers()
         self.client = StdioClient()
         self.registry_path = registry_path or path_manager.erasmus_dir / "mcp" / "registry.json"
+        self.binary_path = path_manager.erasmus_dir / "mcp" / "servers" / "github" / "server"
+        self.check_binary_script = path_manager.erasmus_dir / "mcp" / "servers" / "github" / "check_binary.sh"
+        self._setup_github_server()
         self.registry = self._load_registry(registry_path)
         self._load_mcp_servers()
         logger.info("MCPRegistry initialized.")
+
+    def _setup_github_server(self):
+        os.chmod(self.binary_path, 0o755)
+        os.chmod(self.check_binary_script, 0o755)
+        subprocess.run([self.check_binary_script], check=True)
 
     def _load_mcp_servers(self):
         if not self.servers:
@@ -100,11 +113,11 @@ class McpRegistry(BaseModel):
                 # For required fields, Ellipsis (...) indicates it's required
                 fields[prop_name] = (py_type, Field(..., description=description))
             else:
-                # For optional fields, provide a default (e.g., None)
-                # and wrap the type in typing.Optional if not already a union with NoneType
+                # For optional fields, provide a default (error.g., None)
+                # and wrap the type with | None if not already a union with NoneType
                 if not (typing.get_origin(py_type) in (typing.Union, UnionType) and \
                         NoneType in typing.get_args(py_type)):
-                    py_type = typing.Optional[py_type] # type: ignore
+                    py_type = py_type | None
                 fields[prop_name] = (py_type, Field(default=None, description=description))
         
         # Dynamically create the Pydantic model
@@ -115,16 +128,16 @@ class McpRegistry(BaseModel):
     def _value_to_type(self, value: Any, type: type):
         try:
             return type(value)
-        except Exception as e:
-            logger.error(f"Failed to convert value {value} to type {type}: {e}")
+        except Exception as error:
+            logger.error(f"Failed to convert value {value} to type {type}: {error}")
             return Any(value)
 
     def _save_registry(self):
         logger.info(f"Saving registry to {self.registry_path}")
         try:
             self.registry_path.write_text(json.dumps(self.registry, indent=2))
-        except Exception as e:
-            logger.error(f"Failed to save registry to {self.registry_path}: {e}")
+        except Exception as error:
+            logger.error(f"Failed to save registry to {self.registry_path}: {error}")
             return False
         logger.info("Saved registry")
         return True
@@ -133,8 +146,8 @@ class McpRegistry(BaseModel):
         self.registry_path = registry_path if registry_path else self.registry_path
         try:
             self.registry = json.loads(self.registry_path.read_text())
-        except Exception as e:
-            logger.error(f"Failed to load registry from {self.registry_path}: {e}")
+        except Exception as error:
+            logger.error(f"Failed to load registry from {self.registry_path}: {error}")
             return False
         if not self.registry:
             self.registry = {

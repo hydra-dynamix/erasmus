@@ -439,8 +439,8 @@ class CodeExtractor:
         """Check file for syntax errors."""
         try:
             ast.parse(content)
-        except SyntaxError as e:
-            logger.warning(f"Syntax error in {file}: {e}")
+        except SyntaxError as error:
+            logger.warning(f"Syntax error in {file}: {error}")
             return True
         return False
 

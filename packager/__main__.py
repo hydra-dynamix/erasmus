@@ -44,7 +44,7 @@ class HelpOnErrorGroup(TyperGroup):
     def main(self, *args, **kwargs):
         try:
             return super().main(*args, **kwargs)
-        except UsageError as e:
+        except UsageError as error:
             print_version_control_help_and_exit()
         except Exception:
             print_version_control_help_and_exit()
@@ -109,8 +109,8 @@ def get_version_info():
         with open(version_file, "r") as f:
             version_data = json.load(f)
             return version_data.get("version", "0.0.0")
-    except Exception as e:
-        logger.warning(f"Error reading version.json: {e}")
+    except Exception as error:
+        logger.warning(f"Error reading version.json: {error}")
         return "0.0.0"
 
 
@@ -184,8 +184,8 @@ def package(
             dependencies = analyze_dependencies([Path(f) for f in py_files])
             ordered_files = order_files(dependencies, [Path(f) for f in py_files])
             py_files = ordered_files
-        except Exception as e:
-            logger.warning(f"Could not order files by dependencies: {e}")
+        except Exception as error:
+            logger.warning(f"Could not order files by dependencies: {error}")
 
         for file in py_files:
             logger.debug("Processing file: %s", file)
@@ -286,10 +286,10 @@ def package(
         try:
             subprocess.run(["bash", "scripts/build_installer.sh", str(output_path)], check=True)
             typer.echo("Installer build script completed.")
-        except Exception as e:
-            typer.echo(f"Installer build script failed: {e}")
+        except Exception as error:
+            typer.echo(f"Installer build script failed: {error}")
 
-    except Exception as e:
+    except Exception as error:
         logger.exception("Error packaging files")
         typer.echo(f"Error: {str(e)}")
         raise typer.Exit(1)
@@ -318,7 +318,7 @@ def list_files(
             console.print(f"  • {file}")
         console.print(f"\nTotal: {len(files)} files")
 
-    except Exception as e:
+    except Exception as error:
         handle_error(str(e))
 
 
@@ -345,7 +345,7 @@ def print_version_control_help_and_exit():
         ["version-control show", "Show the current version and last updated timestamp"],
         [
             "version-control bump",
-            "Bump the version: specify which part to increment (e.g., 'major', 'minor', or 'patch'). Optionally add --description for a change log.",
+            "Bump the version: specify which part to increment (error.g., 'major', 'minor', or 'patch'). Optionally add --description for a change log.",
         ],
         ["version-control log", "Show the version change log"],
     ]
@@ -477,10 +477,10 @@ def run():
         ):
             print_version_control_help_and_exit()
         app()
-    except UsageError as e:
+    except UsageError as error:
         handle_error(str(e))
-    except SystemExit as e:
-        sys.exit(e.code)
+    except SystemExit as error:
+        sys.exit(error.code)
     except Exception as error:
         handle_error(str(error))
     return 0

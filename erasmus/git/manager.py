@@ -61,8 +61,8 @@ class GitManager:
                 check=True,
             )
             logger.info(f"Successfully initialized git repository at {self.repo_path}")
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Failed to initialize git repository: {e}", exc_info=True)
+        except subprocess.CalledProcessError as error:
+            logger.error(f"Failed to initialize git repository: {error}", exc_info=True)
             raise
 
     def _run_git_command(self, command: list[str]) -> tuple[str, str]:
@@ -83,12 +83,12 @@ class GitManager:
             if stderr:
                 logger.warning(f"Command stderr: {stderr}")
             return stdout, stderr
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError as error:
             logger.error(
                 f"Git command failed: {' '.join(command)}",
                 exc_info=True,
             )
-            return "", e.stderr.strip()
+            return "", error.stderr.strip()
 
     def stage_all_changes(self) -> bool:
         """Stage all changes in the repository."""

@@ -4,15 +4,16 @@ MCP CLI commands for managing MCP servers and clients.
 import os
 import typer
 import inspect
-from typing import Optional, Any, Dict, List # Added Any, Dict, List for good measure with new logic
+
 from pathlib import Path
 from loguru import logger
 from pydantic import BaseModel
 from erasmus.mcp.registry import McpRegistry
-from erasmus.mcp.mcp import MCPError        # Restored MCPError import
+from erasmus.mcp.models import McpError        # Restored McpError import
 from erasmus.mcp.servers import McpServers
 from erasmus.mcp.client import StdioClient
 from erasmus.utils.rich_console import print_table, get_console_logger, get_console
+from erasmus.utils.paths import get_path_manager
 from rich.syntax import Syntax
 from rich.panel import Panel
 # from erasmus.cli.github_mcp_commands import github_app # Commented out
@@ -23,6 +24,7 @@ mcp_registry = McpRegistry()
 mcp_servers = McpServers()
 mcp_client = StdioClient()
 mcp_app = typer.Typer(help="Manage MCP servers and clients.")
+path_manager = get_path_manager()
 
 console = get_console()
 logger = get_console_logger()
@@ -75,8 +77,8 @@ def registry_config_show():
         console.print(f"[red]Error:[/red] MCP configuration file not found at {config_path}")
     except json.JSONDecodeError:
         console.print(f"[red]Error:[/red] Could not decode JSON from {config_path}. File may be corrupted.")
-    except Exception as e:
-        console.print(f"[red]Error displaying MCP configuration:[/red] {e}")
+    except Exception as error:
+        console.print(f"[red]Error displaying MCP configuration:[/red] {error}")
 
 @registry_config_app.command("edit")
 def registry_config_edit():
@@ -97,9 +99,9 @@ def registry_config_edit():
     try:
         mcp_registry.load_registry() # Reload the main registry which depends on mcp_config.json via McpServers
         console.print("[green]MCPRegistry reloaded successfully.[/green]")
-    except Exception as e:
-        logger.error(f"Error reloading MCPRegistry after edit: {e}")
-        console.print(f"[red]Error reloading MCPRegistry: {e}[/red]")
+    except Exception as error:
+        logger.error(f"Error reloading MCPRegistry after edit: {error}")
+        console.print(f"[red]Error reloading MCPRegistry: {error}[/red]")
 
 @registry_config_app.command("start")
 @click.argument("name", type=str)
@@ -109,7 +111,7 @@ def start_server_lifecycle(name: str):
     logger.info(f"Attempting to start server (lifecycle): {name} (Placeholder)")
     console.print(f"[yellow]EXPERIMENTAL:[/yellow] Starting server '{name}'. This feature is a placeholder.")
     # Actual implementation would involve using McpServers to get server cmd and run it as a persistent process.
-    # e.g., mcp_servers.start_server_process(name)
+    # error.g., mcp_servers.start_server_process(name)
     console.print(f"TODO: Implement persistent start for server '{name}'.")
 
 @registry_config_app.command("stop")
@@ -120,7 +122,7 @@ def stop_server_lifecycle(name: str):
     logger.info(f"Attempting to stop server (lifecycle): {name} (Placeholder)")
     console.print(f"[yellow]EXPERIMENTAL:[/yellow] Stopping server '{name}'. This feature is a placeholder.")
     # Actual implementation would involve managing the persistent process.
-    # e.g., mcp_servers.stop_server_process(name)
+    # error.g., mcp_servers.stop_server_process(name)
     console.print(f"TODO: Implement persistent stop for server '{name}'.")
 
 
@@ -205,7 +207,7 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
         server_description = server_data.get("server", {}).get("description", f"Tools for MCP Server: {server_name}")
         dynamic_server_typer = typer.Typer(help=f"MCP Server: {server_name} - {server_description}", no_args_is_help=False) # no_args_is_help=False to allow our callback
 
-        # Dynamically add callback for individual server app (e.g., `erasmus mcp servers github`)
+        # Dynamically add callback for individual server app (error.g., `erasmus mcp servers github`)
         def create_dynamic_server_app_callback(current_server_name: str, current_server_tools_data: dict):
             def dynamic_server_callback(ctx: typer.Context):
                 if ctx.invoked_subcommand is None:
@@ -393,8 +395,8 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                             rich_console.print(Panel(stdout, title="Server Response", border_style="blue", expand=False))
                                     else:
                                         rich_console.print(f"[yellow]No stdout content received from {t_name}.[/yellow]")
-                                except MCPError as e_mcp:
-                                    console.print(f"[red]MCPError ({t_name} on {s_name}): {e_mcp}[/red]")
+                                except McpError as e_mcp:
+                                    console.print(f"[red]McpError ({t_name} on {s_name}): {e_mcp}[/red]")
                                     raise typer.Exit(code=1)
                                 except Exception as e_exc:
                                     console.print(f"[red]Error ({t_name} on {s_name}): {e_exc}[/red]")
@@ -416,8 +418,8 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                     dynamic_server_typer.command(name=tool_name, help=tool_title)(cmd_fn)
                     # logger.debug(f"  Dynamically added tool command: {tool_name} to {server_name}")
 
-                except Exception as e:
-                    logger.error(f"Failed to create command for tool {tool_name} on server {server_name}: {e}")
+                except Exception as error:
+                    logger.error(f"Failed to create command for tool {tool_name} on server {server_name}: {error}")
                     # Optionally, re-raise or continue to next tool
                     
         server_app.add_typer(dynamic_server_typer, name=server_name)

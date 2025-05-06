@@ -70,7 +70,7 @@ class ImportVisitor(ast.NodeVisitor):
         self.imports: list[ImportInfo] = []
 
     def visit_Import(self, node: ast.Import) -> None:
-        """Process Import nodes (e.g., 'import foo' or 'import foo as bar')."""
+        """Process Import nodes (error.g., 'import foo' or 'import foo as bar')."""
         for name in node.names:
             import_info = ImportInfo(
                 module_name=name.name, lineno=node.lineno, col_offset=node.col_offset
@@ -81,7 +81,7 @@ class ImportVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        """Process ImportFrom nodes (e.g., 'from foo import bar')."""
+        """Process ImportFrom nodes (error.g., 'from foo import bar')."""
         if node.module is None:
             # Handle "from packager. import foo" case (should be avoided; use absolute imports)
             module_name = ""
@@ -122,7 +122,7 @@ def parse_file(file_path: Union[str, Path]) -> FileImports:
     try:
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-    except Exception as e:
+    except Exception as error:
         error_msg = f"Failed to read file {file_path}: {str(e)}"
         logger.error(error_msg)
         result.errors.append(error_msg)
@@ -130,12 +130,12 @@ def parse_file(file_path: Union[str, Path]) -> FileImports:
 
     try:
         tree = ast.parse(content, filename=str(file_path))
-    except SyntaxError as e:
-        error_msg = f"Syntax error in {file_path} at line {e.lineno}, column {e.offset}: {str(e)}"
+    except SyntaxError as error:
+        error_msg = f"Syntax error in {file_path} at line {error.lineno}, column {error.offset}: {str(e)}"
         logger.error(error_msg)
         result.errors.append(error_msg)
         return result
-    except Exception as e:
+    except Exception as error:
         error_msg = f"Failed to parse {file_path}: {str(e)}"
         logger.error(error_msg)
         result.errors.append(error_msg)
@@ -185,7 +185,7 @@ def resolve_relative_import(
 
         return ".".join(remaining_parts) if remaining_parts else None
 
-    except Exception as e:
+    except Exception as error:
         logger.error(f"Failed to resolve relative import: {str(e)}")
         return None
 
@@ -243,12 +243,12 @@ def parse_imports(content: str) -> Tuple[ImportSet, list[str]]:
 
     try:
         tree = ast.parse(content)
-    except SyntaxError as e:
-        error_msg = f"Syntax error at line {e.lineno}, column {e.offset}: {str(e)}"
+    except SyntaxError as error:
+        error_msg = f"Syntax error at line {error.lineno}, column {error.offset}: {str(e)}"
         logger.error(error_msg)
         result.errors.append(error_msg)
         return ImportSet(), result.errors
-    except Exception as e:
+    except Exception as error:
         error_msg = f"Failed to parse content: {str(e)}"
         logger.error(error_msg)
         result.errors.append(error_msg)
@@ -377,9 +377,9 @@ def extract_code_body(
         try:
             tree = ast.parse(content)
             has_syntax_error = False
-        except SyntaxError as e:
+        except SyntaxError as error:
             has_syntax_error = True
-            logger.warning(f"Syntax error in content: {e}")
+            logger.warning(f"Syntax error in content: {error}")
 
         # Extract imports if possible
         try:
@@ -468,9 +468,9 @@ def extract_code_body(
             try:
                 tree = ast.parse(content)
                 has_syntax_error = False
-            except SyntaxError as e:
+            except SyntaxError as error:
                 has_syntax_error = True
-                logger.warning(f"Syntax error in {file}: {e}")
+                logger.warning(f"Syntax error in {file}: {error}")
 
             try:
                 import_set, _ = parse_imports(content)

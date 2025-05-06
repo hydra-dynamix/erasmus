@@ -95,7 +95,7 @@ def collect_files_with_extensions(
 
     Args:
         base_path: The base directory to start the search from or a file path.
-        extensions: List of file extensions to include (e.g., ['.py', '.pyw']).
+        extensions: List of file extensions to include (error.g., ['.py', '.pyw']).
         exclude_patterns: List of glob patterns to exclude. If None, uses DEFAULT_EXCLUDE_PATTERNS.
 
     Returns:
@@ -225,7 +225,7 @@ def _should_exclude(name: str, exclude_patterns: list[str]) -> bool:
                 return True
             continue
 
-        # Handle directory-specific patterns (e.g., "src/**/*")
+        # Handle directory-specific patterns (error.g., "src/**/*")
         if "/" in pattern:
             # For patterns with wildcards, we need to check if the path matches
             if fnmatch.fnmatch(str_path, pattern):
@@ -342,7 +342,7 @@ if __name__ == "__main__":
             print(f"Found {len(py_files)} Python files in {path}:")
             for file in py_files:
                 print(f"  {file}")
-        except (FileNotFoundError, NotADirectoryError, PermissionError) as e:
-            print(f"Error: {e}")
+        except (FileNotFoundError, NotADirectoryError, PermissionError) as error:
+            print(f"Error: {error}")
     else:
         print("Usage: python collector.py <directory_path>")

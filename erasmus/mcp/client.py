@@ -1,5 +1,5 @@
 from erasmus.utils.rich_console import get_console_logger
-from erasmus.mcp.mcp import MCPError
+from erasmus.mcp.models import McpError
 from erasmus.mcp.servers import McpServers
 from erasmus.mcp.models import RPCRequest, ServerTransport
 from typing import Any
@@ -52,11 +52,11 @@ class StdioClient:
             A list of strings representing the command and its arguments.
 
         Raises:
-            MCPError: If the server definition is not found.
+            McpError: If the server definition is not found.
         """
         server = self.mcp_servers.servers.get(server_name)
         if not server:
-            raise MCPError(f"Server '{server_name}' not found in configuration.")
+            raise McpError(f"Server '{server_name}' not found in configuration.")
         command = [server.command] + server.args
         logger.debug(f"Constructed command for '{server_name}': {command}")
         return command
@@ -85,7 +85,7 @@ class StdioClient:
             True if the connection is established or already exists, False otherwise.
 
         Raises:
-            MCPError: If there's an issue starting the server process or configuration is missing.
+            McpError: If there's an issue starting the server process or configuration is missing.
         """
         if server_name in self.transports and self.transports[server_name].process.poll() is None:
             logger.info(f"Already connected to MCP server '{server_name}'.")
@@ -95,7 +95,7 @@ class StdioClient:
         try:
             server = self.mcp_servers.servers.get(server_name)
             if not server:
-                raise MCPError(f"Server '{server_name}' definition not found.")
+                raise McpError(f"Server '{server_name}' definition not found.")
 
             self._load_env_vars(server.env)
             command = self._get_server_command(server_name)
@@ -127,7 +127,7 @@ class StdioClient:
                 if not isinstance(process.stdin, io.TextIOWrapper) or \
                    not isinstance(process.stdout, io.TextIOWrapper) or \
                    not isinstance(process.stderr, io.TextIOWrapper):
-                    raise MCPError("Failed to get valid TextIOWrapper streams for process.")
+                    raise McpError("Failed to get valid TextIOWrapper streams for process.")
 
                 transport = ServerTransport(
                     name=server_name,
@@ -144,12 +144,12 @@ class StdioClient:
             except FileNotFoundError:
                  logger.error(f"Failed to start MCP server '{server_name}': Command not found ('{command[0]}'). Ensure it's in the system PATH.")
                  return False
-            except Exception as e:
-                logger.error(f"Failed to start MCP server '{server_name}': {e}", exc_info=True)
+            except Exception as error:
+                logger.error(f"Failed to start MCP server '{server_name}': {error}", exc_info=True)
                 return False
 
-        except Exception as e:
-            raise MCPError(f"Failed to connect to MCP server '{server_name}': {e}")
+        except Exception as error:
+            raise McpError(f"Failed to connect to MCP server '{server_name}': {error}")
 
     def disconnect(self, server_name: str):
          """Disconnect from a specific MCP server by terminating its process.
@@ -169,8 +169,8 @@ class StdioClient:
                  except subprocess.TimeoutExpired:
                      logger.warning(f"MCP server '{server_name}' did not terminate gracefully, killing.")
                      process.kill()
-                 except Exception as e:
-                     logger.error(f"Error terminating server '{server_name}': {e}")
+                 except Exception as error:
+                     logger.error(f"Error terminating server '{server_name}': {error}")
              else:
                  logger.info(f"MCP server '{server_name}' was already stopped.")
              del self.transports[server_name]
@@ -206,11 +206,11 @@ class StdioClient:
             server process.
 
         Raises:
-            MCPError: If the server name is not found in the configuration.
+            McpError: If the server name is not found in the configuration.
             Exception: Can raise exceptions from subprocess.Popen or communicate.
         """
         if server_name not in self.mcp_servers.servers:
-            raise MCPError(f"Server '{server_name}' not found in configuration.")
+            raise McpError(f"Server '{server_name}' not found in configuration.")
         
         # Although connect() is called internally by _get_server_command,
         # calling it here ensures the transport exists if needed later,
@@ -252,9 +252,9 @@ class StdioClient:
             logger.debug(f"Received stdout: {stdout[:100]}")
             logger.debug(f"Received stderr: {stderr[:100]}")
             return stdout, stderr
-        except Exception as e:
-            logger.error(f"Error during communicate with server '{server_name}': {e}", exc_info=True)
-            raise MCPError(f"Subprocess communication failed for '{server_name}': {e}")
+        except Exception as error:
+            logger.error(f"Error during communicate with server '{server_name}': {error}", exc_info=True)
+            raise McpError(f"Subprocess communication failed for '{server_name}': {error}")
 
 
     def send_request(self, server_name: str, method: str, params: dict[str, Any] | list[Any]) -> Any:
@@ -272,13 +272,13 @@ class StdioClient:
             The 'result' field from the JSON-RPC response.
 
         Raises:
-            MCPError: If the server isn't connected, communication fails,
+            McpError: If the server isn't connected, communication fails,
                       response is invalid, or the server returns a JSON-RPC error.
         """
         if server_name not in self.transports or self.transports[server_name].process.poll() is not None:
              logger.warning(f"Server '{server_name}' not connected or process dead. Attempting to reconnect.")
              if not self.connect(server_name):
-                  raise MCPError(f"Failed to connect/reconnect to MCP server '{server_name}'.")
+                  raise McpError(f"Failed to connect/reconnect to MCP server '{server_name}'.")
 
         transport = self.transports[server_name]
         process = transport.process
@@ -311,11 +311,11 @@ class StdioClient:
                      stderr_output = ""
                      try: stderr_output = transport.stderr.read() # Read remaining stderr
                      except Exception: pass
-                     raise MCPError(f"MCP server '{server_name}' terminated unexpectedly while waiting for response. Exit code: {process.returncode}. Stderr: {stderr_output.strip()}")
+                     raise McpError(f"MCP server '{server_name}' terminated unexpectedly while waiting for response. Exit code: {process.returncode}. Stderr: {stderr_output.strip()}")
                  else:
                       # This case might happen if the server just doesn't respond
                       # or if readline timed out (though it usually blocks)
-                     raise MCPError(f"No response received from MCP server '{server_name}'.")
+                     raise McpError(f"No response received from MCP server '{server_name}'.")
 
             response_str = response_line.strip()
             logger.debug(f"Received from {server_name} stdout: {response_str}")
@@ -323,22 +323,22 @@ class StdioClient:
             # Parse JSON response
             try:
                  response_payload = json.loads(response_str)
-            except json.JSONDecodeError as e:
-                 raise MCPError(f"Failed to decode JSON response from '{server_name}': {e}. Response: '{response_str}'")
+            except json.JSONDecodeError as error:
+                 raise McpError(f"Failed to decode JSON response from '{server_name}': {error}. Response: '{response_str}'")
 
 
             # Validate response ID
             if response_payload.get("id") != request_id:
                 # Allow null ID for notifications, though we shouldn't expect them here
                 if response_payload.get("id") is not None:
-                    raise MCPError(f"Received response with mismatched ID. Expected {request_id}, got {response_payload.get('id')}")
+                    raise McpError(f"Received response with mismatched ID. Expected {request_id}, got {response_payload.get('id')}")
 
             # Check for JSON-RPC error
             if "error" in response_payload:
                 error_data = response_payload["error"]
                 code = error_data.get('code', 'N/A')
                 message = error_data.get('message', 'No message')
-                raise MCPError(f"MCP server '{server_name}' returned error: Code {code}, Message: {message}")
+                raise McpError(f"MCP server '{server_name}' returned error: Code {code}, Message: {message}")
 
             # Return the result
             if "result" in response_payload:
@@ -353,25 +353,25 @@ class StdioClient:
                      logger.warning(f"Received unexpected notification from '{server_name}': {response_payload}")
                      # Decide how to handle notifications if needed, maybe return None or loop to read again?
                      # For now, treat as invalid response in a request-response flow.
-                     raise MCPError(f"Received unexpected notification instead of response from '{server_name}'.")
+                     raise McpError(f"Received unexpected notification instead of response from '{server_name}'.")
                 else:
-                    raise MCPError(f"Invalid JSON-RPC response from '{server_name}': Missing 'result' or 'error' field. Response: {response_payload}")
+                    raise McpError(f"Invalid JSON-RPC response from '{server_name}': Missing 'result' or 'error' field. Response: {response_payload}")
 
 
         except BrokenPipeError:
              stderr_output = ""
              try: stderr_output = transport.stderr.read()
              except Exception: pass
-             raise MCPError(f"Broken pipe while communicating with '{server_name}'. Process likely terminated. Exit code: {process.poll()}. Stderr: {stderr_output.strip()}")
-        except Exception as e:
+             raise McpError(f"Broken pipe while communicating with '{server_name}'. Process likely terminated. Exit code: {process.poll()}. Stderr: {stderr_output.strip()}")
+        except Exception as error:
             # Catch-all for other potential IOErrors or unexpected issues
             exit_code = process.poll()
             stderr_output = ""
             if exit_code is not None: # Check if it died
                  try: stderr_output = transport.stderr.read()
                  except Exception: pass
-            logger.error(f"Unhandled exception during communication with '{server_name}': {e}", exc_info=True)
-            raise MCPError(f"Failed communication with MCP server '{server_name}': {e}. Process exit code: {exit_code}. Stderr: {stderr_output.strip()}")
+            logger.error(f"Unhandled exception during communication with '{server_name}': {error}", exc_info=True)
+            raise McpError(f"Failed communication with MCP server '{server_name}': {error}. Process exit code: {exit_code}. Stderr: {stderr_output.strip()}")
 
 
 if __name__ == "__main__":

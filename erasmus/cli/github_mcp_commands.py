@@ -7,7 +7,7 @@ import typer
 from typing import List, Dict, Any
 from loguru import logger
 from erasmus.utils.rich_console import print_table, get_console
-from erasmus.mcp.client import StdioClient, MCPError
+from erasmus.mcp.client import StdioClient, McpError
 
 console = get_console()
 mcp_client = StdioClient()
@@ -97,8 +97,8 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Any:
         # Parse the JSON response from stdout
         try:
             response = json.loads(stdout)
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to decode JSON response from stdout: {e}", exc_info=True)
+        except json.JSONDecodeError as error:
+            logger.error(f"Failed to decode JSON response from stdout: {error}", exc_info=True)
             logger.error(f"Raw stdout: {stdout.strip()}")
             console.print(f"[bold red]Error:[/] Invalid response format from {GITHUB_SERVER_NAME} server.")
             raise typer.Exit(1)
@@ -123,14 +123,14 @@ def _send_mcp_request(method: str, params: Dict[str, Any]) -> Any:
 
         return response["result"]
 
-    except MCPError as e:
-        logger.error(f"MCP Client Error communicating with '{GITHUB_SERVER_NAME}': {e}", exc_info=True)
-        console.print(f"\n[bold red]Error:[/] Failed to communicate with {GITHUB_SERVER_NAME} server: {e}")
+    except McpError as error:
+        logger.error(f"MCP Client Error communicating with '{GITHUB_SERVER_NAME}': {error}", exc_info=True)
+        console.print(f"\n[bold red]Error:[/] Failed to communicate with {GITHUB_SERVER_NAME} server: {error}")
         raise typer.Exit(1)
-    except Exception as e:
+    except Exception as error:
         # Catch unexpected errors during communication or processing
-        logger.error(f"Unexpected error sending MCP request to '{GITHUB_SERVER_NAME}': {e}", exc_info=True)
-        console.print(f"\n[bold red]Error:[/] An unexpected error occurred: {e}")
+        logger.error(f"Unexpected error sending MCP request to '{GITHUB_SERVER_NAME}': {error}", exc_info=True)
+        console.print(f"\n[bold red]Error:[/] An unexpected error occurred: {error}")
         raise typer.Exit(1)
 
 

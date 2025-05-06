@@ -129,8 +129,8 @@ def query_pypi(module_name: str) -> str | None:
 
         _pypi_cache[module_name] = None
         return None
-    except Exception as e:
-        logger.warning(f"Error querying PyPI for {module_name}: {e}")
+    except Exception as error:
+        logger.warning(f"Error querying PyPI for {module_name}: {error}")
         return None
 
 
@@ -155,8 +155,8 @@ def _load_import_to_package() -> dict[str, str]:
             with mappings_file.open() as f:
                 additional_mappings = json.load(f)
                 _IMPORT_TO_PACKAGE.update(additional_mappings)
-        except Exception as e:
-            logger.warning(f"Failed to load additional mappings from {mappings_file}: {e}")
+        except Exception as error:
+            logger.warning(f"Failed to load additional mappings from {mappings_file}: {error}")
 
     return _IMPORT_TO_PACKAGE
 
@@ -231,8 +231,8 @@ def load_mappings_from_file(file_path: Union[str, Path]) -> None:
             register_mapping(import_name, package_name)
 
         logger.info(f"Loaded {len(mappings)} mappings from {file_path}")
-    except Exception as e:
-        logger.error(f"Error loading mappings from {file_path}: {e}")
+    except Exception as error:
+        logger.error(f"Error loading mappings from {file_path}: {error}")
 
 
 def save_mappings_to_file(file_path: Union[str, Path]) -> None:
@@ -259,8 +259,8 @@ def save_mappings_to_file(file_path: Union[str, Path]) -> None:
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(_custom_mappings, f, indent=4)
         logger.info(f"Saved {len(_custom_mappings)} mappings to {file_path}")
-    except Exception as e:
-        logger.error(f"Error saving mappings to {file_path}: {e}")
+    except Exception as error:
+        logger.error(f"Error saving mappings to {file_path}: {error}")
         raise
 
 

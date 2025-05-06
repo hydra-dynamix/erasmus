@@ -81,7 +81,7 @@ def py_type_to_js_type_string(py_type: any) -> str:
                 return " | ".join(member_types)
             return "any" # Should not occur for a valid Union
 
-    # Handle non-generic built-in collection types (e.g., `list` passed directly)
+    # Handle non-generic built-in collection types (error.g., `list` passed directly)
     if py_type is list or py_type is set or py_type is tuple:
         return "Array<any>"
     if py_type is dict:
@@ -93,7 +93,7 @@ def py_type_to_js_type_string(py_type: any) -> str:
         try:
             if issubclass(py_type, BaseModel): # Pydantic BaseModel
                 return py_type.__name__ # Use the class name, implies an interface/type definition
-        except TypeError: # py_type might not be a class (e.g. an instance, though type hint should be a class)
+        except TypeError: # py_type might not be a class (error.g. an instance, though type hint should be a class)
             pass 
         
         # For other custom classes not inheriting BaseModel
@@ -108,9 +108,9 @@ def js_type_string_to_py_type(js_type_str: str, custom_type_map: dict[str, type]
     Converts a JavaScript/TypeScript type string to its Python type object representation.
 
     Args:
-        js_type_str: The JavaScript/TypeScript type string (e.g., "string", "Array<number>", "MyInterface | null").
+        js_type_str: The JavaScript/TypeScript type string (error.g., "string", "Array<number>", "MyInterface | null").
         custom_type_map: An optional dictionary to map custom type names (like interface names)
-                         to actual Python type objects (e.g., Pydantic models).
+                         to actual Python type objects (error.g., Pydantic models).
 
     Returns:
         The corresponding Python type object, or typing.Any if parsing fails.
@@ -199,12 +199,12 @@ def js_type_string_to_py_type(js_type_str: str, custom_type_map: dict[str, type]
     # Proper literal parsing would involve checking if it's part of a union.
     # This basic version assumes single literals aren't distinctively marked beyond their value representation.
     # A true literal type in Python involves typing.Literal.
-    # e.g. typing.Literal['cat', 'dog']
+    # error.g. typing.Literal['cat', 'dog']
     # This function doesn't reconstruct typing.Literal from "cat" | "dog" directly
     # into a *single* typing.Literal object, but the union logic handles the parts.
     # A single "cat" without union would need context to be typing.Literal['cat'].
 
-    # Check custom type map (e.g., for interface names, Pydantic models)
+    # Check custom type map (error.g., for interface names, Pydantic models)
     if original_str in custom_type_map:
         return custom_type_map[original_str]
 

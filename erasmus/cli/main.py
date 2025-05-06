@@ -98,8 +98,8 @@ class HelpOnErrorGroup(TyperGroup):
     def main(self, *args, **kwargs):
         try:
             return super().main(*args, **kwargs)
-        except UsageError as e:
-            typer.echo(str(e))
+        except UsageError as error:
+            typer.echo(str(error))
             print_main_help_and_exit()
 
 
@@ -133,9 +133,9 @@ def watch():  # pragma: no cover
             signal.pause()
     except KeyboardInterrupt:
         typer.echo("\nStopped watching.")
-    except Exception as e:
-        logger.error(f"Error during file monitoring: {e}")
-        typer.echo(f"Error: {e}")
+    except Exception as error:
+        logger.error(f"Error during file monitoring: {error}")
+        typer.echo(f"Error: {error}")
         raise typer.Exit(1)
 
 
@@ -155,13 +155,13 @@ def status():
     # List all contexts
     try:
         contexts = context_manager.list_contexts()
-    except Exception as e:
+    except Exception as error:
         contexts = []
 
     # List all protocols
     try:
         protocols = protocol_manager.list_protocols()
-    except Exception as e:
+    except Exception as error:
         protocols = []
 
     print_table(
@@ -186,12 +186,12 @@ if __name__ == "__main__":
 
     try:
         app(standalone_mode=False)
-    except UsageError as e:
-        typer.echo(str(e))
+    except UsageError as error:
+        typer.echo(str(error))
         print_main_help_and_exit()
     except Exception as error:
         print_table(["Error"], [[str(error)]], title="CLI Error")
         raise typer.Exit(1)
-    except SystemExit as e:
-        if e.code != 2:
+    except SystemExit as error:
+        if error.code != 2:
             raise

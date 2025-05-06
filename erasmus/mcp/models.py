@@ -3,6 +3,11 @@ from io import TextIOWrapper
 from typing import Any
 import subprocess
 
+
+class McpError(Exception):
+    """Base exception for MCP-related errors."""
+    pass
+
 class RPCRequest(BaseModel):
     jsonrpc: str = "2.0"
     method: str

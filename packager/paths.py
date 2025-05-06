@@ -1,6 +1,6 @@
 from asyncio.log import logger
 from pathlib import Path
-from typing import Optional
+
 
 
 class PackagerPathManager:
@@ -39,19 +39,21 @@ class PackagerPathManager:
 
     def build_order(self) -> list[Path]:
         order = [
-            self.src_dir / "utils" / "logging.py",
+            self.src_dir / "utils" / "rich_console.py",
             self.src_dir / "utils" / "warp_integration.py",
+            self.src_dir / "mcp" / "models.py",
+            self.src_dir / "mcp" / "servers.py",
             self.src_dir / "utils" / "paths.py",
             self.src_dir / "utils" / "sanatizer.py",
             self.src_dir / "utils" / "xml_parser.py",
-            self.src_dir / "utils" / "rich_console.py",
-            self.src_dir / "mcp" / "mcp.py",
+            self.src_dir / "utils" / "type_conversions.py",
+            self.src_dir / "mcp" / "client.py",
+            self.src_dir / "mcp" / "registry.py",
             self.src_dir / "git" / "manager.py",
             self.src_dir / "environment.py",
             self.src_dir / "context.py",
             self.src_dir / "protocol.py",
             self.src_dir / "file_monitor.py",
-            self.src_dir / "cli" / "github_mcp_commands.py",
             self.src_dir / "cli" / "mcp_commands.py",
             self.src_dir / "cli" / "context_commands.py",
             self.src_dir / "cli" / "protocol_commands.py",

@@ -57,8 +57,8 @@ class McpServers(BaseModel):
                 else:
                     try:
                         full_path = self.parse_command_path(command)
-                    except Exception as e:
-                        logger.warning(f"No command path found for {server_name}: {e}")
+                    except Exception as error:
+                        logger.warning(f"No command path found for {server_name}: {error}")
                 if full_path:
                     paths[server_name] = full_path
         return paths

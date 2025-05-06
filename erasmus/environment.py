@@ -143,8 +143,8 @@ class EnvironmentConfig(BaseModel):
 
             self._variables[name] = converted_value
 
-        except (ValueError, TypeError) as e:
-            raise EnvironmentError(f"Invalid value for {name}: {str(e)}")
+        except (ValueError, TypeError) as error:
+            raise EnvironmentError(f"Invalid value for {name}: {str(error)}")
 
     def get(self, name: str, default: Any = None) -> Any:
         """

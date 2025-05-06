@@ -23,7 +23,7 @@
 #     try:
 #         # Use display_context to print full details
 #         context_manager.display_context(name)
-#     except ContextError as e:
+#     except ContextError as error:
 #         # Extract underlying error if prefixed by display_context
 #         error_msg = str(e)
 #         prefix = "Failed to display context: "
@@ -138,7 +138,7 @@
 #         context_manager.delete_context(name)
 #         print_table(["Info"], [[f"Deleted context: {name}"]], title="Context Deleted")
 #         raise typer.Exit(0)
-#     except Exception as e:
+#     except Exception as error:
 #         print_table(["Error"], [[str(e)]], title="Context Deletion Failed")
 #         raise typer.Exit(1)
 
@@ -475,7 +475,7 @@
 #         console.print(
 #             Panel(f"Context stored successfully as '{name}'", title="Context Store", style="green")
 #         )
-#     except Exception as e:
+#     except Exception as error:
 #         console.print(Panel(f"Error\n{str(e)}", title="Context Store Failed", style="red"))
 #         show_context_help_and_exit()
 #         raise typer.Exit(1)
@@ -557,8 +557,8 @@
 #         try:
 #             context_manager.create_context(new_name)
 #             selected = new_name
-#         except ContextError as e:
-#             typer.echo(f"Error creating context: {e}")
+#         except ContextError as error:
+#             typer.echo(f"Error creating context: {error}")
 #             raise typer.Exit(1)
 #     else:
 #         # Determine selected context name
@@ -612,6 +612,6 @@
 #         context_manager.load_context(project_name)
 #         print_table(["Info"], [[f"Context loaded: {project_name}"]], title="Setup")
 
-#     except Exception as e:
+#     except Exception as error:
 #         print_table(["Error"], [[str(e)]], title="Setup Failed")
 #         raise typer.Exit(1)

@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 from erasmus.utils.paths import get_path_manager
 from erasmus.protocol import ProtocolManager
-from erasmus.utils.rich_console import print_table, get_console, get_console_logger
+from erasmus.utils.rich_console import print_table, print_panel, get_console, get_console_logger
 
 logger = get_console_logger()
 
@@ -38,8 +38,8 @@ def check_mcp_server(
             check=True
         )
         logger.info(result.stdout)
-    except subprocess.CalledProcessError as e:
-        logger.error(f'Binary check failed:\n{e.stderr}')
+    except subprocess.CalledProcessError as error:
+        logger.error(f'Binary check failed:\n{error.stderr}')
 
 def set_erasmus_path():
     import os
@@ -65,29 +65,29 @@ end"""
     if shell == "bash":
         rc = f"{home}/.bashrc"
         if not Path(rc).read_text(errors="ignore").find("erasmus()") >= 0:
-            with open(rc, "a") as f:
-                f.write(f"\n{erasmus_func}\n")
+            with open(rc, "a") as file_handle:
+                file_handle.write(f"\n{erasmus_func}\n")
             msg = f"Added erasmus function to {rc}"
             added = True
     elif shell == "zsh":
         rc = f"{home}/.zshrc"
         if not Path(rc).read_text(errors="ignore").find("erasmus()") >= 0:
-            with open(rc, "a") as f:
-                f.write(f"\n{erasmus_func}\n")
+            with open(rc, "a") as file_handle:
+                file_handle.write(f"\n{erasmus_func}\n")
             msg = f"Added erasmus function to {rc}"
             added = True
     elif shell == "fish":
         rc = f"{home}/.config/fish/config.fish"
         if not Path(rc).read_text(errors="ignore").find("function erasmus") >= 0:
-            with open(rc, "a") as f:
-                f.write(f"\n{erasmus_fish_func}\n")
+            with open(rc, "a") as file_handle:
+                file_handle.write(f"\n{erasmus_fish_func}\n")
             msg = f"Added erasmus function to {rc}"
             added = True
     elif shell in ("csh", "tcsh"):
         rc = f"{home}/.cshrc" if shell == "csh" else f"{home}/.tcshrc"
         if not Path(rc).read_text(errors="ignore").find("alias erasmus") >= 0:
-            with open(rc, "a") as f:
-                f.write(
+            with open(rc, "a") as file_handle:
+                file_handle.write(
                     '\nalias erasmus "if ( -f erasmus.py ) uv run erasmus.py !*; else command erasmus !*; endif"\n'
                 )
             msg = f"Added erasmus alias to {rc}"
@@ -183,46 +183,78 @@ def setup_callback(ctx: typer.Context):
     
     print_table(["Info"], [[f"Context {context_name} set up and loaded"]], title="Setup")
 
-    # Step 6: Prompt for protocol selection
-    protocol_manager = ProtocolManager()
-    protocols = protocol_manager.list_protocols()
-    if not protocols:
-        print_table(["Error"], [["No protocols found."]], title="Setup Failed")
-        raise typer.Exit(1)
-    protocol_rows = [[str(i + 1), p] for i, p in enumerate(protocols)]
-    print_table(["#", "Protocol Name"], protocol_rows, title="Available Protocols")
-    while True:
-        choice = typer.prompt("Select a protocol by number or name")
-        selected = None
-        if choice.isdigit():
-            idx = int(choice)
-            if 1 <= idx <= len(protocols):
-                selected = protocols[idx - 1]
-        elif choice in protocols:
-            selected = choice
-        if selected:
-            # Write the selected protocol to current_protocol.txt using path manager
-            current_protocol_path = path_manager.erasmus_dir / "current_protocol.txt"
-            current_protocol_path.write_text(selected)
-            print_table(["Info"], [[f"Protocol set to: {selected}"]], title="Setup")
-            # Immediately update the rules file to reflect the selected protocol
-            try:
-                from erasmus.file_monitor import _merge_rules_file
+    # Step 6: Select or Confirm Protocol and Update Rules
+    protocol_manager = ProtocolManager() # This loads current_protocol.txt into protocol_manager.protocol_name and protocol_manager.protocol
+    
+    # protocol_manager.protocol_name will be None if current_protocol.txt doesn't exist or is empty
+    # protocol_manager.protocol will be the loaded ProtocolModel if a valid protocol_name was found and loaded
 
-                _merge_rules_file()
-                print_table(
-                    ["Info"],
-                    [[f"Rules file updated with protocol: {selected}"]],
-                    title="Setup",
-                )
+    # Determine the prompt message for typer.confirm
+    confirm_prompt_message = f"Current protocol is '{protocol_manager.protocol_name}'. Do you want to change it?"
+    # Default for typer.confirm: False if a protocol is set, True if no protocol is set (i.e., force selection)
+    confirm_default = False if protocol_manager.protocol_name else True
+
+    if not protocol_manager.protocol_name or typer.confirm(confirm_prompt_message, default=confirm_default):
+        if protocol_manager.protocol_name: # Only print if changing
+            print_panel(f"Changing from current protocol: '{protocol_manager.protocol_name}'. Attempting to select a new protocol...", title="Protocol Selection", style="cyan")
+        else:
+            print_panel("No protocol currently set. Attempting to select a new protocol...", title="Protocol Selection", style="cyan")
+
+        selected_protocol_model = protocol_manager.select_protocol_interactively(
+            prompt_title="Select a Protocol for Setup",
+            error_title="Protocol Selection Failed"
+        )
+        # select_protocol_interactively updates current_protocol.txt and sets protocol_manager.protocol
+
+        if selected_protocol_model and selected_protocol_model.name:
+            # Protocol successfully selected and loaded by select_protocol_interactively
+            try:
+                protocol_manager._update_context() # This uses the now-loaded protocol to update rules
+                protocol_type = getattr(selected_protocol_model, 'type', 'N/A') 
+                print_panel(f"Protocol successfully set to: {selected_protocol_model.name} ({protocol_type}) and rules updated.", title="Setup Info", style="bold green", border_style="green")
+            except AttributeError as attr_error:
+                get_console().print_exception()
+                print_panel(f"Critical setup error: ProtocolManager is missing a required method for context update. ({attr_error})", title="Setup Error", style="bold red", border_style="red")
+                raise typer.Exit(1)
             except Exception as e:
-                print_table(
-                    ["Error"],
-                    [[f"Failed to update rules file: {e}"]],
-                    title="Setup Warning",
-                )
-            break
-        print(f"Invalid selection: {choice}")
+                get_console().print_exception()
+                print_panel(f"Failed to update rules file with newly selected protocol '{selected_protocol_model.name}': {e}.", title="Setup Warning", style="bold red", border_style="red")
+        else:
+            # This means selection was cancelled or failed within select_protocol_interactively
+            if protocol_manager.protocol_name: # If a protocol was set before attempting to change
+                 print_panel(f"No new protocol selected. Existing protocol '{protocol_manager.protocol_name}' remains active. Ensuring rules are up to date.", title="Setup Info", style="yellow")
+                 try:
+                    # Ensure context is updated with the (still) current protocol
+                    if protocol_manager.protocol: # It should be loaded
+                        protocol_manager._update_context()
+                        logger.info(f"Ensured rules file is consistent with existing protocol: {protocol_manager.protocol_name}")
+                    else: # Should not happen if protocol_name is set and valid
+                        print_panel(f"Could not re-verify existing protocol '{protocol_manager.protocol_name}' for rules update.", title="Setup Warning", style="bold red", border_style="red")
+                 except Exception as e:
+                    get_console().print_exception()
+                    print_panel(f"Failed to ensure rules file update for existing protocol '{protocol_manager.protocol_name}': {e}.", title="Setup Warning", style="bold red", border_style="red")
+            else: # No protocol was set, and selection failed/cancelled
+                 print_panel("No protocol selected and no existing protocol was set. Setup might be incomplete without an active protocol.", title="Setup Warning", style="bold yellow", border_style="yellow")
+
+    elif protocol_manager.protocol_name and protocol_manager.protocol:
+        # Protocol is already set (protocol_manager.protocol_name is not None)
+        # and user confirmed NOT to change it.
+        # Ensure the context is updated with this existing, loaded protocol.
+        print_panel(f"Keeping existing protocol: '{protocol_manager.protocol_name}'. Ensuring rules are up to date...", title="Protocol Confirmation", style="cyan")
+        try:
+            protocol_manager._update_context() # protocol_manager.protocol is already loaded
+            logger.info(f"Ensured rules file is consistent with existing protocol: {protocol_manager.protocol_name}")
+            print_panel(f"Rules file confirmed for protocol: {protocol_manager.protocol_name}.", title="Setup Info", style="bold green", border_style="green")
+        except Exception as e:
+            get_console().print_exception()
+            print_panel(f"Failed to ensure rules file consistency for existing protocol '{protocol_manager.protocol_name}': {e}.", title="Setup Warning", style="bold red", border_style="red")
+    else:
+        # This case should ideally not be reached if logic is correct: a protocol name exists but model isn't loaded
+        # Or no protocol name and user didn't want to select.
+        if protocol_manager.protocol_name and not protocol_manager.protocol:
+             print_panel(f"Warning: A current protocol '{protocol_manager.protocol_name}' is named but could not be loaded. Rules may not be updated.", title="Setup Warning", style="bold yellow", border_style="yellow")
+        else: # No protocol name, and not selected
+             print_panel("No protocol is active. Rules file will not be updated with protocol-specific content.", title="Setup Info", style="yellow")
 
     print_table(["Info"], [["Erasmus setup complete."]], title="Setup Success")
     raise typer.Exit(0)

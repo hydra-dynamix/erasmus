@@ -6,7 +6,7 @@ import os
 import json
 import tempfile
 import pytest
-from erasmus.mcp.mcp import MCPRegistry, MCPError
+from erasmus.mcp.mcp import MCPRegistry, McpError
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def test_register_server(registry):
 def test_register_duplicate_server(registry):
     """Test registering a duplicate server."""
     registry.register_server("test-server", "localhost", 8000)
-    with pytest.raises(MCPError, match="Server 'test-server' already registered"):
+    with pytest.raises(McpError, match="Server 'test-server' already registered"):
         registry.register_server("test-server", "localhost", 8001)
 
 
@@ -43,13 +43,13 @@ def test_unregister_server(registry):
     """Test unregistering a server."""
     registry.register_server("test-server", "localhost", 8000)
     registry.unregister_server("test-server")
-    with pytest.raises(MCPError, match="Server 'test-server' not found"):
+    with pytest.raises(McpError, match="Server 'test-server' not found"):
         registry.get_server("test-server")
 
 
 def test_unregister_nonexistent_server(registry):
     """Test unregistering a nonexistent server."""
-    with pytest.raises(MCPError, match="Server 'nonexistent-server' not found"):
+    with pytest.raises(McpError, match="Server 'nonexistent-server' not found"):
         registry.unregister_server("nonexistent-server")
 
 
@@ -73,7 +73,7 @@ def test_register_client(registry):
 
 def test_register_client_nonexistent_server(registry):
     """Test registering a client to a nonexistent server."""
-    with pytest.raises(MCPError, match="Server 'nonexistent-server' not found"):
+    with pytest.raises(McpError, match="Server 'nonexistent-server' not found"):
         registry.register_client("test-client", "nonexistent-server")
 
 
@@ -81,7 +81,7 @@ def test_register_duplicate_client(registry):
     """Test registering a duplicate client."""
     registry.register_server("test-server", "localhost", 8000)
     registry.register_client("test-client", "test-server")
-    with pytest.raises(MCPError, match="Client 'test-client' already registered"):
+    with pytest.raises(McpError, match="Client 'test-client' already registered"):
         registry.register_client("test-client", "test-server")
 
 
@@ -90,13 +90,13 @@ def test_unregister_client(registry):
     registry.register_server("test-server", "localhost", 8000)
     registry.register_client("test-client", "test-server")
     registry.unregister_client("test-client")
-    with pytest.raises(MCPError, match="Client 'test-client' not found"):
+    with pytest.raises(McpError, match="Client 'test-client' not found"):
         registry.get_client("test-client")
 
 
 def test_unregister_nonexistent_client(registry):
     """Test unregistering a nonexistent client."""
-    with pytest.raises(MCPError, match="Client 'nonexistent-client' not found"):
+    with pytest.raises(McpError, match="Client 'nonexistent-client' not found"):
         registry.unregister_client("nonexistent-client")
 
 

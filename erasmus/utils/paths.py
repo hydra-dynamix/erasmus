@@ -237,8 +237,8 @@ class PathMngrModel(BaseModel):
             )
             self.warp_integration.update_rule(rule_obj)
             return True
-        except Exception as e:
-            logger.error(f"Failed to update Warp rules: {e}")
+        except Exception as error:
+            logger.error(f"Failed to update Warp rules: {error}")
             return False
 
     def get_warp_rules(self) -> List[Tuple[str, str, str]] | None:
@@ -249,8 +249,8 @@ class PathMngrModel(BaseModel):
         try:
             rules = self.warp_integration.get_rules()
             return [(rule.document_type, rule.document_id, rule.rule) for rule in rules]
-        except Exception as e:
-            logger.error(f"Failed to retrieve Warp rules: {e}")
+        except Exception as error:
+            logger.error(f"Failed to retrieve Warp rules: {error}")
             return None
 
     # [Previous methods remain unchanged]

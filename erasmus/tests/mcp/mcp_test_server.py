@@ -138,12 +138,12 @@ async def handle_request(request_data: Dict[str, Any], writer: asyncio.StreamWri
                      raise TypeError("Parameters must be a dictionary for named argument calling.")
                 result = my_function(param1=tool_params.get("param1"), param2=tool_params.get("param2"))
                 response_json = create_response(request_id, {"result": result})
-            except (TypeError, ValueError, KeyError) as e:
-                log_error(f"Error calling my_function: {e}")
+            except (TypeError, ValueError, KeyError) as error:
+                log_error(f"Error calling my_function: {error}")
                 response_json = create_error_response(request_id, -32602, "Invalid Params", str(e))
-            except Exception as e:
-                 log_error(f"Unexpected error in my_function: {e}")
-                 response_json = create_error_response(request_id, -32000, "Server Error", f"Internal error: {e}")
+            except Exception as error:
+                 log_error(f"Unexpected error in my_function: {error}")
+                 response_json = create_error_response(request_id, -32000, "Server Error", f"Internal error: {error}")
         else:
             log_error(f"Method not found: {tool_name}")
             response_json = create_error_response(request_id, -32601, "Method not found", f"Tool '{tool_name}' not found")
@@ -199,8 +199,8 @@ async def main():
                 request_data = json.loads(line_str)
                 if not isinstance(request_data, dict):
                      raise json.JSONDecodeError("Input is not a JSON object", line_str, 0)
-            except json.JSONDecodeError as e:
-                log_error(f"Invalid JSON received: {e}")
+            except json.JSONDecodeError as error:
+                log_error(f"Invalid JSON received: {error}")
                 response_json = create_error_response(None, -32700, "Parse error", str(e))
                 writer.write(response_json.encode('utf-8'))
                 await writer.drain()
@@ -218,8 +218,8 @@ async def main():
         except ConnectionResetError:
              log_info("Client closed connection.")
              is_running = False
-        except Exception as e:
-            log_error(f"Unexpected error in main loop: {e}")
+        except Exception as error:
+            log_error(f"Unexpected error in main loop: {error}")
             # Attempt to send a generic error if possible, but might fail if connection is broken
             try:
                 response_json = create_error_response(None, -32000, "Internal Server Error", str(e))
