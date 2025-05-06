@@ -75,41 +75,54 @@ class RichConsoleLogger(logging.Logger):
         self.setLevel(logging.DEBUG)
         self.addHandler(RichHandler(rich_tracebacks=True))
 
-    def success(self, message: str):
-        """Print a success message in green color.
+    def success(self, message: str, *args, **kwargs):
+        """Log a success message (custom level).
 
         Args:
             message (str): Success message to display.
         """
-        console = get_console()
-        console.print(f"\n✔ {message}", style="bold green")
+        if args:
+            message = message % args
+        # Standard logging doesn't have a 'success' level by default.
+        # We can use INFO level or define a custom level.
+        # For simplicity, using INFO with a prefix or special formatting if RichHandler supports it.
+        # Or, keep custom print if that's preferred over standard logging levels for this.
+        # Let's assume we want it to go through the logging system, so use INFO.
+        super().info(f"✔ {message}", **kwargs) # RichHandler will colorize based on level
 
-    def error(self, message: str):
-        """Print an error message in red color.
+    def error(self, message: str, *args, exc_info=None, **kwargs):
+        """Log an error message.
 
         Args:
             message (str): Error message to display.
+            exc_info (bool, optional): Whether to include exception info. Defaults to None.
         """
-        console = get_console()
-        console.print(f"\n✖ {message}", style="bold red")
+        # Ensure message string is properly formatted if args are present
+        if args:
+            message = message % args
+        super().error(message, exc_info=exc_info, **kwargs)
 
-    def warning(self, message: str):
-        """Print a warning message in yellow color.
+    def warning(self, message: str, *args, exc_info=None, **kwargs):
+        """Log a warning message.
 
         Args:
             message (str): Warning message to display.
+            exc_info (bool, optional): Whether to include exception info. Defaults to None.
         """
-        console = get_console()
-        console.print(f"\n! {message}", style="bold yellow")
+        if args:
+            message = message % args
+        super().warning(message, exc_info=exc_info, **kwargs)
 
-    def info(self, message: str):
-        """Print an informational message in blue color.
+    def info(self, message: str, *args, exc_info=None, **kwargs):
+        """Log an informational message.
 
         Args:
             message (str): Informational message to display.
+            exc_info (bool, optional): Whether to include exception info. Defaults to None.
         """
-        console = get_console()
-        console.print(f"\nℹ {message}", style="bold blue")
+        if args:
+            message = message % args
+        super().info(message, exc_info=exc_info, **kwargs)
 
 
 console_logger = RichConsoleLogger(__name__)

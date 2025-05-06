@@ -6,14 +6,10 @@ import re
 from dotenv import load_dotenv
 
 from erasmus.utils.rich_console import get_console_logger
+from erasmus.mcp.models import McpServer
 
 logger = get_console_logger()
 
-class McpServer(BaseModel):
-    name: str
-    command: str
-    args: list[str]
-    env: dict[str, str]
 
 class McpServers(BaseModel):
     servers: dict[str, McpServer] = Field(default_factory=dict)

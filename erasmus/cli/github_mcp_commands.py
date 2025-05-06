@@ -3,22 +3,17 @@ GitHub MCP server CLI commands for interacting with GitHub through the MCP serve
 """
 
 import json
-import subprocess
 import typer
-import os
 from typing import List, Dict, Any
 from loguru import logger
 from erasmus.utils.rich_console import print_table, get_console
-from erasmus.utils.paths import get_path_manager
-from erasmus.mcp.servers import McpServers
-from dotenv import load_dotenv
-
-path_manager = get_path_manager()
-
-mcp_servers = McpServers()
-github_server = mcp_servers.get_server("github")
+from erasmus.mcp.client import StdioClient, MCPError
 
 console = get_console()
+mcp_client = StdioClient()
+
+# Server name constant
+GITHUB_SERVER_NAME = "github"
 
 github_app = typer.Typer(help="Interact with GitHub through the MCP server.", no_args_is_help=True)
 
@@ -58,91 +53,84 @@ def show_github_commands_help():
         
         ["Repositories", ""],
         ["create-repo", "Create a new repository"],
-        ["get-repo", "Get repository details"],
-        ["list-repos", "List repositories"],
-        ["update-repo", "Update repository settings"],
-        ["delete-repo", "Delete a repository"],
+        # ["get-repo", "Get repository details"],
+        # ["list-repos", "List repositories"],
+        # ["update-repo", "Update repository settings"],
+        # ["delete-repo", "Delete a repository"],
     ]
     
     print_table(["Command", "Description"], commands, title="GitHub MCP Commands")
 
-def _get_env_variables(env: dict[str, str]):
-    load_dotenv()
-    variables = {}
-    if isinstance(env, dict) and len(env.items()) > 0:
-        for key in env.keys():
-            value = os.getenv(key)
-            if value:
-                variables[key] = value
-    return variables
 
-def _send_mcp_request(method: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    """Send a request to the GitHub MCP server.
+def _send_mcp_request(method: str, params: Dict[str, Any]) -> Any:
+    """Send a request to the GitHub MCP server using StdioClient.communicate.
 
     Args:
-        method: The method name to call
-        params: The parameters to send
+        method: The method name to call.
+        params: The parameters to send.
 
     Returns:
-        The response from the server
+        The 'result' field from the JSON-RPC response.
 
     Raises:
-        typer.Exit: If the request fails
+        typer.Exit: If the request fails due to client error, communication error,
+                    JSON parsing error, or server-side JSON-RPC error.
     """
-    request = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
-    env = _get_env_variables(github_server.env)
-    command_list = []
-
-    if isinstance(env, dict) and len(env.items()) > 0:
-        for key in env.keys():
-            os.environ[key] = env[key]
-    if github_server.command:
-        logger.debug(f"Command: {github_server.command}")
-        command_list.append(github_server.command)
-    if github_server.args:
-        logger.debug(f"Args: {github_server.args}")
-        command_list.extend(github_server.args)
-
-    logger.debug(f"Command list: {command_list}")
     try:
-        # Start the MCP server process
-        process = subprocess.Popen(
-            command_list,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
+        stdout, stderr = mcp_client.communicate(
+            server_name=GITHUB_SERVER_NAME, 
+            method=method, 
+            params=params
         )
+        
+        # Log stderr for debugging, even if stdout has the response
+        if stderr:
+            logger.debug(f"GitHub MCP server stderr: {stderr.strip()}")
 
-        # Send the request
-        request_str = json.dumps(request)
-        stdout, stderr = process.communicate(input=request_str)
-
-        if process.returncode != 0:
-            logger.error(f"MCP server error: {stderr}")
+        if not stdout:
+            logger.error("Received empty stdout from GitHub MCP server.")
+            console.print(f"[bold red]Error:[/] No response received from {GITHUB_SERVER_NAME} server.")
+            if stderr:
+                 console.print(f"[bold yellow]Server stderr:[/]\n{stderr.strip()}")
             raise typer.Exit(1)
 
-        # Parse the response
-        response = None
-        for line in stdout.split("\n"):
-            try:
-                obj = json.loads(line)
-                response = obj
-                break
-            except Exception:
-                continue
-        if not response:
-            logger.error(f"No valid JSON response from MCP server. Raw output: {stdout}")
+        # Parse the JSON response from stdout
+        try:
+            response = json.loads(stdout)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode JSON response from stdout: {e}", exc_info=True)
+            logger.error(f"Raw stdout: {stdout.strip()}")
+            console.print(f"[bold red]Error:[/] Invalid response format from {GITHUB_SERVER_NAME} server.")
             raise typer.Exit(1)
-        if "error" in response:
-            logger.error(f"MCP server error: {response['error']}")
+
+        # Check for JSON-RPC errors reported by the server
+        if "error" in response and response["error"]:
+            error_details = response['error']
+            error_msg = error_details.get('message', 'Unknown server error')
+            error_code = error_details.get('code', 'N/A')
+            logger.error(f"GitHub MCP server returned error: Code={error_code}, Message='{error_msg}'")
+            console.print(f"[bold red]Server Error ({error_code}):[/] {error_msg}")
+            # Optionally show more details if available
+            # if 'data' in error_details:
+            #    logger.error(f"Error data: {error_details['data']}")
             raise typer.Exit(1)
+        
+        # Check if 'result' exists
+        if "result" not in response:
+             logger.error(f"JSON-RPC response missing 'result' field. Response: {response}")
+             console.print(f"[bold red]Error:[/] Malformed response from {GITHUB_SERVER_NAME} server (missing 'result').")
+             raise typer.Exit(1)
+
         return response["result"]
 
+    except MCPError as e:
+        logger.error(f"MCP Client Error communicating with '{GITHUB_SERVER_NAME}': {e}", exc_info=True)
+        console.print(f"\n[bold red]Error:[/] Failed to communicate with {GITHUB_SERVER_NAME} server: {e}")
+        raise typer.Exit(1)
     except Exception as e:
-        logger.error(f"Failed to send MCP request: {e}")
-        console.print("\n[bold red]Error:[/] Unable to complete the request.")
-        show_github_commands_help()
+        # Catch unexpected errors during communication or processing
+        logger.error(f"Unexpected error sending MCP request to '{GITHUB_SERVER_NAME}': {e}", exc_info=True)
+        console.print(f"\n[bold red]Error:[/] An unexpected error occurred: {e}")
         raise typer.Exit(1)
 
 

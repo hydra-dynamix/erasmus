@@ -13,6 +13,8 @@ erasmus/mcp/servers/*
 .code_review.md
 .temp_context
 .ruff_cache
+.erasmus/mcp/registry.json
+.reference
 
 # IDE
 .vscode/

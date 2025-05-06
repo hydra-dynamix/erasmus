@@ -3,21 +3,14 @@
         "github": {
             "command": ".erasmus/mcp/servers/github/server",
             "args": [
-                "stdio"
+                "stdio",
+                "--log-file",
+                "/tmp/github_mcp_server.log",
+                "--enable-command-logging"
             ],
             "env": {
                 "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
             }
-        },
-        "trader": {
-            "command": "uv",
-            "args": [
-                "--directory",
-                "/home/bakobi/repos/mcp/trader",
-                "run",
-                "trader/server/mcp_server.py",
-                "stdio"
-            ]
         }
     }
 }
