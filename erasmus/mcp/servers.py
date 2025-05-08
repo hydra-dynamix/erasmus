@@ -1,15 +1,22 @@
-from pydantic import BaseModel, Field
-from pathlib import Path
 import json
 import os
 import re
-from dotenv import load_dotenv
+from pathlib import Path
+from typing import Any
 
+from dotenv import load_dotenv
+from pydantic import BaseModel, Field
+
+from erasmus.mcp.models import (
+    McpError,
+    McpServer,
+    RPCRequest,
+)
 from erasmus.utils.rich_console import get_console_logger
-from erasmus.mcp.models import McpServer
 
 logger = get_console_logger()
 
+DEFAULT_CONFIG_PATH = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"
 
 class McpServers(BaseModel):
     servers: dict[str, McpServer] = Field(default_factory=dict)
@@ -17,7 +24,7 @@ class McpServers(BaseModel):
     path_string_pattern: re.Pattern 
     __pydantic_fields_set__ = set()
 
-    def __init__(self, config_path: Path = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"):
+    def __init__(self, config_path: Path = DEFAULT_CONFIG_PATH):
         self.servers = {}
         self.config_path = config_path
         self.load_from_json()
@@ -26,11 +33,11 @@ class McpServers(BaseModel):
 
     def add_server(self, name: str, command: str, args: list[str], env: dict[str, str]):
         self.servers[name] = McpServer(name=name, command=command, args=args, env=env)
-    
+
     def remove_server(self, name: str):
         if name in self.servers:
             del self.servers[name]
-    
+
     def get_server(self, name: str) -> McpServer | None:
         return self.servers.get(name)
 
@@ -49,7 +56,6 @@ class McpServers(BaseModel):
 
             if self.path_string_pattern.match(command):
                 logger.info(f"Found path: {command}")
-            
             if isinstance(args, list) and len(args) > 0:
                 full_path = None
                 if "--directory" in args:
@@ -62,25 +68,20 @@ class McpServers(BaseModel):
                 if full_path:
                     paths[server_name] = full_path
         return paths
-    
+
     def parse_command_path(self, command: str):
-        if self.path_string_pattern.match(command):
-            return Path(command)
-        return None
+        return Path(command) if self.path_string_pattern.match(command) else None
 
     def parse_uv_directory_path(self, args: list[str]):
         directory = None
         file_path = None
-        full_path = None
         for i, arg in enumerate(args):
             if arg == "--directory":
                 directory = args[i + 1]
-            if arg == "run":
+            elif arg == "run":
                 file_path = args[i + 1]
-        if directory and file_path:
-            full_path = Path(directory) / file_path
-        return full_path
-    
+        return Path(directory) / file_path if directory and file_path else None
+
     def load_from_json(self):
         config_data = self.config_path.read_text()
         if "mcpServers" not in config_data:
@@ -94,12 +95,20 @@ class McpServers(BaseModel):
 
     def load_environment_variables(self, env: dict[str, str]):
         load_dotenv()
-        variables = {}
-        for key in env.keys():
-            variables[key] = os.getenv(key)
-        return variables
+        return {key: os.getenv(key) for key in env}
 
-
+    @staticmethod
+    def get_server_request(
+        method: str,
+        request_id: int,
+        params: dict[str, Any] | None=None,
+    ) -> RPCRequest:
+        return RPCRequest(
+            jsonrpc='2.0',
+            method=method,
+            params=params,
+            id=request_id,
+        )
 
 
 if __name__ == "__main__":

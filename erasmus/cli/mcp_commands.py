@@ -285,16 +285,16 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                             param_cli_help = param_info.get("description", f"Parameter '{param_name}' for {t_name}")
 
                             if param_schema_type in ["object", "array"]:
-                                typer_annotation = Optional[str] if not is_required else str
+                                typer_annotation = str | None if not is_required else str
                                 param_cli_help += " (Input as JSON string)"
                             elif param_schema_type == "integer":
-                                typer_annotation = Optional[int] if not is_required else int
+                                typer_annotation = int | None if not is_required else int
                             elif param_schema_type == "number":
-                                typer_annotation = Optional[float] if not is_required else float
+                                typer_annotation = float | None if not is_required else float
                             elif param_schema_type == "boolean":
-                                typer_annotation = bool # Typer makes Optional[bool] a flag --name/--no-name
+                                typer_annotation = bool # Typer makes bool | None a flag --name/--no-name
                             else:
-                                typer_annotation = Optional[str] if not is_required else str
+                                typer_annotation = str | None if not is_required else str
 
                             cli_default_value = inspect.Parameter.empty
                             if not is_required:
@@ -340,8 +340,8 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                             # The parameters for "tools/call" include the tool's actual name and its specific arguments
                             actual_method_for_rpc = "tools/call"
                             structured_payload = {
-                                "name": t_name,  # t_name is the actual tool name like "create_issue"
-                                "params": payload_for_client # payload_for_client has the direct args for the tool
+                                **payload_for_client,  # Pass parameters directly at the top level
+                                "name": t_name  # t_name is the actual tool name like "create_issue"
                             }
                             
                             rich_console = get_console() # Ensure we use get_console() for Rich features
@@ -360,39 +360,43 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                         # Potentially print non-critical stderr to console as well, if desired
                                         # console.print(f"[dim]Server messages: {stderr.strip()}[/dim]")
                                     if stdout:
-                                        rich_console.print(f"[green]Result from {t_name}:[/green]")
-                                        try:
-                                            # Attempt to parse the entire stdout as JSON
-                                            parsed_stdout = json.loads(stdout)
-                                            # Check for the specific nested structure you observed
-                                            content_to_display = stdout # Default to the full stdout string
-                                            if isinstance(parsed_stdout, dict) and \
-                                               parsed_stdout.get("result") and \
-                                               isinstance(parsed_stdout["result"].get("content"), list) and \
-                                               len(parsed_stdout["result"]["content"]) > 0 and \
-                                               isinstance(parsed_stdout["result"]["content"][0].get("text"), str):
-                                                
-                                                nested_text = parsed_stdout["result"]["content"][0]["text"]
-                                                try:
-                                                    # Try to parse the nested text as JSON for pretty printing
-                                                    json.loads(nested_text) # Validate if it's JSON
-                                                    content_to_display = nested_text
-                                                except json.JSONDecodeError:
-                                                    # If nested_text is not valid JSON, display it as plain text
-                                                    content_to_display = nested_text 
-                                            
-                                            # Determine if content_to_display is JSON for Syntax highlighting
+                                        # Split stdout into lines and parse each as JSON if possible
+                                        lines = [line for line in stdout.strip().splitlines() if line.strip()]
+                                        responses = []
+                                        for idx, line in enumerate(lines):
                                             try:
-                                                parsed_json_content = json.loads(content_to_display) # Parse it
-                                                indented_json_string = json.dumps(parsed_json_content, indent=2) # Re-serialize with indentation
-                                                display_object = Syntax(indented_json_string, "json", theme="monokai", line_numbers=True, word_wrap=True)
+                                                parsed = json.loads(line)
+                                                responses.append(parsed)
                                             except json.JSONDecodeError:
-                                                display_object = content_to_display # Display as plain text if not valid JSON
-
-                                            rich_console.print(Panel(display_object, title="Server Response", border_style="blue", expand=False))
-                                        except json.JSONDecodeError:
-                                            # If stdout is not JSON, print it as plain text in a panel
-                                            rich_console.print(Panel(stdout, title="Server Response", border_style="blue", expand=False))
+                                                responses.append(line)
+                                        # Show all responses, but highlight the last (tool) response
+                                        for i, resp in enumerate(responses):
+                                            section_title = f"Server Response ({'Tool Call' if i == len(responses)-1 else 'Init'})"
+                                            if isinstance(resp, dict):
+                                                # Try to pretty-print nested content if present
+                                                content_to_display = resp
+                                                if resp.get("result") and isinstance(resp["result"], dict):
+                                                    result = resp["result"]
+                                                    if isinstance(result.get("content"), list) and len(result["content"]) > 0:
+                                                        first_content = result["content"][0]
+                                                        if isinstance(first_content.get("text"), str):
+                                                            nested_text = first_content["text"]
+                                                            try:
+                                                                json.loads(nested_text)
+                                                                content_to_display = json.loads(nested_text)
+                                                            except json.JSONDecodeError:
+                                                                content_to_display = nested_text
+                                                    else:
+                                                        content_to_display = result
+                                                # Pretty print JSON
+                                                try:
+                                                    indented_json_string = json.dumps(content_to_display, indent=2)
+                                                    display_object = Syntax(indented_json_string, "json", theme="monokai", line_numbers=True, word_wrap=True)
+                                                except Exception:
+                                                    display_object = str(content_to_display)
+                                            else:
+                                                display_object = str(resp)
+                                            rich_console.print(Panel(display_object, title=section_title, border_style="blue", expand=False))
                                     else:
                                         rich_console.print(f"[yellow]No stdout content received from {t_name}.[/yellow]")
                                 except McpError as e_mcp:

@@ -3,13 +3,10 @@
         "github": {
             "command": ".erasmus/mcp/servers/github/server",
             "args": [
-                "stdio",
-                "--log-file",
-                ".erasamus/logs/github_mcp_server.log",
-                "--enable-command-logging"
+                "stdio"
             ],
             "env": {
-                "GITHUB_PERSONAL_ACCESS_TOKEN": "$GITHUB_PERSONAL_ACCESS_TOKEN"
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN_HERE>"
             }
         }
     }

@@ -124,3 +124,87 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## License
 
 MIT
+
+## Making MCP Calls to Servers
+
+Erasmus supports making JSON-RPC calls to MCP servers (such as the GitHub MCP server) via both the CLI and programmatically. Below are the key details and sharp edges to be aware of when constructing these calls:
+
+### 1. JSON-RPC Request Structure
+
+- **Every session must begin with an `initialize` request.**
+- **Tool calls use the `tools/call` method.**
+- The `params` object for `tools/call` must include:
+  - `name`: The tool's name (e.g., `list_branches`, `get_user`). This is NOT the JSON-RPC method name, but the tool identifier.
+  - `arguments`: A dictionary of arguments required by the tool. All tool-specific parameters must be nested inside this `arguments` object.
+
+**Example JSON-RPC tool call:**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "tools/call",
+  "params": {
+    "name": "list_branches",
+    "arguments": {
+      "owner": "bakobi",
+      "repo": "hexamerous"
+    }
+  },
+  "id": 2
+}
+```
+
+**Sharp Edges:**
+
+- The `name` field is required and must match the tool's identifier exactly.
+- All tool arguments must be inside the `arguments` dictionary. Passing them at the top level will result in errors.
+- The `method` is always `tools/call` for tool invocations, not the tool name itself.
+- You must send an `initialize` request first in the same session.
+- The server will respond with one JSON object per line for each request (e.g., one for `initialize`, one for the tool call).
+
+### 2. CLI Usage
+
+You can invoke MCP tools via the Erasmus CLI:
+
+```
+erasmus mcp servers github list_branches --owner bakobi --repo hexamerous
+```
+
+The CLI handles the JSON-RPC structure for you, but you must provide all required arguments as CLI options. The CLI will pretty-print the server's response, including any nested JSON content.
+
+### 3. Programmatic Usage (Python)
+
+To make calls programmatically, use the `StdioClient` class:
+
+```python
+from erasmus.mcp.client import StdioClient
+
+client = StdioClient()
+stdout, stderr = client.communicate(
+    server_name="github",
+    method="tools/call",
+    params={
+        "name": "list_branches",
+        "arguments": {
+            "owner": "bakobi",
+            "repo": "hexamerous"
+        }
+    }
+)
+print(stdout)
+```
+
+**Note:**
+
+- Always send both `initialize` and `tools/call` requests in the same session (the client does this for you).
+- Parse each line of the response as a separate JSON object.
+- The tool response is usually the last JSON object returned.
+
+### 4. Common Pitfalls
+
+- **Missing `arguments` nesting:** All tool parameters must be inside the `arguments` dict.
+- **Incorrect `name`:** The `name` must match the tool's identifier, not the method.
+- **Forgetting `initialize`:** The server expects an `initialize` request before any tool calls.
+- **Parsing responses:** The server returns one JSON object per line; parse each line separately.
+
+Refer to the CLI help (`erasmus mcp servers github --help`) for available tools and their required arguments.

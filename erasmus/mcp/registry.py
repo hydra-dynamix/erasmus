@@ -8,7 +8,7 @@ allowing dynamic interaction via the CLI.
 import json
 import os
 from pathlib import Path
-from typing import Any, Union # Keep Any if used, or remove if not needed
+from typing import Any, Union, Optional # Keep Any if used, or remove if not needed
 import typing # Added for get_origin, get_args
 from pydantic import BaseModel, ConfigDict, create_model, Field # Restored Pydantic imports
 import subprocess 
@@ -75,18 +75,21 @@ class McpRegistry(BaseModel):
 
     def _load_available_tools(self, server_name: str):
         stdout, stderr = self.client.communicate(
-            server_name,
-            "tools/list",
-            {}
+            server_name=server_name,
+            method="tools/list",
+            params={}
         )
-        results = json.loads(stdout)["result"]
+        responses = [json.loads(line) for line in stdout.strip().splitlines() if line.strip()]
+        # Use the last response (should be the tool call response)
+        if not responses:
+            logger.error(f"No JSON responses received from MCP server for {server_name}")
+            return
+        result_response = responses[-1]
+        results = result_response["result"]
         for key in results["tools"]:
             dynamic_model = self._create_tool_model(key['name'], key['inputSchema'])
             # Store the serializable tool definition (key) instead of the dynamic_model type
             self.registry["mcp_servers"][server_name]["tools"][key["name"]] = key 
-            # logger.info(f"Processed tool '{key['name']}'. Dynamic model created: {dynamic_model}")
-            # if dynamic_model.model_fields:
-                # logger.info(f"Fields for {key['name']}: {dynamic_model.model_fields}")
 
     def _parse_tool(self, tool: dict[str, Any]):
         tool_name = tool["name"]
@@ -115,7 +118,7 @@ class McpRegistry(BaseModel):
             else:
                 # For optional fields, provide a default (error.g., None)
                 # and wrap the type with | None if not already a union with NoneType
-                if not (typing.get_origin(py_type) in (typing.Union, UnionType) and \
+                if not (typing.get_origin(py_type) is UnionType and \
                         NoneType in typing.get_args(py_type)):
                     py_type = py_type | None
                 fields[prop_name] = (py_type, Field(default=None, description=description))

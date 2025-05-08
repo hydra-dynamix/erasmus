@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, ConfigDict
 from io import TextIOWrapper
-from typing import Any
+from typing import Any, Optional
 import subprocess
 
 
@@ -14,11 +14,25 @@ class RPCRequest(BaseModel):
     params: dict[str, Any]
     id: int
 
+class ListToolsRequest(RPCRequest):
+    method: str = "tools/list"
+    params: dict[str, Any] = {}
+    id: int = 1
+
+class CallToolRequest(RPCRequest):
+    method: str = "tools/call"
+    params: dict[str, Any]
+    id: int = 2
+
+class InitializeRequest(RPCRequest):
+    method: str = "initialize"
+    params: dict[str, Any] = {}
+    id: int = 1
+
 class RPCResponse(BaseModel):
     jsonrpc: str = "2.0"
     result: Any
     id: int
-
 
 class McpServer(BaseModel):
     name: str

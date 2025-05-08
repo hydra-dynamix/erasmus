@@ -15,6 +15,7 @@ erasmus/mcp/servers/*
 .ruff_cache
 .erasmus/mcp/registry.json
 .reference
+.env
 
 # IDE
 .vscode/

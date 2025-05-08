@@ -4,7 +4,7 @@ GitHub MCP server CLI commands for interacting with GitHub through the MCP serve
 
 import json
 import typer
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from loguru import logger
 from erasmus.utils.rich_console import print_table, get_console
 from erasmus.mcp.client import StdioClient, McpError
@@ -23,6 +23,35 @@ def github_mcp_callback(ctx: typer.Context):
     if ctx.invoked_subcommand is None:
         console.print("[bold red]Error:[/] No command specified.")
         show_github_commands_help()
+        raise typer.Exit(1)
+
+@github_app.command(name="create-pr")
+def create_pr_command(
+    owner: str = typer.Argument(..., help="Repository owner"),
+    repo: str = typer.Argument(..., help="Repository name"),
+    title: str = typer.Option(..., help="Pull request title"),
+    head: str = typer.Option(..., help="The branch with changes"),
+    base: str = typer.Option("main", help="The branch to merge into"),
+    body: str | None = typer.Option(None, help="Pull request description"),
+    draft: bool = typer.Option(False, help="Create as draft pull request"),
+):
+    """Create a new pull request in a GitHub repository."""
+    params = {
+        "owner": owner,
+        "repo": repo,
+        "title": title,
+        "head": head,
+        "base": base,
+        "draft": draft,
+    }
+    if body:
+        params["body"] = body
+
+    try:
+        result = _send_mcp_request("create_pull_request", params)
+        console.print(f"Created pull request #{result['number']} - {result['html_url']}")
+    except Exception as e:
+        console.print(f"[bold red]Error:[/] {str(e)}")
         raise typer.Exit(1)
 
 
@@ -284,7 +313,7 @@ def get_issue_comments(
 
 
 # Pull Request commands
-@github_app.command()
+@github_app.command(name="create-pr")
 def create_pr(
     owner: str = typer.Argument(..., help="Repository owner"),
     repo: str = typer.Argument(..., help="Repository name"),

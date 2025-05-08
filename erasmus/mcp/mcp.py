@@ -4,7 +4,7 @@ Model Context Protocol (MCP) functionality for Erasmus.
 
 import os
 import json
-from typing import Any
+from typing import Any, Optional
 from loguru import logger
 
 

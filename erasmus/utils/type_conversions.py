@@ -1,3 +1,4 @@
+from typing import Optional
 import typing
 import re
 from types import NoneType, UnionType # UnionType for Python 3.10+ `|` syntax

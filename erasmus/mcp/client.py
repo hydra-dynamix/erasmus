@@ -1,8 +1,14 @@
 from erasmus.utils.rich_console import get_console_logger
 from erasmus.mcp.models import McpError
 from erasmus.mcp.servers import McpServers
-from erasmus.mcp.models import RPCRequest, ServerTransport
-from typing import Any
+from erasmus.mcp.models import (
+    ServerTransport,
+    RPCRequest,
+    ListToolsRequest,
+    CallToolRequest,
+    InitializeRequest
+)
+from typing import Any, Optional
 import subprocess
 import os
 import json
@@ -32,6 +38,7 @@ class StdioClient:
         self.mcp_servers = McpServers()
         self.transports: dict[str, ServerTransport] = {} # Store active transports
         self._request_id_counter = 0 # Counter for JSON-RPC request IDs
+        self.request_json_str = ""
         logger.debug("StdioClient initialized.")
 
     def get_servers(self) -> dict[str, McpServers]:
@@ -57,7 +64,7 @@ class StdioClient:
         server = self.mcp_servers.servers.get(server_name)
         if not server:
             raise McpError(f"Server '{server_name}' not found in configuration.")
-        command = [server.command] + server.args
+        command = [server.command, *server.args]
         logger.debug(f"Constructed command for '{server_name}': {command}")
         return command
 
@@ -70,6 +77,14 @@ class StdioClient:
         logger.debug(f"Loading environment variables: {env.keys()}")
         for key, value in env.items():
             os.environ[key] = value
+
+    def _get_request(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        request_id: int = 1,
+    ) -> RPCRequest:
+        return self.mcp_servers.get_server_request(method, request_id, params)
 
     def connect(self, server_name: str) -> bool:
         """Connect to a specific MCP server by starting its process.
@@ -87,69 +102,30 @@ class StdioClient:
         Raises:
             McpError: If there's an issue starting the server process or configuration is missing.
         """
-        if server_name in self.transports and self.transports[server_name].process.poll() is None:
-            logger.info(f"Already connected to MCP server '{server_name}'.")
-            return True
-
         logger.info(f"Attempting to connect to MCP server '{server_name}'...")
         try:
             server = self.mcp_servers.servers.get(server_name)
-            if not server:
-                raise McpError(f"Server '{server_name}' definition not found.")
 
             self._load_env_vars(server.env)
             command = self._get_server_command(server_name)
-            try:
-                process = subprocess.Popen(
-                    command,
-                    stdin=PIPE,
-                    stdout=PIPE,
-                    stderr=PIPE,
-                    env=os.environ.copy(),
-                    text=True, # Use text mode for automatic encoding/decoding
-                    bufsize=1  # Line buffered
-                )
-                # Short sleep to allow process to initialize, might need adjustment
-                time.sleep(0.5)
+            self.request_json_str = self._get_request("initialize", {}, 1).model_dump_json() + "\n"
+            process = subprocess.Popen(
+                command,
+                stdin=PIPE,
+                stdout=PIPE,
+                stderr=PIPE,
+                env=os.environ.copy(),
+                text=True,
+            )
+            logger.info(f"Successfully connected to MCP server '{server_name}'.")
+            return process
 
-                if process.poll() is not None:
-                    # Process terminated unexpectedly quickly
-                    stderr_output = ""
-                    try:
-                        # Try reading stderr, might hang if process is weird
-                         stderr_output = process.stderr.read()
-                    except Exception:
-                         pass # Ignore errors reading stderr from dead process
-                    logger.error(f"MCP server '{server_name}' terminated immediately. Exit code: {process.returncode}. Stderr: {stderr_output.strip()}")
-                    return False
-
-                # Check if streams are valid TextIOWrapper instances
-                if not isinstance(process.stdin, io.TextIOWrapper) or \
-                   not isinstance(process.stdout, io.TextIOWrapper) or \
-                   not isinstance(process.stderr, io.TextIOWrapper):
-                    raise McpError("Failed to get valid TextIOWrapper streams for process.")
-
-                transport = ServerTransport(
-                    name=server_name,
-                    process=process,
-                    connected=True,
-                    stdin=process.stdin,
-                    stdout=process.stdout,
-                    stderr=process.stderr
-                    )
-                self.transports[server_name] = transport
-                logger.info(f"Successfully connected to MCP server '{server_name}'.")
-                return True
-
-            except FileNotFoundError:
-                 logger.error(f"Failed to start MCP server '{server_name}': Command not found ('{command[0]}'). Ensure it's in the system PATH.")
-                 return False
-            except Exception as error:
-                logger.error(f"Failed to start MCP server '{server_name}': {error}", exc_info=True)
-                return False
-
+        except FileNotFoundError:
+             logger.error(f"Failed to start MCP server '{server_name}': Command not found ('{command[0]}'). Ensure it's in the system PATH.")
+             return False
         except Exception as error:
-            raise McpError(f"Failed to connect to MCP server '{server_name}': {error}")
+            logger.error(f"Failed to start MCP server '{server_name}': {error}", exc_info=True)
+            return False
 
     def disconnect(self, server_name: str):
          """Disconnect from a specific MCP server by terminating its process.
@@ -212,45 +188,30 @@ class StdioClient:
         if server_name not in self.mcp_servers.servers:
             raise McpError(f"Server '{server_name}' not found in configuration.")
         
-        # Although connect() is called internally by _get_server_command,
-        # calling it here ensures the transport exists if needed later,
-        # though this method doesn't use the persistent transport.
-        # We might reconsider if connect() should be called here.
-        # self.connect(server_name) # Currently redundant as Popen is used directly
+        server = self.mcp_servers.servers.get(server_name)
+        self._load_env_vars(server.env)
+        command = self._get_server_command(server_name)
 
-        server = self.mcp_servers.servers[server_name]
-        command = [server.command] + server.args # Logging flags should be in config if needed
-        logger.debug(f"Constructed command for communicate: {command}")
-
-        env = self.mcp_servers.load_environment_variables(server.env)
-        logger.debug(f"Loading environment variables for communicate: {list(env.keys())}")
-
-
-        self._request_id_counter += 1
-        request_id = self._request_id_counter
-        rpc_request_obj = RPCRequest(
-            jsonrpc="2.0",
-            method=method,
-            params=params,
-            id=request_id
-        )
-        request_json_str = f"""{rpc_request_obj.model_dump_json()}
-"""
-        logger.debug(f"Sending request via communicate (stdin): {request_json_str.strip()}")
+        # Prepare initialize and call requests as in testing.py
+        init_request = InitializeRequest(id=1)
+        call_request = CallToolRequest(method=method, params={"name": params.get("name"), "arguments": params.get("arguments", params)}, id=2)
+        input_data = json.dumps(init_request.model_dump()) + "\n" + json.dumps(call_request.model_dump()) + "\n"
 
         try:
             process = subprocess.Popen(
                 command,
-                env=env,
-                text=True,
-                bufsize=1, # Line buffering (might not be relevant for communicate)
                 stdin=PIPE,
                 stdout=PIPE,
-                stderr=PIPE
+                stderr=PIPE,
+                env=os.environ.copy(),
+                text=True,
             )
-            stdout, stderr = process.communicate(input=request_json_str)
+            logger.debug(f"Sending input to server: {input_data.strip()}")
+            stdout, stderr = process.communicate(input=input_data)
             logger.debug(f"Received stdout: {stdout[:100]}")
             logger.debug(f"Received stderr: {stderr[:100]}")
+            print(f"stdout: {stdout}")
+            print(f"stderr: {stderr}")
             return stdout, stderr
         except Exception as error:
             logger.error(f"Error during communicate with server '{server_name}': {error}", exc_info=True)
@@ -375,11 +336,8 @@ class StdioClient:
 
 
 if __name__ == "__main__":
-    import io # Import io here for the isinstance checks added
-
     client = StdioClient()
     server_to_test = "github" # Or another configured server
-    # stdout, stderr = client.communicate(server_name=server_to_test, method="tools/list", params={}) # Try standard introspection
     stdout, stderr = client.communicate(server_name=server_to_test, method="tools/call", params={"name": "get_me"}) # Try standard introspection
 
     print("stdout:", stdout)
