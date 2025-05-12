@@ -1,6 +1,6 @@
 {
   "version": "0.4.0",
-  "last_updated": "2025-05-06T15:38:15.826796",
+  "last_updated": "2025-05-12T09:59:24.943003",
   "changes": [
     {
       "description": "initial release",
@@ -43,9 +43,9 @@
       "timestamp": "2025-05-04T16:09:03.362051"
     },
     {
-      "description": "added mcp support with registry client and servers",
+      "description": "added mcp server functionality and refacotred the bundler",
       "type": "minor",
-      "timestamp": "2025-05-06T15:38:15.826796"
+      "timestamp": "2025-05-12T09:59:24.943003"
     }
   ]
 }

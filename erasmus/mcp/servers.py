@@ -12,9 +12,10 @@ from erasmus.mcp.models import (
     McpServer,
     RPCRequest,
 )
-from erasmus.utils.rich_console import get_console_logger
+from erasmus.utils.rich_console import get_console_logger, get_console
 
 logger = get_console_logger()
+console = get_console()
 
 DEFAULT_CONFIG_PATH = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"
 
@@ -90,11 +91,44 @@ class McpServers(BaseModel):
             command = server_data["command"]
             args = server_data["args"]
             raw_env = server_data.get("env", {})
+            if "$" in raw_env.values():
+                self._create_dynamic_prompt_for_value(raw_env)
             env = self.load_environment_variables(raw_env)
             self.add_server(server_name, command, args, env)
 
+
+    def _create_dynamic_prompt_for_value(self, env: dict[str, str]):
+        
+        for key, value in env.items():
+            if value.startswith("$"):
+                if os.getenv(key):
+                    value = os.getenv(key)
+                else:
+                    value = console.input(f"Enter value for {key}: ")
+                    if not value:
+                        console.print(f"Environment variable '{key}' is not set. Please try again", style="red")
+                        self._create_dynamic_prompt_for_value(env)
+                    os.environ[key] = value
+            if not value:
+                value = console.input(f"Enter value for {key}: ")
+                if not value:
+                    console.print(f"Environment variable '{key}' is not set. Please try again", style="red")
+                    self._create_dynamic_prompt_for_value(env)
+                os.environ[key] = value
+        env_path = Path.cwd() / ".env"
+        env_lines = env_path.read_text().splitlines()
+        if key in env_lines:
+            env_path.write_text(env_path.read_text().replace(f"{key}={os.environ[key]}", f"{key}={value}"))
+        else:
+            env_path.write_text(env_path.read_text() + f"\n{key}={value}")
+            
+
+
     def load_environment_variables(self, env: dict[str, str]):
         load_dotenv()
+        for key in env:
+            if not os.getenv(key):
+                self._create_dynamic_prompt_for_value(env)
         return {key: os.getenv(key) for key in env}
 
     @staticmethod
