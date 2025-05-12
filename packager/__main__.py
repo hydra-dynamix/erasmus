@@ -123,7 +123,7 @@ def get_output_path(output_file: str | None, is_bump: bool):
         return Path.cwd() / "releases" / "erasmus" / "0.0.0" / "erasmus_v0.0.0.py"
     output_dir =  Path.cwd() / "releases" / "erasmus" / version 
     output_dir.mkdir(parents=True, exist_ok=True)
-    return output_dir / "erasmus_v{version}.py"
+    return output_dir / f"erasmus_v{version}.py"
 
 @app.command()
 def package(
