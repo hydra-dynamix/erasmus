@@ -76,7 +76,27 @@ class StdioClient:
         """
         logger.debug(f"Loading environment variables: {env.keys()}")
         for key, value in env.items():
-            os.environ[key] = value
+            try:
+                if value.startswith("$"):
+                    value = os.environ.get(key, "")
+                if not value or value.startswith("$"):
+                    self._create_dynamic_prompt_for_value(key)
+                os.environ[key] = value
+                if not os.environ[key]:
+                    logger.debug(f"Environment variable '{key}' was empty, prompting user")
+                    self._create_dynamic_prompt_for_value(key)
+            except KeyError:
+                logger.debug(f"Environment variable '{key}' not found, prompting user")
+                self._create_dynamic_prompt_for_value(key)
+
+    def _create_dynamic_prompt_for_value(self, key: str):
+        """Prompt the user for a value for the given environment variable key.
+        
+        Args:
+            key: The environment variable key to prompt for.
+        """
+        value = input(f"Enter value for {key}: ")
+        os.environ[key] = value
 
     def _get_request(
         self,
@@ -283,9 +303,9 @@ class StdioClient:
 
             # Parse JSON response
             try:
-                 response_payload = json.loads(response_str)
+                response_payload = json.loads(response_str)
             except json.JSONDecodeError as error:
-                 raise McpError(f"Failed to decode JSON response from '{server_name}': {error}. Response: '{response_str}'")
+                raise McpError(f"Failed to decode JSON response from '{server_name}': {error}. Response: '{response_str}'")
 
 
             # Validate response ID
@@ -303,20 +323,28 @@ class StdioClient:
 
             # Return the result
             if "result" in response_payload:
-                return response_payload["result"]
+                result = response_payload["result"]
+                # Ensure we're returning a valid result that can be properly processed
+                # This helps prevent issues with isinstance() checks in the bundled erasmus.py
+                if isinstance(result, dict) and "content" in result:
+                    # Ensure content is always a list if present
+                    if not isinstance(result["content"], list):
+                        result["content"] = [result["content"]] if result["content"] is not None else []
+                return result
             elif "error" in response_payload:
-                 # Error already raised above, but covering the case where 'result' is missing in an error response
-                 # This shouldn't happen with valid JSON-RPC error objects
-                 pass # Error handled
+                # Error already raised above, but covering the case where 'result' is missing in an error response
+                # This shouldn't happen with valid JSON-RPC error objects
+                pass # Error handled
             else:
                 # Neither result nor error is present, or it's potentially a notification
                 if response_payload.get("id") is None and "method" in response_payload:
-                     logger.warning(f"Received unexpected notification from '{server_name}': {response_payload}")
-                     # Decide how to handle notifications if needed, maybe return None or loop to read again?
-                     # For now, treat as invalid response in a request-response flow.
-                     raise McpError(f"Received unexpected notification instead of response from '{server_name}'.")
+                    logger.warning(f"Received unexpected notification from '{server_name}': {response_payload}")
+                    # Decide how to handle notifications if needed, maybe return None or loop to read again?
+                    # For now, treat as invalid response in a request-response flow.
+                    raise McpError(f"Received unexpected notification instead of response from '{server_name}'.")                
                 else:
                     raise McpError(f"Invalid JSON-RPC response from '{server_name}': Missing 'result' or 'error' field. Response: {response_payload}")
+
 
 
         except BrokenPipeError:

@@ -18,6 +18,91 @@ from rich.panel import Panel
 # from erasmus.cli.github_mcp_commands import github_app # Commented out
 import json # For JSON processing in tool responses
 import click
+from rich.table import Table
+from datetime import datetime
+import re
+
+# Helper function to format GitHub commits in a readable way
+def format_github_commits(commits_data):
+    """Format GitHub commits data into a more readable format.
+    
+    Args:
+        commits_data: The raw commits data from GitHub API
+        
+    Returns:
+        A simplified list of commit information
+    """
+    try:
+        # Try to parse the JSON if it's a string
+        if isinstance(commits_data, str):
+            try:
+                commits_data = json.loads(commits_data)
+            except json.JSONDecodeError:
+                return commits_data
+        
+        # Handle different response formats
+        if isinstance(commits_data, dict) and "result" in commits_data:
+            commits_data = commits_data["result"]
+        
+        # Extract commits list if nested in another structure
+        if isinstance(commits_data, dict) and "content" in commits_data:
+            content = commits_data["content"]
+            if isinstance(content, list) and len(content) > 0:
+                if isinstance(content[0], dict) and "text" in content[0]:
+                    try:
+                        commits_data = json.loads(content[0]["text"])
+                    except (json.JSONDecodeError, TypeError):
+                        commits_data = content
+        
+        # Find the actual commits array
+        if isinstance(commits_data, dict):
+            for key in commits_data:
+                if isinstance(commits_data[key], list) and len(commits_data[key]) > 0 and isinstance(commits_data[key][0], dict) and "sha" in commits_data[key][0]:
+                    commits_data = commits_data[key]
+                    break
+        
+        # Process the commits if we have a list
+        if isinstance(commits_data, list):
+            formatted_commits = []
+            for commit in commits_data:
+                if isinstance(commit, dict):
+                    # Get commit details, handling nested structures
+                    commit_info = {}
+                    
+                    # SHA
+                    sha = commit.get("sha", "")
+                    if sha:
+                        commit_info["sha"] = sha[:8]  # Just first 8 chars
+                    
+                    # Author
+                    commit_obj = commit.get("commit", {})
+                    if isinstance(commit_obj, dict):
+                        author_obj = commit_obj.get("author", {})
+                        if isinstance(author_obj, dict) and "name" in author_obj:
+                            commit_info["author"] = author_obj["name"]
+                        
+                        # Date
+                        if isinstance(author_obj, dict) and "date" in author_obj:
+                            commit_info["date"] = author_obj["date"]
+                        
+                        # Message
+                        message = commit_obj.get("message", "")
+                        if message:
+                            # Get just the first line of the message
+                            commit_info["message"] = message.split('\n')[0]
+                    
+                    # URL
+                    url = commit.get("html_url", "")
+                    if url:
+                        commit_info["url"] = url
+                    
+                    formatted_commits.append(commit_info)
+            return formatted_commits
+    except Exception as e:
+        logger.debug(f"Error formatting GitHub commits: {e}")
+    
+    # Return original data if anything fails
+    return commits_data
 
 mcp_registry = McpRegistry()
 mcp_servers = McpServers()
@@ -370,30 +455,92 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                         # Show all responses, but highlight the last (tool) response
                                         for i, resp in enumerate(responses):
                                             section_title = f"Server Response ({'Tool Call' if i == len(responses)-1 else 'Init'})"
-                                            if isinstance(resp, dict):
-                                                # Try to pretty-print nested content if present
+                                            
+                                            # Default to string representation
+                                            display_object = str(resp)
+                                            
+                                            # Only process dictionaries
+                                            if type(resp) == dict:
+                                                # Start with the raw response
                                                 content_to_display = resp
-                                                if resp.get("result") and isinstance(resp["result"], dict):
-                                                    result = resp["result"]
-                                                    if isinstance(result.get("content"), list) and len(result["content"]) > 0:
-                                                        first_content = result["content"][0]
-                                                        if isinstance(first_content.get("text"), str):
-                                                            nested_text = first_content["text"]
-                                                            try:
-                                                                json.loads(nested_text)
-                                                                content_to_display = json.loads(nested_text)
-                                                            except json.JSONDecodeError:
-                                                                content_to_display = nested_text
-                                                    else:
-                                                        content_to_display = result
-                                                # Pretty print JSON
+                                                
+                                                # Try to extract nested content if available
                                                 try:
-                                                    indented_json_string = json.dumps(content_to_display, indent=2)
+                                                    if "result" in resp and type(resp["result"]) == dict:
+                                                        result = resp["result"]
+                                                        
+                                                        # Check for nested content
+                                                        if "content" in result and type(result["content"]) == list and len(result["content"]) > 0:
+                                                            first_content = result["content"][0]
+                                                            
+                                                            if type(first_content) == dict and "text" in first_content and type(first_content["text"]) == str:
+                                                                nested_text = first_content["text"]
+                                                                
+                                                                # Try to parse as JSON
+                                                                try:
+                                                                    parsed_json = json.loads(nested_text)
+                                                                    content_to_display = parsed_json
+                                                                except json.JSONDecodeError:
+                                                                    # If not valid JSON, use as text
+                                                                    content_to_display = nested_text
+                                                        else:
+                                                            # Use result directly if no content array
+                                                            content_to_display = result
+                                                except (TypeError, KeyError) as e:
+                                                    # If any error occurs during extraction, log it and use original response
+                                                    logger.debug(f"Error extracting nested content: {e}")
+                                                    content_to_display = resp
+                                                
+                                                # Format as pretty JSON with proper indentation
+                                                try:
+                                                    # Special handling for GitHub commands
+                                                    if s_name == "github":
+                                                        # For list_commits, directly extract and format the commits
+                                                        if tool_name == "list_commits":
+                                                            # Try to find the commits in the response
+                                                            if isinstance(resp, dict) and "result" in resp:
+                                                                # Try to parse the content
+                                                                result = resp["result"]
+                                                                if isinstance(result, dict) and "content" in result and isinstance(result["content"], list):
+                                                                    for content_item in result["content"]:
+                                                                        if isinstance(content_item, dict) and "text" in content_item:
+                                                                            try:
+                                                                                # Try to parse the text as JSON
+                                                                                commits_json = json.loads(content_item["text"])
+                                                                                # Extract the actual commits array
+                                                                                if isinstance(commits_json, dict):
+                                                                                    for key in commits_json:
+                                                                                        if isinstance(commits_json[key], list):
+                                                                                            commits = commits_json[key]
+                                                                                            # Format the commits
+                                                                                            formatted_commits = []
+                                                                                            for commit in commits:
+                                                                                                if isinstance(commit, dict):
+                                                                                                    commit_info = {
+                                                                                                        "sha": commit.get("sha", "Unknown")[:8],
+                                                                                                        "author": commit.get("commit", {}).get("author", {}).get("name", "Unknown"),
+                                                                                                        "date": commit.get("commit", {}).get("author", {}).get("date", "Unknown"),
+                                                                                                        "message": commit.get("commit", {}).get("message", "No message").split('\n')[0],
+                                                                                                        "url": commit.get("html_url", "")
+                                                                                                    }
+                                                                                                    formatted_commits.append(commit_info)
+                                                                                            content_to_display = formatted_commits
+                                                                                            break
+                                                                            except Exception as e:
+                                                                                logger.debug(f"Error parsing commits JSON: {e}")
+                                                    
+                                                    # Extract the actual data from nested response if possible
+                                                    if isinstance(content_to_display, dict) and "result" in content_to_display:
+                                                        content_to_display = content_to_display["result"]
+                                                    
+                                                    # Use 4-space indentation for better readability
+                                                    indented_json_string = json.dumps(content_to_display, indent=4, sort_keys=True)
                                                     display_object = Syntax(indented_json_string, "json", theme="monokai", line_numbers=True, word_wrap=True)
-                                                except Exception:
+                                                except Exception as e:
+                                                    logger.debug(f"Error formatting JSON: {e}")
                                                     display_object = str(content_to_display)
-                                            else:
-                                                display_object = str(resp)
+                                            
+                                            # Display the response
                                             rich_console.print(Panel(display_object, title=section_title, border_style="blue", expand=False))
                                     else:
                                         rich_console.print(f"[yellow]No stdout content received from {tool_name}.[/yellow]")

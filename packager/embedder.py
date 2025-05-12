@@ -22,10 +22,9 @@ def embed_file(file_path: Path) -> Tuple[str, str]:
         encoded = base64.b64encode(content).decode("utf-8")
     return encoded, file_hash
 
-def handle_registry(registry_data: Dict[str, Dict[str, str]]) -> Tuple[str, str]:
+def handle_registry(registry_data: Dict[str, Dict[str, str]], registry_path: Path) -> Tuple[str, str]:
     try:
-        registry_data["mcp_servers"]["github"]["server"]["env"]["GITHUB_PERSONAL_ACCESS_TOKEN"] = "GITHUB_PERSONAL_ACCESS_TOKEN"
-        print(str(registry_data)[0:500])
+        registry_data["mcpServers"]["github"]["server"]["env"]["GITHUB_PERSONAL_ACCESS_TOKEN"] = "GITHUB_PERSONAL_ACCESS_TOKEN"
         sha_hash = hashlib.sha256(json.dumps(registry_data).encode("utf-8")).hexdigest()
         content = base64.b64encode(json.dumps(registry_data).encode("utf-8")).decode("utf-8")
         return content, sha_hash
@@ -53,7 +52,7 @@ def collect_dot_erasmus_embedded_files() -> Dict[str, Dict[str, str]]:
                 continue
             if "registry.json" == entry.name:
                 print("Found registry.json")
-                registry_content, registry_hash = handle_registry(json.loads(entry.read_text()))
+                registry_content, registry_hash = handle_registry(json.loads(entry.read_text()), entry)
                 if registry_content and registry_hash:
                     embedded[str(entry.relative_to(erasmus_dir))] = {
                         "content": registry_content,
