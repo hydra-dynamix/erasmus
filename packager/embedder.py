@@ -105,10 +105,7 @@ def validate_and_extract_files(encoded_files):
     import sys
     from pathlib import Path
 
-
     erasmus_path = Path.cwd() / ".erasmus"
-
-    erasmus_path.mkdir(parents=True, exist_ok=True)
 
     logs_path = erasmus_path / "logs"
     logs_path.mkdir(parents=True, exist_ok=True)
@@ -128,6 +125,7 @@ def validate_and_extract_files(encoded_files):
     print("Validating and extracting embedded files...")
     for path, file_data in encoded_files.items():
         path = Path.cwd() / ".erasmus" / path
+        path.parent.mkdir(parents=True, exist_ok=True)
         content = base64.b64decode(file_data["content"])
         expected_hash = file_data["hash"]
         
@@ -153,8 +151,8 @@ encoded_files = {json.dumps(embedded, indent=4)}
 erasmus_path = Path.cwd() / ".erasmus"
 if not erasmus_path.exists():
     erasmus_path.mkdir(parents=True, exist_ok=True)
-    # Extract all files with hash validation
-    validate_and_extract_files(encoded_files)
+# Extract all files with hash validation
+validate_and_extract_files(encoded_files)
 '''
     # print(f"Added embedded files with SHA-256 hash validation to {output_path}")
     print(f"Total embedded files: {len(embedded)}")
