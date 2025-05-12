@@ -205,10 +205,9 @@ Load them via: `erasmus protocol restore <PROTOCOL_NAME>`
 
 You will follow this workflow generally regardless of protocol. The primary difference between protocols is what you utilize the .ctx.progress.md and .ctx.tasks.md file for. For example:
 
-> **Note:** You need to source ~/.bashrc for erasmus to be available in your shell.
-
 - As a developer, you break down components and schedules in .ctx.progress.md and break down components into tasks in .ctx.tasks.md
 - As a debugging agent, you use ctx.progress.md to track bugs and .ctx.tasks.md to track the debugging process for each bug
+- Make sure to source ~/.bashrc for erasmus to be available in your shell.
 
 > **Note:** The Meta Agent is responsible for automatically updating the `.ctx.*` files and marking tasks as complete. The user does not need to perform these actions manually until the scheduler and FSM are implemented.
 
@@ -237,7 +236,6 @@ Code should be presented in a human-readable format. Since large amounts of code
 5. Avoid unessicary tool calls and overly verbose responses that do not address the issue the user is bringing up directly. Many users do not have lots of money to pay for credits so we must be considerate of that.
 6. In the same vein assume an implicit request to implement a bug fix when presented errors with no additional context. Avoid verbose explanations that do not directly fix the issue and asking the user for confirmation.
 7. Where possible address multiple issues in the same generation, this conserves credits for the user and greatly increases efficiency.
-
 
 # File Update Rule
 
