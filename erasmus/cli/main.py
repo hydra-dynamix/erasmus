@@ -140,7 +140,7 @@ def watch():  # pragma: no cover
 @app.command()
 def status():
     """Show the current Erasmus context and protocol status."""
-    context_manager = ContextManager()
+    context_manager = context_app.ContextManager()
     protocol_manager = ProtocolManager()
 
     # Current context (from .erasmus/current_context.txt if exists)

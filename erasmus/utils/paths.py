@@ -215,13 +215,22 @@ class PathMngrModel(BaseModel):
 
     def _setup_paths(self):
         """Set up paths based on the selected IDE."""
-        if self.ide:
-            self.rules_file = Path(self.root_dir / self.ide.metadata.rules_file)
-            self.context_file = Path(self.ide.metadata.rules_file)
-            self.global_rules_file = Path(self.ide.metadata.global_rules_path)
-            self.mcp_config_path = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"
-            global_rules = self.meta_agent_template.read_text()
-            self.global_rules_file.write_text(global_rules)
+        if not self.ide:
+            self.ide = get_ide()
+        self.rules_file = Path(self.root_dir / self.ide.metadata.rules_file)
+        if not self.rules_file.parent.exists():
+            self.rules_file.parent.mkdir(parents=True, exist_ok=True)
+        self.context_file = Path(self.ide.metadata.rules_file)
+        if not self.context_file.parent.exists():
+            self.context_file.parent.mkdir(parents=True, exist_ok=True)
+        self.global_rules_file = Path(self.ide.metadata.global_rules_path)
+        if not self.global_rules_file.parent.exists():
+            self.global_rules_file.parent.mkdir(parents=True, exist_ok=True)
+        self.mcp_config_path = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"
+        if not self.mcp_config_path.parent.exists():
+            self.mcp_config_path.parent.mkdir(parents=True, exist_ok=True)
+        global_rules = self.meta_agent_template.read_text()
+        self.global_rules_file.write_text(global_rules)
 
     def update_warp_rules(self, document_type: str, document_id: str, rule: str) -> bool:
         """Update rules in Warp's database if IDE is set to Warp."""
