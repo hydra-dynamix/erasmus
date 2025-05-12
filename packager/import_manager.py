@@ -39,7 +39,7 @@ class ImportManager:
     
     # Standard library modules (Python 3.8+) - this is not exhaustive but covers common ones
     STDLIB_MODULES = {
-        "abc", "argparse", "array", "ast", "asyncio", "base64", "bisect", "calendar",
+        "abc", "argparse", "array", "ast", "asyncio", "base64", "bisect", "builtins", "calendar",
         "cmath", "collections", "concurrent", "contextlib", "copy", "csv", "dataclasses",
         "datetime", "decimal", "difflib", "email", "enum", "errno", "fnmatch", "fractions",
         "functools", "gc", "getopt", "getpass", "glob", "gzip", "hashlib", "heapq",

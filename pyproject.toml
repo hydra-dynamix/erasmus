@@ -72,7 +72,7 @@ exclude_lines = [
 line-length = 100
 target-version = "py310"
 src = ["erasmus"]
-ignore = ["G004", "TRY003", "TRY002"]
+ignore = ["G004", "TRY003", "TRY002", "E501", "PLW0603"]
 # Enable Pyflakes (`F`), isort (`I`), and many other linters
 select = [
     "E",

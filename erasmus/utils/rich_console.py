@@ -7,6 +7,10 @@ from typing import Any, Optional
 from rich.logging import RichHandler
 import logging
 import os
+import json
+import typer
+from pathlib import Path
+from dotenv import load_dotenv
 
 
 # Singleton Console instance
@@ -257,14 +261,68 @@ def get_console_logger() -> RichConsoleLogger:
 # console_logger = get_console_logger()
 console = get_console()
 
-if __name__ == "__main__":
-    os.environ["ERASMUS_LOG_LEVEL"] = "DEBUG"
-    os.environ["ERASMUS_DEBUG"] = "true"
+def extract_display_content(resp, logger=None):
+    """
+    Extracts and flattens the display content from a server/tool response dict for pretty printing.
+    Handles nested 'result' and 'content' fields, and parses JSON if possible.
+    """
+    content_to_display = resp
+    try:
+        if isinstance(resp, dict) and "result" in resp and isinstance(resp["result"], dict):
+            result = resp["result"]
+            if "content" in result and isinstance(result["content"], list) and len(result["content"]) > 0:
+                first_content = result["content"][0]
+                if isinstance(first_content, dict) and "text" in first_content and isinstance(first_content["text"], str):
+                    nested_text = first_content["text"]
+                    try:
+                        parsed_json = json.loads(nested_text)
+                        content_to_display = parsed_json
+                    except json.JSONDecodeError:
+                        content_to_display = nested_text
+            else:
+                content_to_display = result
+    except (TypeError, KeyError) as e:
+        if logger:
+            logger.debug(f"Error extracting nested content: {e}")
+        content_to_display = resp
+    return content_to_display
+
+# CLI for pretty-printing a response
+app = typer.Typer()
+
+@app.command()
+def print_response(
+    response: str = typer.Argument(..., help="JSON string or path to JSON file containing the response."),
+    title: str = typer.Option("Server Response", help="Title for the output panel/table."),
+):
+    """Pretty-print a server/tool response using Erasmus rich console formatting."""
+    import os
+    import sys
     logger = get_console_logger()
-    logger.debug("This is a debug message")
-    logger.info("This is an info message")
-    logger.warning("This is a warning message")
-    logger.error("This is an error message")
-    logger.critical("This is a critical message")
-    
-    print(logger.log_level)
+    # Try to load JSON from file or string
+    if os.path.isfile(response):
+        with open(response, "r", encoding="utf-8") as f:
+            resp = json.load(f)
+    else:
+        try:
+            resp = json.loads(response)
+        except json.JSONDecodeError:
+            print_panel(response, title=title)
+            sys.exit(0)
+    content_to_display = extract_display_content(resp, logger=logger)
+    if isinstance(content_to_display, list) and content_to_display and isinstance(content_to_display[0], dict):
+        headers = list(content_to_display[0].keys())
+        rows = [[row.get(h, "") for h in headers] for row in content_to_display]
+        print_table(headers, rows, title=title)
+    elif isinstance(content_to_display, dict):
+        if all(isinstance(v, (str, int, float, bool, type(None))) for v in content_to_display.values()):
+            headers = list(content_to_display.keys())
+            rows = [[str(content_to_display[h]) for h in headers]]
+            print_table(headers, rows, title=title)
+        else:
+            print_panel(json.dumps(content_to_display, indent=2), title=title)
+    else:
+        print_panel(str(content_to_display), title=title)
+
+if __name__ == "__main__":
+    app()
