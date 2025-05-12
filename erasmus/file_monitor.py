@@ -1,16 +1,16 @@
 import os
 import time
-from typing import Optional, Set
-from watchdog.observers import ObserverType, Observer
+from typing import Set
+from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from loguru import logger
 from pathlib import Path
 from erasmus.protocol import get_protocol_manager
 from erasmus.utils.paths import get_path_manager
-from erasmus.environment import is_debug_enabled
+from erasmus.utils.rich_console import get_console_logger
 import re
-from erasmus.utils.paths import get_path_manager
 import fnmatch
+
+logger = get_console_logger()
 
 # Add a global to track last rules file write time
 _last_rules_write_time = None
@@ -45,8 +45,8 @@ def _merge_rules_file() -> None:
         template = template.replace("<!-- Protocol content -->", protocol)
         path_manager.rules_file.write_text(template)
         logger.info("Rules file merged successfully")
-    except Exception as exception:
-        logger.error(f"Error merging rules file: {exception}")
+    except Exception as error:
+        logger.error(f"Error merging rules file: {error}")
 
 
 class FileEventHandler(FileSystemEventHandler):
@@ -166,7 +166,7 @@ class FileMonitor:
     def __init__(self) -> None:
         """Initialize the file monitor."""
         self.pm = get_path_manager()
-        self.debug = is_debug_enabled()
+        self.debug = os.getenv("ERASMUS_DEBUG", "false").lower() == "true"
         if self.debug:
             logger.info(f"Initialized FileMonitor with path manager: {self.pm}")
         self.observer = Observer()
@@ -212,8 +212,8 @@ class FileMonitor:
             try:
                 _merge_rules_file()
                 logger.info("Rules merge completed successfully")
-            except Exception as e:
-                logger.error(f"Error merging rules: {e}")
+            except Exception as error:
+                logger.error(f"Error merging rules: {error}")
 
     def add_watch_path(self, watch_path: str | Path, recursive: bool = False) -> None:
         """Add a path to monitor."""
@@ -323,14 +323,14 @@ class FileMonitor:
                     self.event_handler, os.path.dirname(watch_path), recursive=recursive
                 )
                 logger.info(f"Started monitoring: {watch_path} (recursive={recursive})")
-            except Exception as e:
-                logger.error(f"Failed to schedule watch for {watch_path}: {e}")
+            except Exception as error:
+                logger.error(f"Failed to schedule watch for {watch_path}: {error}")
 
         try:
             self.observer.start()
             logger.info("File monitor observer started successfully")
-        except Exception as e:
-            logger.error(f"Failed to start observer: {e}")
+        except Exception as error:
+            logger.error(f"Failed to start observer: {error}")
             return
 
         self._is_running = True
@@ -340,8 +340,8 @@ class FileMonitor:
         try:
             _merge_rules_file()
             logger.info("Initial rules merge completed successfully")
-        except Exception as e:
-            logger.error(f"Error during initial rules merge: {e}")
+        except Exception as error:
+            logger.error(f"Error during initial rules merge: {error}")
 
     def stop(self) -> None:
         """Stop monitoring."""
@@ -358,8 +358,8 @@ class FileMonitor:
                 for watch_path in self.watch_paths:
                     logger.info(f"Stopped monitoring: {watch_path}")
                 logger.info("File monitor stopped successfully")
-            except Exception as e:
-                logger.error(f"Error stopping observer: {e}")
+            except Exception as error:
+                logger.error(f"Error stopping observer: {error}")
         self._is_running = False
 
     def __enter__(self) -> "FileMonitor":
@@ -382,7 +382,6 @@ class ContextFileMonitor:
     def __init__(self) -> None:
         """Initialize the context file monitor."""
         from erasmus.utils.paths import get_path_manager
-        from loguru import logger
 
         self.path_manager = get_path_manager()
         self.observer = Observer()
@@ -402,9 +401,9 @@ class ContextFileMonitor:
             _merge_rules_file()
             self.logger.info("Initial rules file merge completed")
 
-        except Exception as e:
-            self.logger.error(f"Error starting context file monitor: {e}")
-            raise FileMonitorError(f"Failed to start context file monitor: {e}")
+        except Exception as error:
+            self.logger.error(f"Error starting context file monitor: {error}")
+            raise FileMonitorError(f"Failed to start context file monitor: {error}")
 
     def stop(self) -> None:
         """Stop monitoring context files."""
@@ -412,8 +411,8 @@ class ContextFileMonitor:
             self.observer.stop()
             self.observer.join()
             self.logger.info("Stopped context file monitor")
-        except Exception as e:
-            self.logger.error(f"Error stopping context file monitor: {e}")
+        except Exception as error:
+            self.logger.error(f"Error stopping context file monitor: {error}")
 
     def __enter__(self) -> "ContextFileMonitor":
         """Start monitoring when entering context."""
@@ -437,9 +436,7 @@ class ContextFileHandler(FileSystemEventHandler):
         super().__init__()
         self.debounce_time = debounce_time
         self.last_processed = {}
-        from loguru import logger
 
-        self.logger = logger
 
     def _should_process_event(self, event: FileSystemEvent) -> bool:
         """Check if an event should be processed.
@@ -476,8 +473,8 @@ class ContextFileHandler(FileSystemEventHandler):
                 self.logger.info(f"Context file modified: {event.src_path}")
                 _merge_rules_file()
                 self.logger.info("Rules file updated")
-            except Exception as e:
-                self.logger.error(f"Error handling context file modification: {e}")
+            except Exception as error:
+                self.logger.error(f"Error handling context file modification: {error}")
 
     def on_created(self, event: FileSystemEvent) -> None:
         """Handle file creation events.
@@ -490,8 +487,8 @@ class ContextFileHandler(FileSystemEventHandler):
                 self.logger.info(f"Context file created: {event.src_path}")
                 _merge_rules_file()
                 self.logger.info("Rules file updated")
-            except Exception as e:
-                self.logger.error(f"Error handling context file creation: {e}")
+            except Exception as error:
+                self.logger.error(f"Error handling context file creation: {error}")
 
     def on_deleted(self, event: FileSystemEvent) -> None:
         """Handle file deletion events.
@@ -504,5 +501,5 @@ class ContextFileHandler(FileSystemEventHandler):
                 self.logger.info(f"Context file deleted: {event.src_path}")
                 _merge_rules_file()
                 self.logger.info("Rules file updated")
-            except Exception as e:
-                self.logger.error(f"Error handling context file deletion: {e}")
+            except Exception as error:
+                self.logger.error(f"Error handling context file deletion: {error}")

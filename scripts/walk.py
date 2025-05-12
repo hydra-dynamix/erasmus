@@ -52,8 +52,8 @@ class DirectoryMapper:
                         content = f.read()
                         node["content"] = content
                         print(f"Successfully read {len(content)} bytes from {file_path}")
-                except Exception as e:
-                    print(f"Warning: Could not read content of {file_path}: {e}")
+                except Exception as error:
+                    print(f"Warning: Could not read content of {file_path}: {error}")
             else:
                 print(f"Skipping content for {file_path} - extension not in allowed list")
 
@@ -86,8 +86,8 @@ class DirectoryMapper:
                     result["children"][entry] = self.map_directory(full_path, depth + 1)
                 else:
                     result["children"][entry] = self.create_file_node(full_path)
-        except Exception as e:
-            print(f"Error mapping directory {dir_path}: {e}")
+        except Exception as error:
+            print(f"Error mapping directory {dir_path}: {error}")
 
         return result
 

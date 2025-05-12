@@ -3,12 +3,14 @@ from pydantic import BaseModel, Field, ConfigDict
 from dotenv import load_dotenv
 from enum import Enum
 import os
-from typing import NamedTuple, List, Optional, Tuple
-from loguru import logger
+from typing import NamedTuple, List, Tuple
 from erasmus.utils.warp_integration import WarpIntegration, WarpRule
+from erasmus.mcp.servers import McpServers
+from erasmus.utils.rich_console import get_console_logger
 
 load_dotenv()
 
+logger = get_console_logger()
 
 class IDEMetadata(NamedTuple):
     """Metadata for an IDE environment."""
@@ -25,7 +27,7 @@ class IDE(Enum):
         name="windsurf",
         rules_file=".windsurfrules",
         global_rules_path=Path.home() / ".codeium" / "windsurf" / "memories" / "global_rules.md",
-        mcp_config_path= Path.home() / '.codeium' / 'windsurf' / 'mcp_config.json',
+        mcp_config_path= Path.home() / ".codeium" / "windsurf" / "mcp_config.json"
     )
 
     cursor = IDEMetadata(
@@ -76,7 +78,6 @@ class IDE(Enum):
     def mcp_config_path(self) -> Path:
         """Get the MCP configuration path for this IDE."""
         return self.metadata.mcp_config_path
-
 
 def detect_ide_from_env() -> IDE | None:
     """Detect IDE from environment variables."""
@@ -135,11 +136,10 @@ def prompt_for_ide() -> IDE:
                 ide_path = Path.cwd() / ".env"
                 ide_path.write_text(f"IDE_ENV={ide_env.name}")
                 return ide_env
-                
+
         except (KeyboardInterrupt, EOFError):
             print("\nOperation cancelled or input closed. Using default IDE (Cursor).")
             return prompt_for_ide()
-
 
 def get_ide() -> IDE:
     """Get the IDE from environment variables or prompt the user."""
@@ -179,6 +179,8 @@ class PathMngrModel(BaseModel):
     tasks_file: Path = Field(default_factory=lambda: Path.cwd() / ".ctx.tasks.md")
     rules_file: Path | None = None
     global_rules_file: Path | None = None
+    mcp_config_path: Path | None = None
+    erasmus_mcp_config_path: Path | None = None
 
     # Templates
     architecture_template: Path = Field(
@@ -202,6 +204,7 @@ class PathMngrModel(BaseModel):
     check_binary_script: Path = Field(
         default_factory=lambda: Path.cwd() / '.erasmus' / 'servers' / 'github' / 'check_binary.sh'
     )
+    mcp_servers: McpServers = Field(default_factory=lambda: McpServers())
 
     def __init__(self, **data):
         """Initialize the PathMngrModel with optional configuration data."""
@@ -213,13 +216,12 @@ class PathMngrModel(BaseModel):
     def _setup_paths(self):
         """Set up paths based on the selected IDE."""
         if self.ide:
-            self.rules_file = self.root_dir / self.ide.rules_file
-            self.global_rules_file = self.ide.global_rules_path
-
-            if self.ide == IDE.windsurf:
-                cursor_rules = self.root_dir / ".cursorrules"
-                if self.rules_file.exists() and not cursor_rules.exists():
-                    cursor_rules.symlink_to(self.rules_file)
+            self.rules_file = Path(self.root_dir / self.ide.metadata.rules_file)
+            self.context_file = Path(self.ide.metadata.rules_file)
+            self.global_rules_file = Path(self.ide.metadata.global_rules_path)
+            self.mcp_config_path = Path.cwd() / ".erasmus" / "mcp" / "mcp_config.json"
+            global_rules = self.meta_agent_template.read_text()
+            self.global_rules_file.write_text(global_rules)
 
     def update_warp_rules(self, document_type: str, document_id: str, rule: str) -> bool:
         """Update rules in Warp's database if IDE is set to Warp."""
@@ -234,8 +236,8 @@ class PathMngrModel(BaseModel):
             )
             self.warp_integration.update_rule(rule_obj)
             return True
-        except Exception as e:
-            logger.error(f"Failed to update Warp rules: {e}")
+        except Exception as error:
+            logger.error(f"Failed to update Warp rules: {error}")
             return False
 
     def get_warp_rules(self) -> List[Tuple[str, str, str]] | None:
@@ -246,8 +248,8 @@ class PathMngrModel(BaseModel):
         try:
             rules = self.warp_integration.get_rules()
             return [(rule.document_type, rule.document_id, rule.rule) for rule in rules]
-        except Exception as e:
-            logger.error(f"Failed to retrieve Warp rules: {e}")
+        except Exception as error:
+            logger.error(f"Failed to retrieve Warp rules: {error}")
             return None
 
     # [Previous methods remain unchanged]
@@ -357,5 +359,6 @@ def get_path_manager(ide: IDE | None = None) -> PathMngrModel:
     return _path_manager
 
 
-# Legacy alias for backwards compatibility
-PathManager = PathMngrModel
+if __name__ == "__main__":
+    manager = get_path_manager()
+    print(manager.mcp_servers.get_server_paths()["github"])

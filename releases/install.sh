@@ -4,7 +4,7 @@
 version=$1
 
 # Download the install script
-curl -L https://raw.githubusercontent.com/hydra-dynamix/erasmus/refs/heads/main/releases/erasmus/$version/erasmus_v$version.sh -o erasmus.sh
+curl -L https://raw.githubusercontent.com/bakobiibizo/erasmus/refs/heads/main/releases/erasmus/$version/erasmus_v$version.sh -o erasmus.sh
 
 # Make the script executable
 chmod +x erasmus.sh

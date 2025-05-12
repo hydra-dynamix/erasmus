@@ -2,7 +2,7 @@ from pathlib import Path
 import sqlite3
 from typing import Dict, List, Optional
 from pydantic import BaseModel
-from erasmus.utils.rich_console import console_logger
+from erasmus.utils.rich_console import get_console_logger
 import os
 
 class WarpRule(BaseModel):
@@ -42,8 +42,8 @@ class WarpIntegration:
             # Use URI mode to handle special characters in path
             conn = sqlite3.connect(f'file:{self.db_path}?mode=ro', uri=True)
             return conn
-        except sqlite3.Error as e:
-            console_logger.error(f'Failed to connect to Warp database: {e}')
+        except sqlite3.Error as error:
+            console_logger.error(f'Failed to connect to Warp database: {error}')
             raise
 
     def get_rules(self) -> List[WarpRule]:
@@ -61,14 +61,14 @@ class WarpIntegration:
                     for row in cursor.fetchall()
                 ]
                 return rules
-        except sqlite3.OperationalError as e:
+        except sqlite3.OperationalError as error:
             if 'disk I/O error' in str(e):
                 console_logger.error('Disk I/O error: Unable to read from Warp database. Please check if the database is accessible and not in use by another process.')
                 return []
-            console_logger.error(f'Failed to retrieve rules: {e}')
+            console_logger.error(f'Failed to retrieve rules: {error}')
             return []
-        except sqlite3.Error as e:
-            console_logger.error(f'Failed to retrieve rules: {e}')
+        except sqlite3.Error as error:
+            console_logger.error(f'Failed to retrieve rules: {error}')
             return []
 
     def update_rule(self, rule: WarpRule) -> bool:
@@ -82,14 +82,14 @@ class WarpIntegration:
                 )
                 conn.commit()
             return True
-        except sqlite3.OperationalError as e:
+        except sqlite3.OperationalError as error:
             if 'disk I/O error' in str(e):
                 console_logger.error('Disk I/O error: Unable to write to Warp database. Please check if the database is accessible and not in use by another process.')
                 return False
-            console_logger.error(f'Failed to update rule: {e}')
+            console_logger.error(f'Failed to update rule: {error}')
             return False
-        except sqlite3.Error as e:
-            console_logger.error(f'Failed to update rule: {e}')
+        except sqlite3.Error as error:
+            console_logger.error(f'Failed to update rule: {error}')
             return False
 
 def main() -> None:
@@ -100,8 +100,8 @@ def main() -> None:
         console_logger.info(f'Found {len(rules)} rules in Warp database')
         for rule in rules:
             console_logger.info(f'Rule: {rule.model_dump_json(indent=2)}')
-    except Exception as e:
-        console_logger.error(f'Error: {e}')
+    except Exception as error:
+        console_logger.error(f'Error: {error}')
         raise
 
 if __name__ == '__main__':

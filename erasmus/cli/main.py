@@ -10,8 +10,6 @@ import importlib.metadata
 # Third-party imports
 import typer
 from click import UsageError
-from loguru import logger
-from rich.console import Console
 
 # Local imports
 from erasmus.context import context_app
@@ -21,11 +19,17 @@ from erasmus.cli.mcp_commands import mcp_app
 from erasmus.protocol import ProtocolManager
 from erasmus.file_monitor import ContextFileMonitor
 from erasmus.utils.paths import get_path_manager
-from erasmus.utils.rich_console import print_table
+from erasmus.utils.rich_console import print_table, get_console_logger, get_console
+
+
+console = get_console()
+logger = get_console_logger()
+
 
 app = typer.Typer(
     help="Erasmus - Development Context Management System\n\nA tool for managing development contexts, protocols, and Model Context Protocol (MCP) interactions.\n\nFor more information, visit: https://github.com/hydra-dynamics/erasmus"
 )
+
 
 
 # Add sub-commands
@@ -35,12 +39,10 @@ app.add_typer(setup_app, name="setup", help="Setup Erasmus")
 app.add_typer(mcp_app, name="mcp", help="Manage MCP servers, clients, and integrations")
 
 
+
 # Custom error handler for unknown commands and argument errors
 def print_main_help_and_exit():
     try:
-        from rich.console import Console
-
-        console = Console()
         banner = [
             ("green", " _____                                  "),
             ("green", "|  ___|                                 "),
@@ -63,17 +65,17 @@ def print_main_help_and_exit():
 """)
     typer.echo("\n Development Context Management System\n")
     command_rows = [
-        ["erasmus context", "Manage development contexts"],
-        ["erasmus protocol", "Manage protocols"],
-        ["erasmus mcp", "Manage MCP servers, clients, and integrations"],
-        ["erasmus setup", "Setup Erasmus"],
-        ["erasmus watch", "Watch for .ctx file changes"],
-        ["erasmus status", "Show current status"],
-        ["erasmus version", "Show Erasmus version"],
+        ["context", "Manage development contexts"],
+        ["protocol", "Manage protocols"],
+        ["mcp", "Manage MCP servers, clients, and integrations"],
+        ["setup", "Setup Erasmus"],
+        ["watch", "Watch for .ctx file changes"],
+        ["status", "Show current status"],
+        ["version", "Show Erasmus version"],
     ]
-    print_table(["Command", "Description"], command_rows, title="Available Erasmus Commands")
-    typer.echo("\nFor more information about a command, run:")
-    typer.echo("  erasmus <command> --help")
+    print_table(["Subcommand", "Description"], command_rows, title="Available Erasmus Subcommands")
+    typer.echo("\nFor more information about a subcommand, run:")
+    typer.echo("  erasmus <subcommand> --help")
     raise typer.Exit(1)
 
 
@@ -98,8 +100,8 @@ class HelpOnErrorGroup(TyperGroup):
     def main(self, *args, **kwargs):
         try:
             return super().main(*args, **kwargs)
-        except UsageError as e:
-            typer.echo(str(e))
+        except UsageError as error:
+            typer.echo(str(error))
             print_main_help_and_exit()
 
 
@@ -115,10 +117,6 @@ def watch():  # pragma: no cover
     path_manager = get_path_manager()
     root = path_manager.get_root_dir()
 
-    # Configure logger for file monitoring
-    logger.add(
-        path_manager.get_log_dir() / "file_monitor.log", rotation="1 day", retention="7 days", level="INFO"
-    )
 
     monitor = ContextFileMonitor()
 
@@ -133,9 +131,9 @@ def watch():  # pragma: no cover
             signal.pause()
     except KeyboardInterrupt:
         typer.echo("\nStopped watching.")
-    except Exception as e:
-        logger.error(f"Error during file monitoring: {e}")
-        typer.echo(f"Error: {e}")
+    except Exception as error:
+        logger.error(f"Error during file monitoring: {error}")
+        typer.echo(f"Error: {error}")
         raise typer.Exit(1)
 
 
@@ -155,13 +153,13 @@ def status():
     # List all contexts
     try:
         contexts = context_manager.list_contexts()
-    except Exception as e:
+    except Exception as error:
         contexts = []
 
     # List all protocols
     try:
         protocols = protocol_manager.list_protocols()
-    except Exception as e:
+    except Exception as error:
         protocols = []
 
     print_table(
@@ -186,12 +184,12 @@ if __name__ == "__main__":
 
     try:
         app(standalone_mode=False)
-    except UsageError as e:
-        typer.echo(str(e))
+    except UsageError as error:
+        typer.echo(str(error))
         print_main_help_and_exit()
     except Exception as error:
         print_table(["Error"], [[str(error)]], title="CLI Error")
         raise typer.Exit(1)
-    except SystemExit as e:
-        if e.code != 2:
+    except SystemExit as error:
+        if error.code != 2:
             raise

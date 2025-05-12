@@ -1,6 +1,6 @@
 {
-  "version": "0.3.2",
-  "last_updated": "2025-05-04T16:09:03.362051",
+  "version": "0.4.0",
+  "last_updated": "2025-05-06T15:38:15.826796",
   "changes": [
     {
       "description": "initial release",
@@ -41,6 +41,11 @@
       "description": "updated readme",
       "type": "patch",
       "timestamp": "2025-05-04T16:09:03.362051"
+    },
+    {
+      "description": "added mcp support with registry client and servers",
+      "type": "minor",
+      "timestamp": "2025-05-06T15:38:15.826796"
     }
   ]
 }

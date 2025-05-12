@@ -1,0 +1,13 @@
+{
+    "mcpServers": {
+        "github": {
+            "command": ".erasmus/mcp/servers/github/server",
+            "args": [
+                "stdio"
+            ],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+            }
+        }
+    }
+}

@@ -4,20 +4,19 @@ CLI commands for managing protocols.
 
 import os
 import typer
-from loguru import logger
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
 from erasmus.protocol import ProtocolManager, ProtocolError
 from erasmus.utils.paths import get_path_manager
-from erasmus.utils.rich_console import get_console, print_panel, print_table
+from erasmus.utils.rich_console import get_console, get_console_logger, print_panel, print_table
 
 path_manager = get_path_manager()
 protocol_manager = ProtocolManager()
 protocol_app = typer.Typer(help="Manage development protocols.")
 
-
+logger = get_console_logger()
 def show_protocol_help_and_exit():
     """Show help information for protocol commands and exit."""
     command_rows = [
@@ -116,7 +115,7 @@ def create(
         )
         
         raise typer.Exit(0)
-    except ProtocolError as e:
+    except ProtocolError as error:
         get_console().print_exception()
         show_protocol_help_and_exit()
 
@@ -140,16 +139,40 @@ def delete(name: str = typer.Argument(None, help="Name of the protocol to delete
                 raise typer.Exit(1)
             
             # Display protocols with indices
-            protocol_rows = [[str(index + 1), protocol] for index, protocol in enumerate(protocols)]
+            protocol_rows = [[str(index + 1), detail['name']] for index, detail in enumerate(protocols)]
             print_table(
                 ["#", "Protocol Name"], 
                 protocol_rows, 
-                title="Available Protocols"
+                title="Available Protocols for Deletion"
             )
             
             # Prompt for selection
             choice = typer.prompt("Select a protocol to delete by number or name")
-            name = protocols[int(choice) - 1] if choice.isdigit() and 1 <= int(choice) <= len(protocols) else choice
+            name_to_delete: str | None = None
+            if choice.isdigit():
+                idx = int(choice) - 1
+                if 0 <= idx < len(protocols):
+                    name_to_delete = protocols[idx]['name']
+                else:
+                    print_panel(f"[yellow]Invalid number: {choice}. Please select from the list.[/yellow]", title="Invalid Selection")
+                    raise typer.Exit(1)
+            else: # User entered a name
+                normalized_choice = choice.removesuffix('.md')
+                found_protocols = [p['name'] for p in protocols if p['name'].removesuffix('.md') == normalized_choice]
+                if len(found_protocols) == 1:
+                    name_to_delete = found_protocols[0]
+                elif len(found_protocols) > 1:
+                    print_panel(f"[yellow]Ambiguous name: '{choice}'. Multiple matches. Please be more specific or use number.[/yellow]", title="Invalid Selection")
+                    raise typer.Exit(1)
+                else:
+                    print_panel(f"[yellow]Invalid name: '{choice}'. Not found in the list.[/yellow]", title="Invalid Selection")
+                    raise typer.Exit(1)
+            
+            if not name_to_delete:
+                # This case should not be reached if validation above is correct
+                print_panel("[yellow]No protocol selected for deletion or invalid input.[/yellow]", title="Deletion Error")
+                raise typer.Exit(1)
+            name = name_to_delete # Assign to name variable used by subsequent logic
         
         try:
             # Delete protocol
@@ -171,7 +194,7 @@ def delete(name: str = typer.Argument(None, help="Name of the protocol to delete
                 style="bold yellow"
             )
             raise typer.Exit(1)
-    except (ProtocolError, FileNotFoundError) as e:
+    except (ProtocolError, FileNotFoundError) as error:
         get_console().print_exception()
         raise typer.Exit(1)
 
@@ -188,11 +211,11 @@ def list():
         
         if protocols:
             # Display protocols in a table
-            protocol_rows = [[protocol] for protocol in protocols]
+            protocol_rows = [[detail['name']] for detail in protocols]
             print_table(["Protocol Name"], protocol_rows, title="Available Protocols")
         else:
             print_panel("[yellow]No protocols found.[/yellow]", title="Protocols")
-    except ProtocolError as e:
+    except ProtocolError as error:
         get_console().print_exception()
         show_protocol_help_and_exit()
 
@@ -242,7 +265,7 @@ def show(name: str = typer.Argument(None, help="Name of the protocol to show")):
         )
         
         raise typer.Exit(0)
-    except ProtocolError as e:
+    except ProtocolError as error:
         get_console().print_exception()
         raise typer.Exit(1)
 
@@ -251,50 +274,60 @@ def show(name: str = typer.Argument(None, help="Name of the protocol to show")):
 def select_protocol():
     """Interactively select a protocol, display its details, and update the rules file with it."""
     try:
-        # List available protocols
-        protocols = protocol_manager.list_protocols()
-        
-        if not protocols:
-            print_panel(
-                "[yellow]No protocols available.[/yellow]", 
-                title="Protocol Selection", 
-                border_style="bold yellow"
-            )
-            raise typer.Exit(1)
-        
-        # Display protocols with indices
-        protocol_rows = [[str(index + 1), protocol] for index, protocol in enumerate(protocols)]
-        print_table(
-            ["#", "Protocol Name"], 
-            protocol_rows, 
-            title="Available Protocols"
+        # MODIFICATION: Call the interactive selector from ProtocolManager
+        # This will handle listing, table display, and prompting.
+        # It returns the selected protocol name and also loads it into protocol_manager.protocol
+        selected_name = protocol_manager.select_protocol_interactively(
+            prompt_title="Select Protocol",
+            error_title="Protocol Selection Failed"
         )
-        
-        # Prompt for selection
-        choice = typer.prompt("Select a protocol to show by number or name")
-        name = protocols[int(choice) - 1] if choice.isdigit() and 1 <= int(choice) <= len(protocols) else choice
-        
-        # Load and display protocol details
-        protocol = protocol_manager.load_protocol(name)
-        
+
+        # The protocol is already loaded by select_protocol_interactively into protocol_manager.protocol
+        protocol = protocol_manager.protocol
+        if not protocol or str(protocol) != selected_name:
+            logger.error(f"Protocol '{selected_name}' not loaded correctly by interactive selection. Attempting explicit load.")
+            protocol = protocol_manager._load_protocol(selected_name) # Attempt to load it explicitly
+            if not protocol:
+                 print_panel(f"[bold red]Error: Failed to load details for selected protocol: {selected_name}[/bold red]", title="Error", border_style="red")
+                 raise typer.Exit(1)
+
         # Display protocol details using rich console
+        # Ensure path is string and content preview is safe
+        protocol_path_str = str(protocol.path) if protocol.path else "[Path not available]"
+        protocol_content_preview = protocol.content[:200] if protocol.content else "[No Content]"
+        if protocol.content and len(protocol.content) > 200:
+            protocol_content_preview += "..."
+            
         print_panel(
-            f"[bold green]Selected Protocol[/bold green]\n"
-            f"[cyan]Name:[/cyan] {protocol.name}\n"
-            f"[cyan]Path:[/cyan] {protocol.path}\n"
-            f"[cyan]Content:[/cyan]\n{protocol.content}", 
-            title="Protocol Details", 
+            f"[bold green]Selected Protocol[/bold green]\\n"
+            f"[cyan]Name:[/cyan] {protocol.name}\\n"
+            f"[cyan]Path:[/cyan] {protocol_path_str}\\n"
+            f"[cyan]Content Preview (first 200 chars):[/cyan]\\n{protocol_content_preview}",
+            title="Protocol Details",
             border_style="bold blue"
         )
+
+        # FIX: Update the rules file using protocol_manager._update_context()
+        if hasattr(protocol_manager, '_update_context') and callable(getattr(protocol_manager, '_update_context')):
+            print_panel("Updating context and rules file...", title="Context Update", style="bold yellow", border_style="yellow")
+            try:
+                protocol_manager._update_context() # This uses the loaded protocol
+                print_panel(f"Successfully updated rules file with protocol: {protocol.name}", title="Rules File Updated", style="bold green", border_style="green")
+            except Exception as update_error:
+                get_console().print_exception()
+                print_panel(f"[bold red]Error during rules file update: {update_error}[/bold red]", title="Error", border_style="red")
+                # Optionally, raise typer.Exit(1) or allow command to finish with error message
+        else:
+            print_panel("[bold yellow]Warning: Automated rules file update mechanism ('_update_context') not found in ProtocolManager.[/bold yellow]", title="Rules File Update", border_style="yellow")
         
-        raise typer.Exit(0)
-    except ProtocolError as e:
+        # typer.Exit(0) is not strictly necessary here, successful completion implies exit 0
+
+    except ProtocolError:  # ProtocolError already prints itself via its __init__
+        raise typer.Exit(1) # Exit with error code
+    except Exception as error: # Catch any other unexpected errors
         get_console().print_exception()
+        print_panel(f"[bold red]An unexpected error occurred in 'select' command: {error}[/bold red]", title="Error", border_style="red")
         raise typer.Exit(1)
-        raise ProtocolError("No rules file configured.")
-    
-    rules_file.write_text(meta_rules_content)
-    return protocol
 
 
 @protocol_app.command("load")

@@ -38,7 +38,7 @@ def display_available_contexts(contexts: List[str], title: str = 'Available Cont
         print_table(['Info'], [['No contexts found']], title=title)
         return
 
-    context_rows = [[str(i + 1), name] for i, name in enumerate(contexts)]
+    context_rows = [[str(index + 1), name] for index, name in enumerate(contexts)]
     print_table(['#', 'Context Name'], context_rows, title=title)
 
 
@@ -91,7 +91,7 @@ def list_contexts() -> None:
         logger.error('No contexts found.')
         raise typer.Exit(1)
     
-    contexts = [d.name for d in sorted(root.iterdir()) if d.is_dir()]
+    contexts = [directory_item.name for directory_item in sorted(root.iterdir()) if directory_item.is_dir()]
     
     # If using Warp, also show rules from the database
     if path_manager.ide == IDE.warp:
@@ -152,8 +152,8 @@ def create_context(name: Optional[str] = None) -> None:
         else:
             logger.success(f'Created context \'{name}\' at {ctx_dir}')
     
-    except Exception as e:
-        logger.error(f'Failed to create context: {str(e)}')
+    except Exception as error:
+        logger.error(f'Failed to create context: {str(error)}')
         raise typer.Exit(1)
 
 
@@ -161,7 +161,7 @@ def create_context(name: Optional[str] = None) -> None:
 def edit_context(name: Optional[str] = None) -> None:
     """Open context file in default editor."""
     if not name:
-        contexts = [d.name for d in sorted(path_manager.get_context_dir().iterdir()) if d.is_dir()]
+        contexts = [directory_item.name for directory_item in sorted(path_manager.get_context_dir().iterdir()) if directory_item.is_dir()]
         name = select_context_interactive(contexts)
         if not name:
             raise typer.Exit(1)
@@ -234,8 +234,8 @@ def store_context(name: Optional[str] = None) -> None:
         else:
             logger.success(f'Stored context \'{name}\'')
     
-    except Exception as e:
-        logger.error(f'Failed to store context: {str(e)}')
+    except Exception as error:
+        logger.error(f'Failed to store context: {str(error)}')
         raise typer.Exit(1)
 
 
@@ -243,7 +243,7 @@ def store_context(name: Optional[str] = None) -> None:
 def select_context() -> None:
     """Select and load a stored context."""
     root = path_manager.get_context_dir()
-    contexts = [d.name for d in sorted(root.iterdir()) if d.is_dir()]
+    contexts = [directory_item.name for directory_item in sorted(root.iterdir()) if directory_item.is_dir()]
     
     # If using Warp, show database contexts as well
     if path_manager.ide == IDE.warp:
@@ -259,8 +259,8 @@ def select_context() -> None:
     try:
         load_context(name)
         logger.success(f'Selected and loaded context: {name}')
-    except Exception as e:
-        logger.error(f'Failed to select context: {str(e)}')
+    except Exception as error:
+        logger.error(f'Failed to select context: {str(error)}')
         raise typer.Exit(1)
 
 
@@ -295,8 +295,8 @@ def load_context(name: str) -> None:
         from erasmus.file_monitor import _merge_rules_file
         _merge_rules_file()
         
-    except Exception as e:
-        logger.error(f'Failed to load context: {str(e)}')
+    except Exception as error:
+        logger.error(f'Failed to load context: {str(error)}')
         raise typer.Exit(1)
 
 
