@@ -387,22 +387,21 @@ class ContextFileMonitor:
         self.observer = Observer()
         self.handler = ContextFileHandler()
         self.root_dir = self.path_manager.get_root_dir()
-        self.logger = logger
-
+        
     def start(self) -> None:
         """Start monitoring context files."""
         try:
             # Watch the root directory for .ctx files
             self.observer.schedule(self.handler, str(self.root_dir), recursive=False)
             self.observer.start()
-            self.logger.info(f"Started monitoring {self.root_dir} for .ctx file changes")
+            logger.info(f"Started monitoring {self.root_dir} for .ctx file changes")
 
             # Initial merge of rules file
             _merge_rules_file()
-            self.logger.info("Initial rules file merge completed")
+            logger.info("Initial rules file merge completed")
 
         except Exception as error:
-            self.logger.error(f"Error starting context file monitor: {error}")
+            logger.error(f"Error starting context file monitor: {error}")
             raise FileMonitorError(f"Failed to start context file monitor: {error}")
 
     def stop(self) -> None:
@@ -410,9 +409,9 @@ class ContextFileMonitor:
         try:
             self.observer.stop()
             self.observer.join()
-            self.logger.info("Stopped context file monitor")
+            logger.info("Stopped context file monitor")
         except Exception as error:
-            self.logger.error(f"Error stopping context file monitor: {error}")
+            logger.error(f"Error stopping context file monitor: {error}")
 
     def __enter__(self) -> "ContextFileMonitor":
         """Start monitoring when entering context."""
@@ -470,11 +469,11 @@ class ContextFileHandler(FileSystemEventHandler):
         """
         if self._should_process_event(event):
             try:
-                self.logger.info(f"Context file modified: {event.src_path}")
+                logger.info(f"Context file modified: {event.src_path}")
                 _merge_rules_file()
-                self.logger.info("Rules file updated")
+                logger.info("Rules file updated")
             except Exception as error:
-                self.logger.error(f"Error handling context file modification: {error}")
+                logger.error(f"Error handling context file modification: {error}")
 
     def on_created(self, event: FileSystemEvent) -> None:
         """Handle file creation events.
@@ -484,11 +483,11 @@ class ContextFileHandler(FileSystemEventHandler):
         """
         if self._should_process_event(event):
             try:
-                self.logger.info(f"Context file created: {event.src_path}")
+                logger.info(f"Context file created: {event.src_path}")
                 _merge_rules_file()
-                self.logger.info("Rules file updated")
+                logger.info("Rules file updated")
             except Exception as error:
-                self.logger.error(f"Error handling context file creation: {error}")
+                logger.error(f"Error handling context file creation: {error}")
 
     def on_deleted(self, event: FileSystemEvent) -> None:
         """Handle file deletion events.
@@ -498,8 +497,8 @@ class ContextFileHandler(FileSystemEventHandler):
         """
         if self._should_process_event(event):
             try:
-                self.logger.info(f"Context file deleted: {event.src_path}")
+                logger.info(f"Context file deleted: {event.src_path}")
                 _merge_rules_file()
-                self.logger.info("Rules file updated")
+                logger.info("Rules file updated")
             except Exception as error:
-                self.logger.error(f"Error handling context file deletion: {error}")
+                logger.error(f"Error handling context file deletion: {error}")

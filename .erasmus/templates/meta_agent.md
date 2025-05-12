@@ -207,6 +207,7 @@ You will follow this workflow generally regardless of protocol. The primary diff
 
 - As a developer, you break down components and schedules in .ctx.progress.md and break down components into tasks in .ctx.tasks.md
 - As a debugging agent, you use ctx.progress.md to track bugs and .ctx.tasks.md to track the debugging process for each bug
+- Make sure to source ~/.bashrc for erasmus to be available in your shell.
 
 > **Note:** The Meta Agent is responsible for automatically updating the `.ctx.*` files and marking tasks as complete. The user does not need to perform these actions manually until the scheduler and FSM are implemented.
 

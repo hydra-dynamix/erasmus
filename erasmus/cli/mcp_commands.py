@@ -4,6 +4,7 @@ MCP CLI commands for managing MCP servers and clients.
 import os
 import typer
 import inspect
+import builtins
 
 from pathlib import Path
 from pydantic import BaseModel
@@ -11,7 +12,7 @@ from erasmus.mcp.registry import McpRegistry
 from erasmus.mcp.models import McpError        # Restored McpError import
 from erasmus.mcp.servers import McpServers
 from erasmus.mcp.client import StdioClient
-from erasmus.utils.rich_console import print_table, get_console_logger, get_console
+from erasmus.utils.rich_console import print_table, get_console_logger, get_console, print_panel, extract_display_content
 from erasmus.utils.paths import get_path_manager
 from rich.syntax import Syntax
 from rich.panel import Panel
@@ -413,8 +414,8 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                 if original_type in ["object", "array"] and isinstance(value_from_cli, str):
                                     try: payload_for_client[name] = json.loads(value_from_cli)
                                     except json.JSONDecodeError as e_json:
-                                        rich_console.print(f"[red]Error: Invalid JSON for '{name}':[/red] {value_from_cli}")
-                                        rich_console.print(f"[red]{e_json}[/red]")
+                                        console.print(f"[red]Error: Invalid JSON for '{name}':[/red] {value_from_cli}")
+                                        console.print(f"[red]{e_json}[/red]")
                                         raise typer.Exit(code=1)
                                 else:
                                     payload_for_client[name] = value_from_cli
@@ -427,12 +428,12 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                 "name": tool_name  # tool_name is the actual tool name like "create_issue"
                             }
                             
-                            rich_console = get_console() # Ensure we use get_console() for Rich features
-                            with rich_console.status(f"Executing {tool_name} on {s_name}...", spinner="dots"):
+                            console = get_console() # Ensure we use get_console() for Rich features
+                            with console.status(f"Executing {tool_name} on {s_name}...", spinner="dots"):
                                 try:
                                     if s_name == "github" and not os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN"):
-                                        rich_console.print("[bold red]Error: GITHUB_PERSONAL_ACCESS_TOKEN environment variable is not set.[/bold red]")
-                                        rich_console.print("Please set it to use GitHub MCP tools.")
+                                        console.print("[bold red]Error: GITHUB_PERSONAL_ACCESS_TOKEN environment variable is not set.[/bold red]")
+                                        console.print("Please set it to use GitHub MCP tools.")
                                         raise typer.Exit(code=1)
                                     
                                     logger.debug(f"Sending to MCP client: Server='{s_name}', Method='{actual_method_for_rpc}', Payload='{structured_payload}'")
@@ -455,95 +456,23 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                         # Show all responses, but highlight the last (tool) response
                                         for i, resp in enumerate(responses):
                                             section_title = f"Server Response ({'Tool Call' if i == len(responses)-1 else 'Init'})"
-                                            
-                                            # Default to string representation
-                                            display_object = str(resp)
-                                            
-                                            # Only process dictionaries
-                                            if type(resp) == dict:
-                                                # Start with the raw response
-                                                content_to_display = resp
-                                                
-                                                # Try to extract nested content if available
-                                                try:
-                                                    if "result" in resp and type(resp["result"]) == dict:
-                                                        result = resp["result"]
-                                                        
-                                                        # Check for nested content
-                                                        if "content" in result and type(result["content"]) == list and len(result["content"]) > 0:
-                                                            first_content = result["content"][0]
-                                                            
-                                                            if type(first_content) == dict and "text" in first_content and type(first_content["text"]) == str:
-                                                                nested_text = first_content["text"]
-                                                                
-                                                                # Try to parse as JSON
-                                                                try:
-                                                                    parsed_json = json.loads(nested_text)
-                                                                    content_to_display = parsed_json
-                                                                except json.JSONDecodeError:
-                                                                    # If not valid JSON, use as text
-                                                                    content_to_display = nested_text
-                                                        else:
-                                                            # Use result directly if no content array
-                                                            content_to_display = result
-                                                except (TypeError, KeyError) as e:
-                                                    # If any error occurs during extraction, log it and use original response
-                                                    logger.debug(f"Error extracting nested content: {e}")
-                                                    content_to_display = resp
-                                                
-                                                # Format as pretty JSON with proper indentation
-                                                try:
-                                                    # Special handling for GitHub commands
-                                                    if s_name == "github":
-                                                        # For list_commits, directly extract and format the commits
-                                                        if tool_name == "list_commits":
-                                                            # Try to find the commits in the response
-                                                            if isinstance(resp, dict) and "result" in resp:
-                                                                # Try to parse the content
-                                                                result = resp["result"]
-                                                                if isinstance(result, dict) and "content" in result and isinstance(result["content"], list):
-                                                                    for content_item in result["content"]:
-                                                                        if isinstance(content_item, dict) and "text" in content_item:
-                                                                            try:
-                                                                                # Try to parse the text as JSON
-                                                                                commits_json = json.loads(content_item["text"])
-                                                                                # Extract the actual commits array
-                                                                                if isinstance(commits_json, dict):
-                                                                                    for key in commits_json:
-                                                                                        if isinstance(commits_json[key], list):
-                                                                                            commits = commits_json[key]
-                                                                                            # Format the commits
-                                                                                            formatted_commits = []
-                                                                                            for commit in commits:
-                                                                                                if isinstance(commit, dict):
-                                                                                                    commit_info = {
-                                                                                                        "sha": commit.get("sha", "Unknown")[:8],
-                                                                                                        "author": commit.get("commit", {}).get("author", {}).get("name", "Unknown"),
-                                                                                                        "date": commit.get("commit", {}).get("author", {}).get("date", "Unknown"),
-                                                                                                        "message": commit.get("commit", {}).get("message", "No message").split('\n')[0],
-                                                                                                        "url": commit.get("html_url", "")
-                                                                                                    }
-                                                                                                    formatted_commits.append(commit_info)
-                                                                                            content_to_display = formatted_commits
-                                                                                            break
-                                                                            except Exception as e:
-                                                                                logger.debug(f"Error parsing commits JSON: {e}")
-                                                    
-                                                    # Extract the actual data from nested response if possible
-                                                    if isinstance(content_to_display, dict) and "result" in content_to_display:
-                                                        content_to_display = content_to_display["result"]
-                                                    
-                                                    # Use 4-space indentation for better readability
-                                                    indented_json_string = json.dumps(content_to_display, indent=4, sort_keys=True)
-                                                    display_object = Syntax(indented_json_string, "json", theme="monokai", line_numbers=True, word_wrap=True)
-                                                except Exception as e:
-                                                    logger.debug(f"Error formatting JSON: {e}")
-                                                    display_object = str(content_to_display)
-                                            
-                                            # Display the response
-                                            rich_console.print(Panel(display_object, title=section_title, border_style="blue", expand=False))
+                                            # Display the response using the new utility
+                                            content_to_display = extract_display_content(resp, logger=logger)
+                                            if isinstance(content_to_display, builtins.list) and content_to_display and isinstance(content_to_display[0], builtins.dict):
+                                                headers = list(content_to_display[0].keys())
+                                                rows = [[row.get(h, "") for h in headers] for row in content_to_display]
+                                                print_table(headers, rows, title=section_title)
+                                            elif isinstance(content_to_display, builtins.dict):
+                                                if all(isinstance(v, (str, int, float, bool, type(None))) for v in content_to_display.values()):
+                                                    headers = list(content_to_display.keys())
+                                                    rows = [[str(content_to_display[h]) for h in headers]]
+                                                    print_table(headers, rows, title=section_title)
+                                                else:
+                                                    print_panel(json.dumps(content_to_display, indent=2), title=section_title)
+                                            else:
+                                                print_panel(str(content_to_display), title=section_title)
                                     else:
-                                        rich_console.print(f"[yellow]No stdout content received from {tool_name}.[/yellow]")
+                                        console.print(f"[yellow]No stdout content received from {tool_name}.[/yellow]")
                                 except McpError as e_mcp:
                                     console.print(f"[red]McpError ({tool_name} on {s_name}): {e_mcp}[/red]")
                                     raise typer.Exit(code=1)
