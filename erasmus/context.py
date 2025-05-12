@@ -235,7 +235,7 @@ def store_context(name: Optional[str] = None) -> None:
             logger.success(f'Stored context \'{name}\'')
     
     except Exception as error:
-        logger.error(f'Failed to store context: {str(e)}')
+        logger.error(f'Failed to store context: {str(error)}')
         raise typer.Exit(1)
 
 
@@ -260,7 +260,7 @@ def select_context() -> None:
         load_context(name)
         logger.success(f'Selected and loaded context: {name}')
     except Exception as error:
-        logger.error(f'Failed to select context: {str(e)}')
+        logger.error(f'Failed to select context: {str(error)}')
         raise typer.Exit(1)
 
 
@@ -296,7 +296,7 @@ def load_context(name: str) -> None:
         _merge_rules_file()
         
     except Exception as error:
-        logger.error(f'Failed to load context: {str(e)}')
+        logger.error(f'Failed to load context: {str(error)}')
         raise typer.Exit(1)
 
 

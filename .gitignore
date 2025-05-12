@@ -16,6 +16,7 @@ erasmus/mcp/servers/*
 .erasmus/mcp/registry.json
 .reference
 .env
+.depreciated
 
 # IDE
 .vscode/

@@ -15,25 +15,59 @@ if [ ! -f "$BINARY_PATH" ]; then
     exit 1
 fi
 
-# Check binary type
-echo -e "${YELLOW}Binary Type:${NC}"
-file "$BINARY_PATH"
+# Function to handle verbose output based on ERASMUS_DEBUG
+erasmus_verbose() {
+    if [ "$ERASMUS_DEBUG" = "true" ]; then
+        echo "$1"
+    fi
+}
 
-# Check executable permissions
-echo -e "\n${YELLOW}Permissions:${NC}"
-ls -l "$BINARY_PATH"
+# Function to run commands with output suppression when not in debug mode
+run_command() {
+    if [ "$ERASMUS_DEBUG" = "true" ]; then
+        "$@"
+    else
+        "$@" > /dev/null 2>&1
+    fi
+}
+
+erasmus_verbose "Binary Path: $BINARY_PATH"
+
+# Check binary type
+erasmus_verbose "Binary Type:"
+run_command file "$BINARY_PATH"
+RESULT=$?
+
+# Check permissions
+erasmus_verbose "Permissions:"
+if [ $RESULT -eq 0 ]; then
+    run_command ls -l "$BINARY_PATH"
+    RESULT=$?
+else
+    erasmus_verbose "Failed to get permissions for $BINARY_PATH"
+fi
 
 # Check library dependencies
-echo -e "\n${YELLOW}Library Dependencies:${NC}"
-ldd "$BINARY_PATH" || echo -e "${RED}Unable to check library dependencies${NC}"
+erasmus_verbose "Library Dependencies:"
+if [ $RESULT -eq 0 ]; then
+    run_command ldd "$BINARY_PATH"
+    RESULT=$?
+else
+    erasmus_verbose "Failed to get library dependencies for $BINARY_PATH"
+fi
 
-# Check if it runs
-echo -e "\n${YELLOW}Binary Execution Test:${NC}"
-"$BINARY_PATH" --help
+# Test binary execution
+erasmus_verbose "Binary Execution Test:"
+if [ $RESULT -eq 0 ]; then
+    run_command "$BINARY_PATH" --help
+    RESULT=$?
+else
+    erasmus_verbose "Failed to execute $BINARY_PATH"
+fi
 
 # Final status
 if [ $? -eq 0 ]; then
-    echo -e "\n${GREEN}✔ Binary appears to be compatible and executable${NC}"
+    erasmus_verbose "✔ Binary appears to be compatible and executable"
 else
-    echo -e "\n${RED}✖ Binary failed execution test${NC}"
+    erasmus_verbose "✖ Binary failed execution test"
 fi

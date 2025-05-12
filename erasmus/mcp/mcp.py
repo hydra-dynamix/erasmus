@@ -5,9 +5,10 @@ Model Context Protocol (MCP) functionality for Erasmus.
 import os
 import json
 from typing import Any, Optional
-from loguru import logger
+from erasmus.utils.rich_console import get_console_logger
 
 
+logger = get_console_logger()
 
 
 # This has been depreciated

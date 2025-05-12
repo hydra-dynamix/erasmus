@@ -4,20 +4,19 @@ CLI commands for managing protocols.
 
 import os
 import typer
-from loguru import logger
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
 from erasmus.protocol import ProtocolManager, ProtocolError
 from erasmus.utils.paths import get_path_manager
-from erasmus.utils.rich_console import get_console, print_panel, print_table
+from erasmus.utils.rich_console import get_console, get_console_logger, print_panel, print_table
 
 path_manager = get_path_manager()
 protocol_manager = ProtocolManager()
 protocol_app = typer.Typer(help="Manage development protocols.")
 
-
+logger = get_console_logger()
 def show_protocol_help_and_exit():
     """Show help information for protocol commands and exit."""
     command_rows = [

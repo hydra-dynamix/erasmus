@@ -2,7 +2,7 @@ from pathlib import Path
 import sqlite3
 from typing import Dict, List, Optional
 from pydantic import BaseModel
-from erasmus.utils.rich_console import console_logger
+from erasmus.utils.rich_console import get_console_logger
 import os
 
 class WarpRule(BaseModel):

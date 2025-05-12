@@ -49,7 +49,6 @@ class McpRegistry(BaseModel):
         self.check_binary_script = path_manager.erasmus_dir / "mcp" / "servers" / "github" / "check_binary.sh"
         self._setup_github_server()
         self.registry = self._load_registry(registry_path)
-        self._load_mcp_servers()
         logger.info("MCPRegistry initialized.")
 
     def _setup_github_server(self):
@@ -157,7 +156,7 @@ class McpRegistry(BaseModel):
                 "mcpServers": {}
             }
         logger.info("Loaded registry")
-        return True
+        return self.registry
 
     def get_registry(self):
         return self.registry

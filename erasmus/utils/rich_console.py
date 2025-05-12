@@ -6,12 +6,35 @@ from rich.text import Text
 from typing import Any, Optional
 from rich.logging import RichHandler
 import logging
+import os
 
 
 # Singleton Console instance
 def get_console() -> Console:
     if not hasattr(get_console, "_console"):
         get_console._console = Console()
+    
+    # Get log level from environment variable
+    log_level = os.getenv("ERASMUS_LOG_LEVEL", "INFO").upper()
+    valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    
+    # Validate log level
+    if log_level not in valid_levels:
+        get_console._console.print(f"Invalid log level: {log_level}. Using INFO.", style="bold yellow")
+        log_level = "INFO"
+    
+    # Check if debug mode is enabled
+    debug_mode = os.getenv("ERASMUS_DEBUG", "").lower() in ["true", "1", "yes"]
+    
+    if debug_mode:
+        # In debug mode, log to file with specified level
+        log_file = os.getenv("ERASMUS_LOG_FILE", "erasmus.log")
+        # get_console._console.print(f"Debug mode enabled. Logging to {log_file} with level {log_level}", style="bold green")
+    # else:
+        # Only show this message if someone is explicitly trying to use a non-default log level
+        # if os.getenv("ERASMUS_LOG_LEVEL") and not debug_mode:
+            # get_console._console.print("Set ERASMUS_DEBUG=True to enable file logging.", style="bold yellow")
+    
     return get_console._console
 
 
@@ -72,8 +95,65 @@ def print_syntax(code: str, language: str = "python", title: str | None = None):
 class RichConsoleLogger(logging.Logger):
     def __init__(self, name: str):
         super().__init__(name)
-        self.setLevel(logging.DEBUG)
-        self.addHandler(RichHandler(rich_tracebacks=True))
+        
+        # Get log level from environment variable
+        log_level_str = os.getenv("ERASMUS_LOG_LEVEL", "INFO").upper() 
+        if not log_level_str: 
+            log_level_str = self._interactive_prompt_for_level()
+            env_path = Path.cwd() / ".env"
+            with env_path.open("a") as f:
+                f.write(f"ERASMUS_LOG_LEVEL=ERROR\nERASMUS_DEBUG=False\n")
+            load_dotenv()
+
+        # Map string log levels to logging constants
+        log_level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL
+        }
+        
+        # Set log level (default to INFO if invalid)
+        log_level = log_level_map.get(log_level_str, logging.INFO)
+        self.log_level_str = log_level_str
+        self.log_level = log_level
+        self.setLevel(log_level)
+        
+        # Configure handler with rich tracebacks
+        handler = RichHandler(rich_tracebacks=True, level=log_level)
+        self.addHandler(handler)
+        
+        # Add file handler if debug mode is enabled
+        debug_mode = os.getenv("ERASMUS_DEBUG", "").lower() in ["true", "1", "yes"]
+        if debug_mode:
+            log_file = os.getenv("ERASMUS_LOG_FILE", "erasmus.log")
+            try:
+                file_handler = logging.FileHandler(log_file)
+                file_handler.setLevel(log_level)
+                file_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+                file_handler.setFormatter(file_formatter)
+                self.addHandler(file_handler)
+            except Exception as e:
+                self.error(f"Failed to set up file logging: {e}")
+
+    def _interactive_prompt_for_level(self):
+        """Prompt user for log level interactively."""
+        while True:
+            level = input("Enter log level (DEBUG, INFO, WARNING, ERROR, CRITICAL): ").upper().slice(0, 1)
+            if level in ["D", "I", "W", "E", "C"]:
+                if level == "D":
+                    return "DEBUG"
+                elif level == "I":
+                    return "INFO"
+                elif level == "W":
+                    return "WARNING"
+                elif level == "E":
+                    return "ERROR"
+                elif level == "C":
+                    return "CRITICAL"
+            else:
+                print("Invalid log level. Valid choices: DEBUG, INFO, WARNING, ERROR, CRITICAL.\nPlease try again.")
 
     def success(self, message: str, *args, **kwargs):
         """Log a success message (custom level).
@@ -97,10 +177,11 @@ class RichConsoleLogger(logging.Logger):
             message (str): Error message to display.
             exc_info (bool, optional): Whether to include exception info. Defaults to None.
         """
-        # Ensure message string is properly formatted if args are present
-        if args:
-            message = message % args
-        super().error(message, exc_info=exc_info, **kwargs)
+        if self.log_level <= logging.ERROR:
+            # Ensure message string is properly formatted if args are present
+            if args:
+                message = message % args
+            super().error(message, exc_info=exc_info, **kwargs)
 
     def warning(self, message: str, *args, exc_info=None, **kwargs):
         """Log a warning message.
@@ -109,9 +190,11 @@ class RichConsoleLogger(logging.Logger):
             message (str): Warning message to display.
             exc_info (bool, optional): Whether to include exception info. Defaults to None.
         """
-        if args:
-            message = message % args
-        super().warning(message, exc_info=exc_info, **kwargs)
+        if self.log_level <= logging.WARNING:
+            # Ensure message string is properly formatted if args are present
+            if args:
+                message = message % args
+            super().warning(message, exc_info=exc_info, **kwargs)
 
     def info(self, message: str, *args, exc_info=None, **kwargs):
         """Log an informational message.
@@ -120,13 +203,68 @@ class RichConsoleLogger(logging.Logger):
             message (str): Informational message to display.
             exc_info (bool, optional): Whether to include exception info. Defaults to None.
         """
-        if args:
-            message = message % args
-        super().info(message, exc_info=exc_info, **kwargs)
+        if self.log_level <= logging.INFO:
+            # Ensure message string is properly formatted if args are present
+            if args:
+                message = message % args
+            super().info(message, exc_info=exc_info, **kwargs)
 
+    def debug(self, message: str, *args, exc_info=None, **kwargs):
+        """Log a debug message.
 
-console_logger = RichConsoleLogger(__name__)
+        Args:
+            message (str): Debug message to display.
+            exc_info (bool, optional): Whether to include exception info. Defaults to None.
+        """
+        if self.log_level <= logging.DEBUG:
+            # Ensure message string is properly formatted if args are present
+            if args:
+                message = message % args
+            super().debug(message, exc_info=exc_info, **kwargs)
 
+    def critical(self, message: str, *args, exc_info=None, **kwargs):
+        """Log a critical message.
+
+        Args:
+            message (str): Critical message to display.
+            exc_info (bool, optional): Whether to include exception info. Defaults to None.
+        """
+        if self.log_level <= logging.CRITICAL:
+            # Ensure message string is properly formatted if args are present
+            if args:
+                message = message % args
+            super().critical(message, exc_info=exc_info, **kwargs)
+
+# Singleton logger instance
+_console_logger = None
 
 def get_console_logger() -> RichConsoleLogger:
-    return console_logger
+    """Get a singleton instance of RichConsoleLogger with log level from environment variables.
+    
+    Environment variables:
+        ERASMUS_LOG_LEVEL: Set the log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        ERASMUS_DEBUG: Enable debug mode with file logging (true, 1, yes)
+        ERASMUS_LOG_FILE: Specify the log file path (default: erasmus.log)
+    
+    Returns:
+        RichConsoleLogger: Configured logger instance
+    """
+    global _console_logger
+    if _console_logger is None:
+        _console_logger = RichConsoleLogger(__name__)
+    return _console_logger
+
+# console_logger = get_console_logger()
+console = get_console()
+
+if __name__ == "__main__":
+    os.environ["ERASMUS_LOG_LEVEL"] = "DEBUG"
+    os.environ["ERASMUS_DEBUG"] = "true"
+    logger = get_console_logger()
+    logger.debug("This is a debug message")
+    logger.info("This is an info message")
+    logger.warning("This is a warning message")
+    logger.error("This is an error message")
+    logger.critical("This is a critical message")
+    
+    print(logger.log_level)

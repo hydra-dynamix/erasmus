@@ -57,9 +57,9 @@ class RegistryTool(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     __pydantic_fields_set__ = True
 
-if __name__ == "__main__":
-    print(RPCRequest(
-        method="",
-        params={},
-        id=1
-    ).model_dump_json())
+# if __name__ == "__main__":
+    # print(RPCRequest(
+        # method="",
+        # params={},
+        # id=1
+    # ).model_dump_json())

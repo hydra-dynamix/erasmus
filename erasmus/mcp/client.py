@@ -210,8 +210,8 @@ class StdioClient:
             stdout, stderr = process.communicate(input=input_data)
             logger.debug(f"Received stdout: {stdout[:100]}")
             logger.debug(f"Received stderr: {stderr[:100]}")
-            print(f"stdout: {stdout}")
-            print(f"stderr: {stderr}")
+            # print(f"stdout: {stdout}")
+            # print(f"stderr: {stderr}")
             return stdout, stderr
         except Exception as error:
             logger.error(f"Error during communicate with server '{server_name}': {error}", exc_info=True)
@@ -340,6 +340,6 @@ if __name__ == "__main__":
     server_to_test = "github" # Or another configured server
     stdout, stderr = client.communicate(server_name=server_to_test, method="tools/call", params={"name": "get_me"}) # Try standard introspection
 
-    print("stdout:", stdout)
-    print("stderr:", stderr)
+    # print("stdout:", stdout)
+    # print("stderr:", stderr)
 

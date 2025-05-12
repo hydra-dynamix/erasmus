@@ -18,12 +18,7 @@ from rich.console import Console
 from rich.logging import RichHandler
 from click import Context, UsageError
 from typer.core import TyperGroup
-from packager.paths import get_packager_path_manager
-
-from packager.builder import generate_script, order_files
-from packager.collector import collect_py_files
-from packager.mapping import map_imports_to_packages, get_required_packages
-from packager.parser import parse_imports, extract_code_body, ImportSet
+from packager.bundler import PythonBundler
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -120,178 +115,67 @@ def main(ctx: typer.Context):
     if ctx.invoked_subcommand is None:
         print_packager_help_and_exit()
 
+def get_output_path(output_file: str | None, is_bump: bool):
+    version = get_version_info()
+    if output_file:
+        return Path(output_file)
+    if not is_bump:
+        return Path.cwd() / "releases" / "erasmus" / "0.0.0" / "erasmus_v0.0.0.py"
+    output_dir =  Path.cwd() / "releases" / "erasmus" / version 
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir / "erasmus_v{version}.py"
 
 @app.command()
 def package(
-    input_path: str | None = typer.Argument(
-        None, help="Path to Python file or directory to package (defaults to 'erasmus')"
+    target_path: str = typer.Argument(
+        None, help="Path to the root directory of the project (e.g., erasmus root directory)"
+    ),
+    entry_point: str = typer.Argument(
+        None, help="Entry point file path relative to target_path (e.g., cli/main.py)"
     ),
     output_file: str | None = typer.Option(None, "--output", "-o", help="Output file path"),
-    preserve_comments: bool = typer.Option(
-        True, "--preserve-comments/--no-comments", help="Preserve comments in output"
-    ),
-    internal_use_version: str | None = None,
     release: bool = typer.Option(
         False, "--release", help="Use the current version from version.json for output"
     ),
 ):
-    """Package a Python file or directory into a single executable script."""
+    """Package a Python file or directory into a single executable script using the bundler."""
     try:
-        path_manager = get_packager_path_manager()
-        if input_path is None:
-            input_path = str(path_manager.get_src_dir())
+        output_path = get_output_path(output_file, release)
+        
+        # Validate and process target path
+        if not target_path:
+            # Default to erasmus source directory if not specified
+            target_path = Path("erasmus")
+            console.print(f"[info]Using default target path: {target_path}")
         else:
-            input_path = str(input_path)
-        input_path = Path(input_path)
-        if not input_path.exists():
-            typer.echo(f"Error: Input path '{input_path}' does not exist.")
+            target_path = Path.cwd() / target_path
+            
+        if not target_path.exists():
+            console.print(f"[error]Error: Target path '{target_path}' does not exist.")
             raise typer.Exit(1)
-
-        # Collect Python files
-        py_files = []
-        if input_path.is_file() and input_path.suffix == ".py":
-            py_files = [input_path]
-        elif input_path.is_dir():
-            py_files = list(input_path.glob("**/*.py"))
-        else:
-            typer.echo(f"Error: Input path '{input_path}' is not a Python file or directory.")
+            
+        # Validate entry point
+        full_entry_path = target_path / entry_point
+        if not full_entry_path.exists():
+            console.print(f"[error]Error: Entry point '{full_entry_path}' does not exist.")
             raise typer.Exit(1)
-
-        if not py_files:
-            typer.echo(f"Error: No Python files found in '{input_path}'.")
-            raise typer.Exit(1)
-
-        typer.echo(f"Found {len(py_files)} Python files to package.")
-
-        # Extract package name from input path
-        package_name = input_path.name if input_path.is_dir() else input_path.stem
-        logger.debug("Package name: %s", package_name)
-
-        # Build set of local module names and ignore list
-        local_modules = {Path(f).stem for f in py_files}
-        ignore_modules = {Path(f).stem for f in py_files}
-        ignore_modules.add("erasmus")
-        ignore_modules.add(".")
-
-        # Extract imports and code
-        imports = ImportSet()
-        code_body = []
-
-        # Order files so dependencies are included first
-        try:
-            from packager.builder import analyze_dependencies
-
-            dependencies = analyze_dependencies([Path(f) for f in py_files])
-            ordered_files = order_files(dependencies, [Path(f) for f in py_files])
-            py_files = ordered_files
-        except Exception as error:
-            logger.warning(f"Could not order files by dependencies: {error}")
-
-        for file in py_files:
-            logger.debug("Processing file: %s", file)
-            with open(file, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            # Extract imports from the file
-            file_imports, errors = parse_imports(content)
-            if errors:
-                for error in errors:
-                    logger.warning("Error parsing imports in %s: %s", file, error)
-
-            logger.debug(
-                "File imports: stdlib=%s, third_party=%s, local=%s",
-                file_imports.stdlib,
-                file_imports.third_party,
-                file_imports.local,
-            )
-
-            # Filter out imports that belong to the package being bundled
-            filtered_imports = ImportSet()
-
-            # Filter stdlib imports
-            for imp in file_imports.stdlib:
-                if not imp.startswith(package_name):
-                    filtered_imports.stdlib.add(imp)
-
-            # Filter third-party imports
-            for imp in file_imports.third_party:
-                if not imp.startswith(package_name):
-                    filtered_imports.third_party.add(imp)
-
-            # Filter local imports
-            for imp in file_imports.local:
-                if not imp.startswith(package_name):
-                    filtered_imports.local.add(imp)
-
-            logger.debug(
-                "Filtered imports: stdlib=%s, third_party=%s, local=%s",
-                filtered_imports.stdlib,
-                filtered_imports.third_party,
-                filtered_imports.local,
-            )
-
-            # Update the main imports set
-            imports.update(filtered_imports)
-
-            # Extract code body (excluding imports)
-            file_code = extract_code_body(file, preserve_comments, ignore_modules=ignore_modules)
-            code_body.append(f"# Code from {file.name}\n{file_code}")
-
-        # Convert py_files to a list of strings
-        py_files_str = [str(file) for file in py_files]
-
-        # Determine library name from input_path
-        if input_path.is_file():
-            library_name = input_path.stem
-        else:
-            library_name = input_path.name
-
-        # Determine version
-        version = internal_use_version if internal_use_version is not None else "0.0.0"
-        if release:
-            # Read version from version.json
-            version_file = Path("version.json")
-            if version_file.exists():
-                with open(version_file) as f:
-                    data = json.load(f)
-                    version = data.get("version", "0.0.0")
-            else:
-                typer.echo("version.json not found. Using 0.0.0.")
-                version = "0.0.0"
-
-        # Use path manager to get output path
-        if version == "0.0.0":
-            # Clean up previous dry run scripts
-            dry_run_dir = path_manager.get_dry_run_path(library_name)
-            for f in dry_run_dir.glob(f"{library_name}_v0.0.0*.py"):
-                f.unlink()
-            output_path = path_manager.get_unique_output_path(library_name, "0.0.0")
-        else:
-            # For release, always use the canonical output path in the release directory
-            release_dir = path_manager.get_release_path(library_name, version)
-            output_path = release_dir / f"{library_name}_v{version}.py"
-            if output_path.exists():
-                confirm = typer.confirm(
-                    f"Output file {output_path} already exists. Overwrite?", default=False
-                )
-                if not confirm:
-                    typer.echo("Aborted by user. No file was overwritten.")
-                    raise typer.Exit(1)
-
-        output_path = generate_script(py_files_str, output_path, preserve_comments)
-        logger.debug("Generated script at: %s", output_path)
-        typer.echo(f"Successfully packaged to '{output_path}'.")
-
+            
+        console.print(f"[info]Bundling project from {target_path} with entry point {entry_point} to {output_path}...")
+        bundler = PythonBundler(target_path=target_path, output_path=output_path, entry_point=entry_point)
+        bundler.generate_code(target_path=target_path, entry_point=entry_point)
+        
+        console.print(f"[success]Successfully packaged to '{output_path}'.")
+        
         # Run the installer build script after packaging, passing the current bundle path
         try:
             subprocess.run(["bash", "scripts/build_installer.sh", str(output_path)], check=True)
-            typer.echo("Installer build script completed.")
+            console.print("[info]Installer build script completed.")
         except Exception as error:
-            typer.echo(f"Installer build script failed: {error}")
+            console.print(f"[error]Installer build script failed: {error}")
 
     except Exception as error:
         logger.exception("Error packaging files")
-        typer.echo(f"Error: {str(e)}")
+        console.print(f"[error]Error: {str(error)}")
         raise typer.Exit(1)
 
 

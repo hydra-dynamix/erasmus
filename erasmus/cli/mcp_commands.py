@@ -6,7 +6,6 @@ import typer
 import inspect
 
 from pathlib import Path
-from loguru import logger
 from pydantic import BaseModel
 from erasmus.mcp.registry import McpRegistry
 from erasmus.mcp.models import McpError        # Restored McpError import
@@ -25,7 +24,6 @@ mcp_servers = McpServers()
 mcp_client = StdioClient()
 mcp_app = typer.Typer(help="Manage MCP servers and clients.")
 path_manager = get_path_manager()
-
 console = get_console()
 logger = get_console_logger()
 
@@ -215,12 +213,12 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                     if not current_server_tools_data:
                         typer.echo(f"No tools explicitly registered for server '{current_server_name}' in the registry.")
                     else:
-                        for t_name, t_data in current_server_tools_data.items():
-                            t_title = t_data.get("annotations", {}).get("title", t_name.replace("_", " ").title())
-                            base_desc = t_data.get("description", f"Execute {t_name}")
-                            full_description = f"{t_title} - {base_desc}"
+                        for tool_name, tool_data in current_server_tools_data.items():
+                            tool_title = tool_data.get("annotations", {}).get("title", tool_name.replace("_", " ").title())
+                            base_desc = tool_data.get("description", f"Execute {tool_name}")
+                            full_description = f"{tool_title} - {base_desc}"
 
-                            input_schema = t_data.get('inputSchema', {})
+                            input_schema = tool_data.get('inputSchema', {})
                             properties = input_schema.get('properties', {})
                             
                             if properties:
@@ -234,7 +232,7 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                     param_details_str += f"\n    - {param_name}{required_str} ({param_type}): {param_desc}"
                                 full_description += param_details_str
                                 
-                            tool_rows.append([t_name, full_description])
+                            tool_rows.append([tool_name, full_description])
                     
                     if tool_rows:
                         print_table(["Tool Subcommand", "Description"], tool_rows, title=f"Available Tools for Server: {current_server_name}")
@@ -268,7 +266,7 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                         continue
 
                     # 2. Define the actual command function
-                    def _create_dynamic_command_func_for_tool(s_name: str, t_name: str, t_schema: dict):
+                    def _create_dynamic_command_func_for_tool(s_name: str, tool_name: str, t_schema: dict):
                         """Helper to create the actual callable command function with correct signature."""
                         
                         input_schema = t_schema.get("inputSchema", {})
@@ -282,7 +280,7 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                             param_schema_type = param_info.get("type", "string")
                             original_param_schema_types[param_name] = param_schema_type
                             is_required = param_name in input_schema.get("required", [])
-                            param_cli_help = param_info.get("description", f"Parameter '{param_name}' for {t_name}")
+                            param_cli_help = param_info.get("description", f"Parameter '{param_name}' for {tool_name}")
 
                             if param_schema_type in ["object", "array"]:
                                 typer_annotation = str | None if not is_required else str
@@ -303,7 +301,7 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                     if param_schema_type in ["object", "array"]:
                                         try: cli_default_value = json.dumps(schema_default)
                                         except TypeError: 
-                                            logger.warning(f"Could not JSON serialize default for {param_name} in {t_name}. No default for CLI.")
+                                            logger.warning(f"Could not JSON serialize default for {param_name} in {tool_name}. No default for CLI.")
                                             cli_default_value = None
                                     else:
                                         cli_default_value = schema_default
@@ -341,11 +339,11 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                             actual_method_for_rpc = "tools/call"
                             structured_payload = {
                                 **payload_for_client,  # Pass parameters directly at the top level
-                                "name": t_name  # t_name is the actual tool name like "create_issue"
+                                "name": tool_name  # tool_name is the actual tool name like "create_issue"
                             }
                             
                             rich_console = get_console() # Ensure we use get_console() for Rich features
-                            with rich_console.status(f"Executing {t_name} on {s_name}...", spinner="dots"):
+                            with rich_console.status(f"Executing {tool_name} on {s_name}...", spinner="dots"):
                                 try:
                                     if s_name == "github" and not os.getenv("GITHUB_PERSONAL_ACCESS_TOKEN"):
                                         rich_console.print("[bold red]Error: GITHUB_PERSONAL_ACCESS_TOKEN environment variable is not set.[/bold red]")
@@ -398,21 +396,21 @@ if mcp_registry and hasattr(mcp_registry, 'registry') and isinstance(mcp_registr
                                                 display_object = str(resp)
                                             rich_console.print(Panel(display_object, title=section_title, border_style="blue", expand=False))
                                     else:
-                                        rich_console.print(f"[yellow]No stdout content received from {t_name}.[/yellow]")
+                                        rich_console.print(f"[yellow]No stdout content received from {tool_name}.[/yellow]")
                                 except McpError as e_mcp:
-                                    console.print(f"[red]McpError ({t_name} on {s_name}): {e_mcp}[/red]")
+                                    console.print(f"[red]McpError ({tool_name} on {s_name}): {e_mcp}[/red]")
                                     raise typer.Exit(code=1)
                                 except Exception as e_exc:
-                                    console.print(f"[red]Error ({t_name} on {s_name}): {e_exc}[/red]")
-                                    logger.exception(f"Error in {t_name} on {s_name}")
+                                    console.print(f"[red]Error ({tool_name} on {s_name}): {e_exc}[/red]")
+                                    logger.exception(f"Error in {tool_name} on {s_name}")
                                     raise typer.Exit(code=1)
                         
                         # Correctly indented block, belongs to _create_dynamic_command_func_for_tool
                         generated_command_function.__signature__ = inspect.Signature(params_for_signature)
-                        tool_description = t_schema.get("description", f"Execute {t_name}.")
+                        tool_description = t_schema.get("description", f"Execute {tool_name}.")
                         annotations_title = t_schema.get("annotations", {}).get("title")
                         generated_command_function.__doc__ = f"{annotations_title}\n{tool_description}" if annotations_title else tool_description
-                        generated_command_function.__name__ = f"{s_name}_{t_name}_cmd"
+                        generated_command_function.__name__ = f"{s_name}_{tool_name}_cmd"
                         return generated_command_function
 
                     # 3. Create and register the command

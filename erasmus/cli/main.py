@@ -10,8 +10,6 @@ import importlib.metadata
 # Third-party imports
 import typer
 from click import UsageError
-from loguru import logger
-from rich.console import Console
 
 # Local imports
 from erasmus.context import context_app
@@ -21,11 +19,17 @@ from erasmus.cli.mcp_commands import mcp_app
 from erasmus.protocol import ProtocolManager
 from erasmus.file_monitor import ContextFileMonitor
 from erasmus.utils.paths import get_path_manager
-from erasmus.utils.rich_console import print_table
+from erasmus.utils.rich_console import print_table, get_console_logger, get_console
+
+
+console = get_console()
+logger = get_console_logger()
+
 
 app = typer.Typer(
     help="Erasmus - Development Context Management System\n\nA tool for managing development contexts, protocols, and Model Context Protocol (MCP) interactions.\n\nFor more information, visit: https://github.com/hydra-dynamics/erasmus"
 )
+
 
 
 # Add sub-commands
@@ -35,12 +39,10 @@ app.add_typer(setup_app, name="setup", help="Setup Erasmus")
 app.add_typer(mcp_app, name="mcp", help="Manage MCP servers, clients, and integrations")
 
 
+
 # Custom error handler for unknown commands and argument errors
 def print_main_help_and_exit():
     try:
-        from rich.console import Console
-
-        console = Console()
         banner = [
             ("green", " _____                                  "),
             ("green", "|  ___|                                 "),
@@ -115,10 +117,6 @@ def watch():  # pragma: no cover
     path_manager = get_path_manager()
     root = path_manager.get_root_dir()
 
-    # Configure logger for file monitoring
-    logger.add(
-        path_manager.get_log_dir() / "file_monitor.log", rotation="1 day", retention="7 days", level="INFO"
-    )
 
     monitor = ContextFileMonitor()
 

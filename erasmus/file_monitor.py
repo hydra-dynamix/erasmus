@@ -1,16 +1,16 @@
 import os
 import time
-from typing import Optional, Set
-from watchdog.observers import ObserverType, Observer
+from typing import Set
+from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
-from loguru import logger
 from pathlib import Path
 from erasmus.protocol import get_protocol_manager
 from erasmus.utils.paths import get_path_manager
-from erasmus.environment import is_debug_enabled
+from erasmus.utils.rich_console import get_console_logger
 import re
-from erasmus.utils.paths import get_path_manager
 import fnmatch
+
+logger = get_console_logger()
 
 # Add a global to track last rules file write time
 _last_rules_write_time = None
@@ -166,7 +166,7 @@ class FileMonitor:
     def __init__(self) -> None:
         """Initialize the file monitor."""
         self.pm = get_path_manager()
-        self.debug = is_debug_enabled()
+        self.debug = os.getenv("ERASMUS_DEBUG", "false").lower() == "true"
         if self.debug:
             logger.info(f"Initialized FileMonitor with path manager: {self.pm}")
         self.observer = Observer()
@@ -382,7 +382,6 @@ class ContextFileMonitor:
     def __init__(self) -> None:
         """Initialize the context file monitor."""
         from erasmus.utils.paths import get_path_manager
-        from loguru import logger
 
         self.path_manager = get_path_manager()
         self.observer = Observer()
@@ -437,9 +436,7 @@ class ContextFileHandler(FileSystemEventHandler):
         super().__init__()
         self.debounce_time = debounce_time
         self.last_processed = {}
-        from loguru import logger
 
-        self.logger = logger
 
     def _should_process_event(self, event: FileSystemEvent) -> bool:
         """Check if an event should be processed.

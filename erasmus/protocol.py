@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Union # Keep Union for now if used with more than two types, otherwise remove if not needed.
 import typer
 from pydantic import BaseModel, Field
-from loguru import logger
 
 from erasmus.utils.paths import get_path_manager
 from erasmus.utils.sanatizer import _sanitize_string
-from erasmus.utils.rich_console import get_console, print_panel, print_table
+from erasmus.utils.rich_console import get_console, print_panel, print_table, get_console_logger
 
 console = get_console()
+logger = get_console_logger()
 
 class ProtocolError(Exception):
     """Base exception for protocol-related errors."""
