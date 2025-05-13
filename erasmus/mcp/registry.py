@@ -48,6 +48,7 @@ class McpRegistry(BaseModel):
         self.binary_path = path_manager.erasmus_dir / "mcp" / "servers" / "github" / "server"
         self.check_binary_script = path_manager.erasmus_dir / "mcp" / "servers" / "github" / "check_binary.sh"
         self._setup_github_server()
+        self._load_mcp_servers()
         self.registry = self._load_registry(registry_path)
         logger.info("MCPRegistry initialized.")
 
