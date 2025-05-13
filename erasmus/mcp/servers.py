@@ -57,7 +57,6 @@ class McpServers(BaseModel):
 
             if self.path_string_pattern.match(command):
                 logger.info(f"Found path: {command}")
-            if isinstance(args, list) and len(args) > 0:
                 full_path = None
                 if "--directory" in args:
                     full_path = self.parse_uv_directory_path(args)
