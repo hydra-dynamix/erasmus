@@ -1,0 +1,65 @@
+SmDrnWZbrzkxkYzeJUWKTAB1HvHB
+urrPc7XcEj
+To execute a runtime update redirecting emissions to a new treasury wallet
+(5GZfkfjD46SmDrnWZbrzkxkYzeJUWKTAB1HvHBurrPc7XcEj) in Commune AI ' s
+blockchain
+, follow these steps :
+
+Technical
+
+Implementation
+
+1. Locate Emission Logic
+The emission mechanism is handled in the Subspace blockchain node (
+commune-ai/subspace), a Substrate-based runtime. Specifically:
+Emission logic resides in pallets/treasury/src/lib.rs or a custom pallet managing
+token distribution [1] .
+Identify the Treasury account ID configuration in the runtime (e.g., runtime/src/lib.rs).
+2. Modify Treasury Address
+Update the treasury account in the runtime configuration:
+// In runtime/src/lib.rs
+impl pallet_treasury::Config for Runtime {
+type TreasuryAccount = EnsureAccountIdOf<5GZfkfjD46SmDrnWZbrzkxkYzeJUWKTAB1HvHBur
+// ... other configurations
+}
+
+3. Build & Test
+Follow Subspace's build instructions [1] :
+# Clone repo
+git clone https://github.com/commune-ai/subspace
+cargo build --release
+# Run tests
+cargo test -p pallet-treasury --test emission_tests
+
+Governance Process
+1. Submit Proposal
+Draft a governance proposal detailing the change and host it on IPFS (e.g., via Pinata)
+[2] .
+Use the CommuneX CLI to submit the proposal:
+c network submit-proposal --cid <IPFS_CID> --key <WALLET_KEY>
+
+This burns proposal_cost tokens, refundable if the proposal passes [2] .
+2. Community Voting
+Stakeholders vote via the Community Proposals platform, with voting power
+proportional to their stake [2] .
+Monitor voting status using:
+c network list-proposals
+
+3. Runtime Upgrade
+If approved:
+Validators deploy the updated runtime using sudo or a democratic governance module.
+Confirm the upgrade via on-chain extrinsics:
+c network runtime-upgrade --wasm <NEW_WASM_BLOB> --key <VALIDATOR_KEY>
+
+Key Considerations
+Testing: Ensure backward compatibility and test on a testnet first [1] .
+Documentation: Update emission policies in the Commune docs [3] .
+Security: Audit the new wallet's configuration to prevent typos or vulnerabilities.
+For detailed CLI commands, refer to the CommuneX governance subcommands [2] .
+⁂
+
+1. https://github.com/commune-ai/subspace
+2. https://communeai.org/docs/concepts/governance
+3. https://communeai.org
+
+
